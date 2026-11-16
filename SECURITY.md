@@ -1,6 +1,6 @@
 # Security Policy
 
-Oryxis stores SSH credentials, so security reports get priority over
+Obsidian SSH stores SSH credentials, so security reports get priority over
 everything else.
 
 ## Reporting a vulnerability
@@ -8,7 +8,7 @@ everything else.
 Please do **not** open a public issue for security problems.
 
 - **Preferred:** report privately via
-  [GitHub Security Advisories](https://github.com/wilsonglasser/oryxis/security/advisories/new)
+  [GitHub Security Advisories](https://github.com/ObsidianNetwork/ObsidianSSH/security/advisories/new)
   ("Report a vulnerability" on the Security tab).
 - **Alternative:** email `wilsonglasser@gmail.com` with `[SECURITY]` in the
   subject.
@@ -19,13 +19,13 @@ credited in the release notes unless they prefer otherwise.
 
 ## Supported versions
 
-Only the latest release receives security fixes. Oryxis ships small and
+Only the latest release receives security fixes. Obsidian SSH ships small and
 often, so upgrading is always the remediation path; the auto-updater and
 `winget upgrade` keep installs current.
 
 ## Security model
 
-What Oryxis does to protect your credentials:
+What Obsidian SSH does to protect your credentials:
 
 - **Encryption at rest.** The vault is a local SQLite file; every secret
   (passwords, private keys, TOTP secrets, API keys) is encrypted in its own

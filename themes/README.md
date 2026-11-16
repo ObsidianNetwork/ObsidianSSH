@@ -1,16 +1,16 @@
 # Community themes
 
-Terminal and UI themes contributed by Oryxis users, browsable at
-**<https://oryxis.app/themes>**.
+Terminal and UI themes contributed by Obsidian SSH users, browsable at
+**<https://github.com/ObsidianNetwork/ObsidianSSH/tree/main/themes>**.
 
-A theme here is exactly the file Oryxis exports, plus three lines saying
+A theme here is exactly the file Obsidian SSH exports, plus three lines saying
 where it came from. There is no new format to learn and nothing to build.
 
 ## Adding one
 
 The whole path stays in the browser:
 
-1. In Oryxis, build the theme you want (Settings > Terminal > Themes, or
+1. In Obsidian SSH, build the theme you want (Settings > Terminal > Themes, or
    Settings > Interface > App theme), then use its **Export** action.
 2. Open the file and add `author`, `source` and `license` next to `name`
    (see the fields below).
@@ -27,7 +27,7 @@ The slug is the file name: lower case, words joined by `-`
 ## The fields
 
 A terminal theme is a Windows Terminal colour scheme, which is what
-Oryxis exports and imports:
+Obsidian SSH exports and imports:
 
 ```json
 {
@@ -51,11 +51,11 @@ Oryxis exports and imports:
 }
 ```
 
-A UI theme is the Oryxis envelope, again straight from Export:
+A UI theme is the Obsidian SSH envelope, again straight from Export:
 
 ```json
 {
-  "oryxis_ui_theme": 1,
+  "obsidianssh_ui_theme": 1,
   "name": "My Theme",
   "author": "you",
   "source": "https://example.com/optional",
@@ -74,7 +74,7 @@ you would rather not decide yet. `Unspecified` is honest and it lists;
 what it does not do is tell anyone what they may do with your palette
 elsewhere, so an id is friendlier to whoever finds it later.
 
-Oryxis ignores the three attribution keys when importing, so a file from
+Obsidian SSH ignores the three attribution keys when importing, so a file from
 this directory pastes straight into Settings > Import unchanged.
 
 ## What gets accepted

@@ -17,7 +17,7 @@
 # hence Administrator.
 $ErrorActionPreference = 'Stop'
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
-$cer = Join-Path $here 'oryxis-test-cert.cer'
+$cer = Join-Path $here 'obsidianssh-test-cert.cer'
 $bundle = Join-Path $here '@BUNDLE@'
 
 $admin = ([Security.Principal.WindowsPrincipal] `
@@ -41,9 +41,9 @@ if ($sig.Status -ne 'Valid') {
 }
 
 Add-AppxPackage $bundle
-Write-Host 'Installed. Launch it from the Start menu, or run: oryxis'
+Write-Host 'Installed. Launch it from the Start menu, or run: obsidianssh'
 Write-Host ''
 Write-Host 'To remove it afterwards:'
-Write-Host '  Get-AppxPackage *Oryxis* | Remove-AppxPackage'
+Write-Host '  Get-AppxPackage *Obsidian SSH* | Remove-AppxPackage'
 Write-Host '  Get-ChildItem Cert:\LocalMachine\TrustedPeople, Cert:\LocalMachine\Root |'
 Write-Host "    Where-Object Thumbprint -eq '@THUMBPRINT@' | Remove-Item"

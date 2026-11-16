@@ -14,11 +14,11 @@ name: MSIX (Microsoft Store)
 # packing under its own identity, or a dry run).
 #
 # Two artifacts come out:
-#   * oryxis-<pkg>-app<app>.msixbundle -> upload this to Partner Center.
+#   * obsidianssh-<pkg>-app<app>.msixbundle -> upload this to Partner Center.
 #     Deliberately UNSIGNED: the Store re-signs MSIX packages with a
 #     Microsoft certificate after certification, so no CA cert is needed
 #     (and signing it here would just be stripped).
-#   * oryxis-<pkg>-app<app>-test-signed.msixbundle + oryxis-test-cert.cer
+#   * obsidianssh-<pkg>-app<app>-test-signed.msixbundle + obsidianssh-test-cert.cer
 #     -> sideload pair for local QA. Windows refuses to install an
 #     unsigned package, so this copy is signed with a throwaway
 #     self-signed certificate generated in the run. Never submit it.
@@ -82,7 +82,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: msix-exe-${{ matrix.arch }}
-          path: target/${{ matrix.target }}/release/oryxis.exe
+          path: target/${{ matrix.target }}/release/obsidianssh.exe
           retention-days: 1
 
   package:
@@ -155,9 +155,9 @@ jobs:
 
           # Which app build this package carries, for the run log and the
           # Partner Center release notes (the Store page shows $quad).
-          $cargo = Get-Content crates/oryxis-app/Cargo.toml -Raw
+          $cargo = Get-Content crates/obsidianssh-app/Cargo.toml -Raw
           if ($cargo -notmatch '(?m)^version\s*=\s*"([0-9]+\.[0-9]+\.[0-9]+)"') {
-            throw 'could not read the app version from crates/oryxis-app/Cargo.toml'
+            throw 'could not read the app version from crates/obsidianssh-app/Cargo.toml'
           }
           $app = $Matches[1]
 
@@ -174,7 +174,7 @@ jobs:
           "app=$app"         | Out-File $env:GITHUB_OUTPUT -Append
           # Both numbers in the filename: months later, a downloaded
           # bundle still says which app build it carries.
-          "base=oryxis-$version-app$app" | Out-File $env:GITHUB_OUTPUT -Append
+          "base=obsidianssh-$version-app$app" | Out-File $env:GITHUB_OUTPUT -Append
           Write-Host "Packing package $quad carrying app $app"
           "### MSIX package ``$quad`` (app ``$app``)" |
             Out-File $env:GITHUB_STEP_SUMMARY -Append
@@ -205,7 +205,7 @@ jobs:
           foreach ($arch in @('x64', 'arm64')) {
             $layout = "layout\$arch"
             New-Item -ItemType Directory -Force -Path $layout | Out-Null
-            Copy-Item "exe\$arch\oryxis.exe" $layout -Force
+            Copy-Item "exe\$arch\obsidianssh.exe" $layout -Force
             Copy-Item resources\msix\Assets $layout -Recurse -Force
             $manifest = $template.
               Replace('@IDENTITY_NAME@', $env:MSIX_IDENTITY).
@@ -266,7 +266,7 @@ jobs:
           # their own folder with nothing else in it.
           New-Item -ItemType Directory -Force -Path packs, out | Out-Null
           foreach ($arch in @('x64', 'arm64')) {
-            & $makeappx pack /d "layout\$arch" /p "packs\oryxis-$arch.msix" /o
+            & $makeappx pack /d "layout\$arch" /p "packs\obsidianssh-$arch.msix" /o
             if ($LASTEXITCODE -ne 0) { throw "makeappx pack failed for $arch" }
           }
           $bundle = "out\${{ steps.ident.outputs.base }}.msixbundle"
@@ -297,7 +297,7 @@ jobs:
           Export-PfxCertificate -Cert $cert -FilePath $pfx -Password $pfxPass | Out-Null
           # The public half travels with the artifact: the QA machine has
           # to trust it before Add-AppxPackage will accept the bundle.
-          Export-Certificate -Cert $cert -FilePath 'out\oryxis-test-cert.cer' | Out-Null
+          Export-Certificate -Cert $cert -FilePath 'out\obsidianssh-test-cert.cer' | Out-Null
 
           $plain = [System.Net.NetworkCredential]::new('', $pfxPass).Password
           & $signtool sign /fd SHA256 /a /f $pfx /p $plain $signed
@@ -321,16 +321,16 @@ jobs:
       - name: Upload the Store package
         uses: actions/upload-artifact@v7
         with:
-          name: oryxis-msix-store
+          name: obsidianssh-msix-store
           path: out/${{ steps.ident.outputs.base }}.msixbundle
 
       - name: Upload the sideload pair
         uses: actions/upload-artifact@v7
         with:
-          name: oryxis-msix-sideload
+          name: obsidianssh-msix-sideload
           path: |
             out/${{ steps.ident.outputs.base }}-test-signed.msixbundle
-            out/oryxis-test-cert.cer
+            out/obsidianssh-test-cert.cer
             out/install-sideload.ps1
 
   # Optional: hand the freshly packed bundle to the Store as an update.
@@ -345,7 +345,7 @@ jobs:
   # was explicitly asked to publish.
   #
   # Microsoft supports this path for FREE products only, which is what
-  # Oryxis is. The Store also rejects a version it has already seen, so
+  # Obsidian SSH is. The Store also rejects a version it has already seen, so
   # resources/msix/package-version.txt has to be bumped before a publish
   # run; that failure surfaces here, not silently.
   publish:
@@ -357,7 +357,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/download-artifact@v8
         with:
-          name: oryxis-msix-store
+          name: obsidianssh-msix-store
           path: submit
 
       - name: Check the Store credentials are present

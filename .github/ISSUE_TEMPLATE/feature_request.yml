@@ -6,7 +6,7 @@ body:
     id: problem
     attributes:
       label: Problem / motivation
-      description: What are you trying to do that Oryxis doesn't handle well today?
+      description: What are you trying to do that Obsidian SSH doesn't handle well today?
     validations:
       required: true
   - type: textarea

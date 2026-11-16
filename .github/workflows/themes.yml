@@ -3,7 +3,7 @@ name: Community themes
 # The contributed-theme directory (issue #118). A submission is one JSON
 # file added through GitHub's web editor; `themes/index.json` is what the
 # app fetches, and the site's `/themes` gallery serves its own copy of it
-# (`theme-index.json` on oryxis-site). Both are regenerated here so a
+# (`theme-index.json` on obsidianssh-site). Both are regenerated here so a
 # contributor never has to run anything locally. That is the whole reason
 # this is a separate workflow from CI: it needs write access, and CI does
 # not.

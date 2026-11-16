@@ -1,6 +1,6 @@
-# Self-hosting the Oryxis signaling + relay server
+# Self-hosting the Obsidian SSH signaling + relay server
 
-Oryxis sync needs a signaling/relay server for cross-network use.
+Obsidian SSH sync needs a signaling/relay server for cross-network use.
 **We don't operate one.** You deploy your own.
 
 For LAN-only sync (same Wi-Fi / VPN subnet), no server is needed.
@@ -24,7 +24,7 @@ a key derived at pairing time (X25519 DH) and never leaves the two
 paired devices. The relay sees ciphertext only; it doesn't even
 know which entity types are flowing.
 
-The bearer token (`ORYXIS_RELAY_TOKEN` / `SIGNALING_TOKEN`) is
+The bearer token (`OBSIDIANSSH_RELAY_TOKEN` / `SIGNALING_TOKEN`) is
 "who can talk to this relay" — it gates access to the server
 itself, not the content. Treat it as a long shared secret (32+
 random chars). All paired clients use the same value.
@@ -33,7 +33,7 @@ random chars). All paired clients use the same value.
 
 ## Option 1: Cloudflare Workers (recommended, free tier covers it)
 
-Cloudflare's free tier covers typical Oryxis usage (Workers free
+Cloudflare's free tier covers typical Obsidian SSH usage (Workers free
 tier includes 100k requests/day; Durable Objects is on the free
 tier with its own monthly allowance). Check the current numbers at
 [Workers pricing](https://developers.cloudflare.com/workers/platform/pricing/)
@@ -42,7 +42,7 @@ a pair of devices syncing every few hours stays well inside both.
 Bandwidth is free for Workers.
 
 ```bash
-# In the Oryxis repo
+# In the Obsidian SSH repo
 cd signaling-worker
 npm install -g wrangler
 wrangler login
@@ -64,7 +64,7 @@ Durable Objects migration declared in `wrangler.jsonc`, which
 provisions the `DeviceRegistry` class. No extra command needed.
 
 Wrangler prints the deployed URL
-(`https://oryxis-signaling.<your-subdomain>.workers.dev`).
+(`https://obsidianssh-signaling.<your-subdomain>.workers.dev`).
 Paste it into **Settings > Sync > Advanced > Signaling Server** in
 the app, paste the token below it, click Save.
 
@@ -72,17 +72,17 @@ the app, paste the token below it, click Save.
 
 ```bash
 docker run -d \
-  --name oryxis-relay \
+  --name obsidianssh-relay \
   --restart unless-stopped \
   -p 8080:8080 \
-  -e ORYXIS_RELAY_TOKEN=<long-random-string> \
+  -e OBSIDIANSSH_RELAY_TOKEN=<long-random-string> \
   ghcr.io/wilsonglasser/oryxis-relay:latest
 ```
 
 Behind a reverse proxy (recommended, gives you TLS for free):
 
 ```nginx
-# /etc/nginx/sites-available/oryxis-relay
+# /etc/nginx/sites-available/obsidianssh-relay
 server {
     listen 443 ssl http2;
     server_name relay.example.com;
@@ -106,39 +106,39 @@ Then point the app at `https://relay.example.com`.
 
 **The app can do this one for you.** Settings > Sync > "Set up your own
 relay" > "Install on one of your hosts": pick a host from your vault,
-Oryxis connects over SSH, downloads the signed `relay-v*` binary for
+Obsidian SSH connects over SSH, downloads the signed `relay-v*` binary for
 the host's architecture, checks its SHA-256 and Ed25519 signature,
 uploads it, writes the unit below (token in a root-only
-`/etc/oryxis-relay/env`), starts the service, optionally adds a Caddy
+`/etc/obsidianssh-relay/env`), starts the service, optionally adds a Caddy
 site block for TLS, health-checks the endpoint and adopts it. Every
 command is shown before anything runs; the host needs Linux, systemd
 and either root or passwordless sudo (otherwise copy the script and run
 it yourself).
 
 By hand: download the binary for your platform from the latest
-[`relay-v*`](https://github.com/wilsonglasser/oryxis/releases) release,
+[`relay-v*`](https://github.com/ObsidianNetwork/ObsidianSSH/releases) release,
 or build from source:
 
 ```bash
-cargo install --path crates/oryxis-relay
+cargo install --path crates/obsidianssh-relay
 # or
-cargo build --release -p oryxis-relay
-# binary lives at target/release/oryxis-relay
+cargo build --release -p obsidianssh-relay
+# binary lives at target/release/obsidianssh-relay
 ```
 
 Systemd unit:
 
 ```ini
-# /etc/systemd/system/oryxis-relay.service
+# /etc/systemd/system/obsidianssh-relay.service
 [Unit]
-Description=Oryxis sync relay
+Description=Obsidian SSH sync relay
 After=network.target
 
 [Service]
 Type=simple
-User=oryxis
-ExecStart=/usr/local/bin/oryxis-relay --port 8080 --bind 127.0.0.1
-Environment=ORYXIS_RELAY_TOKEN=<long-random-string>
+User=obsidianssh
+ExecStart=/usr/local/bin/obsidianssh-relay --port 8080 --bind 127.0.0.1
+Environment=OBSIDIANSSH_RELAY_TOKEN=<long-random-string>
 Restart=always
 RestartSec=5
 NoNewPrivileges=true
@@ -151,8 +151,8 @@ WantedBy=multi-user.target
 ```
 
 ```bash
-sudo useradd --system --no-create-home --shell /bin/false oryxis
-sudo systemctl enable --now oryxis-relay
+sudo useradd --system --no-create-home --shell /bin/false obsidianssh
+sudo systemctl enable --now obsidianssh-relay
 ```
 
 `--bind 127.0.0.1` assumes a reverse proxy on the same host (Option 2's
@@ -219,7 +219,7 @@ vault content, forge sync records, or impersonate a paired device.
 
 1. Stop the relay.
 2. Generate a new random token.
-3. Update `SIGNALING_TOKEN` (Worker) or `ORYXIS_RELAY_TOKEN`
+3. Update `SIGNALING_TOKEN` (Worker) or `OBSIDIANSSH_RELAY_TOKEN`
    (binary).
 4. Update the same value in **Settings > Sync > Signaling token**
    on every paired device.

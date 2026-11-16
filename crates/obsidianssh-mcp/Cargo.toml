@@ -1,0 +1,29 @@
+[package]
+name = "obsidianssh-mcp"
+version = "0.1.16"
+edition = "2021"
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "obsidianssh-mcp"
+path = "src/main.rs"
+
+[dependencies]
+obsidianssh-core = { workspace = true }
+obsidianssh-vault = { workspace = true }
+obsidianssh-ssh = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+chrono = { workspace = true }
+zeroize = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"
+# Paused time for the consent waits (`sudo::tests`).
+tokio = { workspace = true, features = ["test-util"] }

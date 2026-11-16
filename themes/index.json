@@ -66,7 +66,7 @@
       "name": "True Black OLED",
       "author": "AC-Lover",
       "license": "Unspecified",
-      "source": "https://github.com/wilsonglasser/oryxis/discussions/68",
+      "source": "https://github.com/ObsidianNetwork/ObsidianSSH/discussions",
       "kind": "terminal",
       "colors": {
         "background": "#000000",
@@ -96,7 +96,7 @@
       "name": "Ubuntu",
       "author": "a-a-wei",
       "license": "Public domain (Tango palette)",
-      "source": "https://github.com/wilsonglasser/oryxis/discussions/68#discussioncomment-17984370",
+      "source": "https://github.com/ObsidianNetwork/ObsidianSSH/discussions#discussioncomment-17984370",
       "kind": "terminal",
       "colors": {
         "background": "#300a24",
@@ -126,7 +126,7 @@
       "name": "True Black OLED",
       "author": "AC-Lover",
       "license": "Unspecified",
-      "source": "https://github.com/wilsonglasser/oryxis/discussions/68",
+      "source": "https://github.com/ObsidianNetwork/ObsidianSSH/discussions",
       "kind": "ui",
       "colors": {
         "bg_primary": "#000000",

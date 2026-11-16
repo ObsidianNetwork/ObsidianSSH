@@ -1,5 +1,5 @@
 /**
- * Oryxis Sync Signaling + Relay Server
+ * Obsidian SSH Sync Signaling + Relay Server
  * Cloudflare Worker + KV + Durable Objects
  *
  * Discovery routes (back-end: `DeviceRegistry` Durable Object,
@@ -61,12 +61,12 @@ const MAX_WAIT_MS = 120_000;
 const POLL_INTERVAL_START_MS = 500;
 const POLL_INTERVAL_MAX_MS = 5_000;
 
-// Must match `oryxis_sync::crypto::REGISTER_SIGN_LABEL` and the Rust
-// relay (`oryxis-relay::main::REGISTER_SIGN_LABEL`) byte-for-byte;
+// Must match `obsidianssh_sync::crypto::REGISTER_SIGN_LABEL` and the Rust
+// relay (`obsidianssh-relay::main::REGISTER_SIGN_LABEL`) byte-for-byte;
 // the worker, the relay, and the client all build the same canonical
 // payload from these labels so any signature verifies in all three.
-const REGISTER_SIGN_LABEL = "oryxis-register-v1";
-const UNREGISTER_SIGN_LABEL = "oryxis-unregister-v1";
+const REGISTER_SIGN_LABEL = "obsidianssh-register-v1";
+const UNREGISTER_SIGN_LABEL = "obsidianssh-unregister-v1";
 const REGISTER_TIMESTAMP_SKEW_SECS = 60;
 
 export default {
@@ -318,7 +318,7 @@ export class DeviceRegistry {
       if (pinned && pinned !== body.public_key) {
         // Anti-hijack: another bearer-token holder cannot replace
         // the pinned key. Returning 403 here matches the KV path
-        // and the Rust `oryxis-relay` behaviour.
+        // and the Rust `obsidianssh-relay` behaviour.
         return doJson({ error: "Pubkey mismatch" }, 403);
       }
       await this.state.storage.put({

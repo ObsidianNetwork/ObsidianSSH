@@ -1,0 +1,57 @@
+//! Per-screen view methods for `Obsidian SSH`, split out of `app.rs`.
+//!
+//! Each submodule defines an additional `impl Obsidian SSH` block with the view
+//! functions for a specific screen or panel. Call sites in `app.rs` look
+//! unchanged: `self.view_dashboard()`, `self.view_settings()`, etc., Rust
+//! allows `impl` blocks for the same type to be scattered across files.
+
+pub(crate) mod add_actions;
+pub(crate) mod chain_editor;
+pub(crate) mod chat_viewer;
+pub(crate) mod chrome;
+pub(crate) mod cloud_accounts;
+pub(crate) mod connection_progress;
+pub(crate) mod dashboard;
+pub(crate) mod group_defaults;
+pub(crate) mod group_panel;
+pub(crate) mod history;
+pub(crate) mod player;
+pub(crate) mod host_panel;
+pub(crate) mod icon_picker;
+pub(crate) mod keys;
+pub(crate) mod known_hosts;
+pub(crate) mod layout;
+pub(crate) mod command_palette;
+pub(crate) mod net_tools;
+pub(crate) mod new_tab_picker;
+pub(crate) mod onboarding;
+pub(crate) mod plugins_panel;
+pub(crate) mod port_forwards;
+pub(crate) mod proxy_command;
+pub(crate) mod mcp_sudo;
+pub(crate) mod session_group_panel;
+pub(crate) mod settings;
+pub(crate) mod settings_themes;
+pub(crate) mod settings_ui_themes;
+pub(crate) mod sftp;
+pub(crate) mod sidebar;
+pub(crate) mod sidebar_files;
+pub(crate) mod monitor_dash;
+pub(crate) mod sidebar_monitor;
+pub(crate) mod sidebar_tmux;
+pub(crate) mod sidebar_history;
+pub(crate) mod sidebar_host_config;
+pub(crate) mod sidebar_hosts_tree;
+pub(crate) mod sidebar_chat;
+pub(crate) mod sidebar_snippets;
+pub(crate) mod snippet_bar;
+pub(crate) mod snippet_steps;
+pub(crate) mod snippets;
+pub(crate) mod status_bar;
+pub(crate) mod tab_bar;
+pub(crate) mod tab_jump;
+pub(crate) mod terminal;
+pub(crate) mod theme_picker;
+pub(crate) mod update_modal;
+pub(crate) mod vault;
+pub(crate) mod vault_switcher;

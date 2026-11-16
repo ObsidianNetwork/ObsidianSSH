@@ -5,7 +5,7 @@ is in, so `cd` in the terminal moves the file browser with you. It
 follows one of two ways, and only one of them is exact. This page
 explains the difference and how to get the exact one.
 
-Everything here is optional and every step is yours to take: **Oryxis
+Everything here is optional and every step is yours to take: **Obsidian SSH
 never edits files on your servers.**
 
 ## TL;DR
@@ -18,7 +18,7 @@ never edits files on your servers.**
 
 ## Why the title is a guess
 
-When the shell says nothing about where it is, Oryxis falls back to
+When the shell says nothing about where it is, Obsidian SSH falls back to
 reading the **window title**. That works because the default bash and
 zsh prompts on most distributions set the title to `user@host: ~/path`,
 so the path is sitting right there.
@@ -48,10 +48,10 @@ ESC ] 7 ; file://<host>/<percent-encoded path> BEL
 
 It originated in macOS Terminal and is understood today by iTerm2,
 kitty, WezTerm, VS Code, GNOME Terminal and everything else built on
-VTE. Oryxis accepts both terminators (`BEL` and `ESC \`), accepts a
+VTE. Obsidian SSH accepts both terminators (`BEL` and `ESC \`), accepts a
 missing host (`file:///path`), and percent-decodes the path.
 
-Installing it is worth doing for reasons beyond Oryxis: the same
+Installing it is worth doing for reasons beyond Obsidian SSH: the same
 snippet makes every one of those terminals open new tabs in the right
 directory.
 
@@ -59,19 +59,19 @@ directory.
 
 ### 1. Save it on the host
 
-Save this as `~/.config/oryxis/osc7.sh` (any path works):
+Save this as `~/.config/obsidianssh/osc7.sh` (any path works):
 
 ```sh
 # Report the shell's working directory (OSC 7) so the terminal's file
 # browser follows it exactly. bash and zsh. Sourcing it twice is a
 # no-op.
-if [ -z "${__oryxis_osc7:-}" ]; then
-  __oryxis_osc7=1
+if [ -z "${__obsidianssh_osc7:-}" ]; then
+  __obsidianssh_osc7=1
   # Percent-encode the path BYTE by byte, under LC_ALL=C. This is the
   # part that is easy to get wrong: a raw space would end the URL
   # early, and encoding per CHARACTER instead of per byte turns every
   # accented directory name into mojibake on the other side.
-  __oryxis_urlencode() (
+  __obsidianssh_urlencode() (
     LC_ALL=C
     str=$1
     while [ -n "$str" ]; do
@@ -84,20 +84,20 @@ if [ -z "${__oryxis_osc7:-}" ]; then
       fi
     done
   )
-  __oryxis_cwd() {
+  __obsidianssh_cwd() {
     printf '\033]7;file://%s%s\007' \
-      "${HOSTNAME:-$(uname -n)}" "$(__oryxis_urlencode "$PWD")"
+      "${HOSTNAME:-$(uname -n)}" "$(__obsidianssh_urlencode "$PWD")"
   }
   # Registered through each shell's own pre-prompt hook. bash has no
   # `precmd`, zsh has no `PROMPT_COMMAND`, so each branch uses the one
   # its shell actually runs.
   if [ -n "${ZSH_VERSION:-}" ]; then
-    autoload -Uz add-zsh-hook 2>/dev/null && add-zsh-hook precmd __oryxis_cwd
+    autoload -Uz add-zsh-hook 2>/dev/null && add-zsh-hook precmd __obsidianssh_cwd
   elif [ -n "${BASH_VERSION:-}" ]; then
-    PROMPT_COMMAND="__oryxis_cwd${PROMPT_COMMAND:+;$PROMPT_COMMAND}"
+    PROMPT_COMMAND="__obsidianssh_cwd${PROMPT_COMMAND:+;$PROMPT_COMMAND}"
   fi
   # Report once at load, so the first prompt is already correct.
-  __oryxis_cwd
+  __obsidianssh_cwd
 fi
 ```
 
@@ -109,7 +109,7 @@ already set, so a framework that uses it keeps working.
 Add this to the end of `~/.bashrc` or `~/.zshrc`:
 
 ```sh
-[ -f ~/.config/oryxis/osc7.sh ] && . ~/.config/oryxis/osc7.sh
+[ -f ~/.config/obsidianssh/osc7.sh ] && . ~/.config/obsidianssh/osc7.sh
 ```
 
 **bash users, read this one:** a *login* bash reads `~/.bash_profile`
@@ -130,7 +130,7 @@ Open a new shell (or source your rc), open the Files tab in the
 terminal sidebar, and `cd` somewhere with a space in the name. The
 sidebar should land exactly there. If it follows your `cd` but lands on
 the wrong path for names with spaces or accents, the snippet is loaded
-but the encoding half is not; re-copy the `__oryxis_urlencode` function.
+but the encoding half is not; re-copy the `__obsidianssh_urlencode` function.
 
 ### 4. Inside tmux, let the sequence out
 
@@ -154,7 +154,7 @@ If you also want your typed commands to show up in the History tab
 inside tmux, that needs its own snippet, and it is covered in
 [the tmux guide](TMUX.md).
 
-## What Oryxis will not do
+## What Obsidian SSH will not do
 
 Up to v0.12 there was a Settings toggle, "Force exact directory
 following (OSC 7)", that typed a setup line into your shell on connect
@@ -186,6 +186,6 @@ Nothing to clean up on your servers: the old toggle never wrote to a
 file, it only set `PROMPT_COMMAND` inside the running shell, so the
 emitter died with that shell on disconnect. The one exception is a
 shell that outlives the connection, inside tmux or screen: there it
-keeps emitting until that shell exits, and `unset -f __oryxis_o7` plus
-removing `__oryxis_o7;` from the front of `PROMPT_COMMAND` clears it
+keeps emitting until that shell exits, and `unset -f __obsidianssh_o7` plus
+removing `__obsidianssh_o7;` from the front of `PROMPT_COMMAND` clears it
 early if you want it gone before then.

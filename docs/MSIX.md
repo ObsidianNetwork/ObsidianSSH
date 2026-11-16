@@ -1,6 +1,6 @@
 # MSIX / Microsoft Store
 
-The Store build is the same `oryxis.exe` the GitHub release ships, wrapped
+The Store build is the same `obsidianssh.exe` the GitHub release ships, wrapped
 in an MSIX package instead of an NSIS installer. Nothing about the NSIS
 installers changes: `winget` keeps targeting the system setup, and the
 per-user setup stays the auto-updater's target.
@@ -23,7 +23,7 @@ Center is **unsigned on purpose**.
 1. Create the developer account. Registration is free for both individual
    and company account types. Pick company if the publisher name reads as
    a business entity (policy 10.14).
-2. Reserve the app name (`Oryxis`).
+2. Reserve the app name (`Obsidian SSH`).
 3. Open **Product management > View app identity details** and copy three
    values into repository **secrets**, so the identity never lands in the
    source tree:
@@ -35,9 +35,9 @@ Center is **unsigned on purpose**.
    | Publisher display name                   | `MSIX_PUBLISHER_DISPLAY_NAME` | `publisher_display_name`  |
 
    ```
-   gh secret set MSIX_IDENTITY_NAME --repo <owner>/oryxis
-   gh secret set MSIX_PUBLISHER --repo <owner>/oryxis
-   gh secret set MSIX_PUBLISHER_DISPLAY_NAME --repo <owner>/oryxis
+   gh secret set MSIX_IDENTITY_NAME --repo <owner>/obsidianssh
+   gh secret set MSIX_PUBLISHER --repo <owner>/obsidianssh
+   gh secret set MSIX_PUBLISHER_DISPLAY_NAME --repo <owner>/obsidianssh
    ```
 
    With the secrets in place the workflow runs with every input left
@@ -57,12 +57,12 @@ Actions > "MSIX (Microsoft Store)" > Run workflow
 ```
 
 Inputs are all optional when the repo variables exist; `version` defaults
-to the `oryxis-app` crate version. The run produces two artifacts:
+to the `obsidianssh-app` crate version. The run produces two artifacts:
 
-- **`oryxis-msix-store`** contains `oryxis-<version>.msixbundle` (x64 +
+- **`obsidianssh-msix-store`** contains `obsidianssh-<version>.msixbundle` (x64 +
   arm64). This is what gets uploaded to Partner Center.
-- **`oryxis-msix-sideload`** contains a copy signed with a throwaway
-  self-signed certificate plus `oryxis-test-cert.cer`. Windows refuses to
+- **`obsidianssh-msix-sideload`** contains a copy signed with a throwaway
+  self-signed certificate plus `obsidianssh-test-cert.cer`. Windows refuses to
   install an unsigned package, so this pair exists purely so the build
   can be tested on a real machine. Never submit it.
 
@@ -89,7 +89,7 @@ just built, instead of only leaving artifacts. It uses the Microsoft
 Store Developer CLI through Microsoft's own action
 (`microsoft/microsoft-store-apppublisher`), which is the supported path.
 Note the platform limitation: **Store updates via GitHub Actions work for
-free products only**, which Oryxis is.
+free products only**, which Obsidian SSH is.
 
 One-time setup, all in Partner Center and Entra ID:
 
@@ -127,13 +127,13 @@ lines that undo both afterwards.
 By hand, it is:
 
 ```powershell
-Import-Certificate -FilePath .\oryxis-test-cert.cer `
+Import-Certificate -FilePath .\obsidianssh-test-cert.cer `
   -CertStoreLocation Cert:\LocalMachine\TrustedPeople
 
-Get-AuthenticodeSignature .\oryxis-<pkg>-app<app>-test-signed.msixbundle |
+Get-AuthenticodeSignature .\obsidianssh-<pkg>-app<app>-test-signed.msixbundle |
   Format-List Status, StatusMessage     # must say Valid BEFORE installing
 
-Add-AppxPackage .\oryxis-<pkg>-app<app>-test-signed.msixbundle
+Add-AppxPackage .\obsidianssh-<pkg>-app<app>-test-signed.msixbundle
 ```
 
 The certificate store is where this goes wrong. It has to be the LOCAL
@@ -147,7 +147,7 @@ being wrong.
 
 Then verify, in this order, the things the package changes:
 
-1. The app launches and the vault lands in `%USERPROFILE%\.oryxis`.
+1. The app launches and the vault lands in `%USERPROFILE%\.obsidianssh`.
 2. **Taskbar button groups correctly** and the JumpList shows recent
    hosts. This proves the AUMID gate works: a packaged process must keep
    the package identity, so `jumplist::tag_window` and the explicit
@@ -157,10 +157,10 @@ Then verify, in this order, the things the package changes:
    installer would only lay down a second, unpackaged copy. The panel and
    its keynav rows are gone, and the boot check is refused in
    `dispatch_update.rs`.
-4. `oryxis` resolves from a fresh shell (the execution alias replaces the
+4. `obsidianssh` resolves from a fresh shell (the execution alias replaces the
    PATH entry the NSIS installers write; MSIX cannot edit PATH).
 5. The ssh-agent named pipe is reachable and a plugin download succeeds
-   (`~/.oryxis/plugins`), both of which write outside the read-only
+   (`~/.obsidianssh/plugins`), both of which write outside the read-only
    package root.
 
 Finish with the **Windows App Certification Kit** against the installed
@@ -177,7 +177,7 @@ accept the submission. It is the standard capability for a packaged Win32
 app, but the answer has to name concrete uses or the reviewer comes back
 asking. What was submitted:
 
-> Oryxis is a native Win32 desktop application written in Rust and
+> Obsidian SSH is a native Win32 desktop application written in Rust and
 > packaged with the Desktop Bridge. runFullTrust is the standard
 > capability for any packaged full-trust Win32 application and is
 > required for it to run as an MSIX package at all.
@@ -192,11 +192,11 @@ asking. What was submitted:
 > - Serial port (COM) access for console connections to network
 >   appliances.
 > - Windows named pipes: the app implements the standard ssh-agent
->   protocol and serves it on `\\.\pipe\oryxis-ssh-agent`, secured with a
+>   protocol and serves it on `\\.\pipe\obsidianssh-ssh-agent`, secured with a
 >   per-user DACL, so that tools like git, VS Code and WSL can
 >   authenticate using keys held in the app's encrypted vault.
 > - Reading and writing files outside the package: the encrypted vault in
->   `%USERPROFILE%\.oryxis`, and the user's existing AWS and Kubernetes
+>   `%USERPROFILE%\.obsidianssh`, and the user's existing AWS and Kubernetes
 >   credential files when they enable those optional integrations.
 > - Launching helper processes: the operating system's remote desktop
 >   client when the user opens an RDP or VNC session over an SSH tunnel,
@@ -219,7 +219,7 @@ reviewer meeting them cold costs a rejection cycle:
   account, no server, no credentials needed to exercise the UI.
 - **Plugins.** Cloud providers, the MCP server and the GIF exporter are
   optional first-party components downloaded on demand into
-  `~/.oryxis/plugins`, each pinned by SHA-256 and verified against an
+  `~/.obsidianssh/plugins`, each pinned by SHA-256 and verified against an
   Ed25519 signature, and always user-initiated. This is the
   add-on/extension case policy 10.1.5 permits; mention the plugin-based
   cloud providers in the listing description as well, so the described
@@ -227,11 +227,11 @@ reviewer meeting them cold costs a rejection cycle:
 
 ## Package contents
 
-The layout is deliberately minimal: `oryxis.exe`, `Assets\` and the
+The layout is deliberately minimal: `obsidianssh.exe`, `Assets\` and the
 generated `AppxManifest.xml`. The app reads nothing from beside its
 executable in release builds (the plugin dev lookup is
 `#[cfg(debug_assertions)]`), and fonts are either embedded or downloaded
-into `~/.oryxis`.
+into `~/.obsidianssh`.
 
 The layout also gets a generated `resources.pri`. The manifest refers to
 `Assets\Square44x44Logo.png`, a name no file carries: the resource index

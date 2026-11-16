@@ -1,0 +1,415 @@
+//! UI helper widgets: forms. Split out of widgets/mod.rs.
+
+use iced::Widget as _;
+use super::*;
+/// A section card with slightly lighter background. Children are aligned to
+/// the leading edge so labels, descriptions, and inline widgets hug the
+/// right side under RTL instead of pinning to physical left.
+pub(crate) fn panel_section<'a>(content: iced::widget::Column<iced::Element<'a, Message>>) -> Element<'a, Message> {
+    container(content.width(Length::Fill).align_x(dir_align_x()))
+        .padding(16)
+        .width(Length::Fill)
+        .style(|_| container::Style {
+            background: Some(Background::Color(ObsidianSshColors::t().bg_hover)),
+            border: Border { radius: Radius::from(8.0), color: ObsidianSshColors::t().border, width: 1.0 },
+            ..Default::default()
+        })
+        .boxed()
+}
+
+/// A labeled form field inside a section. Column aligned to the leading
+/// edge so labels and inputs hug the right side under RTL.
+pub(crate) fn panel_field<'a>(label: &'a str, input: Element<'a, Message>) -> Element<'a, Message> {
+    iced::widget::column![
+        text(label).size(12).color(ObsidianSshColors::t().text_muted),
+        Space::new().height(4),
+        input,
+    ]
+    .width(Length::Fill)
+    .align_x(dir_align_x())
+    .boxed()
+}
+
+/// `panel_field` plus a line saying where an unset field's value comes
+/// from (D4 group inheritance).
+///
+/// `inherited` is `Some((value, group label))` only when the host
+/// itself sets nothing AND an ancestor does; a host with its own value
+/// renders exactly like `panel_field`, because the inherited value is
+/// then not what will be used and saying otherwise would be a lie.
+///
+/// The hint is a LINE rather than placeholder text inside the input: a
+/// greyed value in the box reads as something already typed, and the
+/// user needs to see both that the field is empty and what will be used
+/// because it is.
+///
+/// The widget tree has the SAME shape with or without the hint: the
+/// input sits at a fixed index of one column and the hint is only ever
+/// appended after it. The hint comes and goes with the first keystroke
+/// (it shows only while the field is empty), and iced matches widget
+/// state by position and kind, so returning the bare input in one case
+/// and a column in the other dropped the input's state, focus included,
+/// on every keystroke that crossed empty (issue #241).
+pub(crate) fn panel_field_inherited<'a>(
+    label: &'a str,
+    input: Element<'a, Message>,
+    inherited: Option<(String, String)>,
+) -> Element<'a, Message> {
+    // An empty label means the caller already has its own row header
+    // (or needs none), so no blank line goes above the input.
+    let mut col = iced::widget::Column::<iced::Element<'_, _>>::new();
+    if !label.is_empty() {
+        col = col
+            .push(text(label).size(12).color(ObsidianSshColors::t().text_muted).boxed())
+            .push(Space::new().height(4).boxed());
+    }
+    col = col.push(input);
+    if let Some((value, group)) = inherited {
+        col = col.push(Space::new().height(3).boxed()).push(
+            text(
+                crate::i18n::t("inherited_from")
+                    .replace("{value}", &value)
+                    .replace("{group}", &group),
+            )
+            .size(10)
+            .color(ObsidianSshColors::t().accent).boxed(),
+        );
+    }
+    col.width(Length::Fill).align_x(dir_align_x()).boxed()
+}
+
+/// `panel_field` for a credential input: standardizes the tri-state
+/// password placeholder every editor tracks by hand. While an existing
+/// secret is stored and the field untouched, the placeholder says the
+/// value is kept unchanged; otherwise `empty_hint` shows (the field's
+/// normal placeholder). Callers pass the `has_existing` / `touched`
+/// bools they already track; no new state.
+pub(crate) fn password_placeholder(has_existing: bool, touched: bool, empty_hint: &'static str) -> &'static str {
+    if has_existing && !touched {
+        crate::i18n::t("proxy_password_existing")
+    } else {
+        empty_hint
+    }
+}
+
+/// The standard editor Cancel button (muted). Pair with
+/// [`form_save_button`] inside [`form_footer`]; wrap in the surface's
+/// keynav slot at the call site (the layer differs per surface).
+pub(crate) fn form_cancel_button<'a>(msg: Message) -> Element<'a, Message> {
+    styled_button(crate::i18n::t("cancel"), msg, ObsidianSshColors::t().text_muted)
+}
+
+/// The standard editor primary button (accent). `on_save: None`
+/// renders the disabled state (greyed, no on_press), so validation /
+/// in-flight gating is uniform and double-submit is structurally
+/// impossible.
+pub(crate) fn form_save_button<'a>(label: &'a str, on_save: Option<Message>) -> Element<'a, Message> {
+    styled_button_opt(label, on_save, ObsidianSshColors::t().accent)
+}
+
+/// The standard editor footer: Cancel then Save, mirrored under RTL
+/// (`dir_row`), with the proxy-identity form's spacing and padding.
+/// Callers pass the buttons already wrapped in their layer's keynav
+/// slot, recorded in this order (cancel, save) so build order stays
+/// display order.
+pub(crate) fn form_footer<'a>(
+    cancel: Element<'a, Message>,
+    save: Element<'a, Message>,
+) -> Element<'a, Message> {
+    container(
+        dir_row(vec![cancel, Space::new().width(8).boxed(), save])
+            .align_y(iced::Alignment::Center),
+    )
+    .padding(Padding { top: 8.0, right: 16.0, bottom: 16.0, left: 16.0 })
+    .boxed()
+}
+
+/// The standard inline-error slot: renders nothing (zero height) when
+/// `None`, otherwise the error row every editor shares. Sits between
+/// the last field (or the scrollable) and the footer, always.
+pub(crate) fn form_error<'a>(error: Option<&'a str>) -> Element<'a, Message> {
+    match error {
+        Some(err) => container(
+            text(err)
+                .size(12)
+                .color(ObsidianSshColors::t().error)
+                .width(Length::Fill)
+                .align_x(crate::widgets::dir_align_x()),
+        )
+        .padding(Padding { top: 0.0, right: 16.0, bottom: 8.0, left: 16.0 })
+        .boxed(),
+        None => Space::new().boxed(),
+    }
+}
+
+/// The canonical on/off control: a small pill that fills with the
+/// success color and the dot trailing when on, muted with the dot
+/// leading when off. Every toggle in the app (settings rows, plugin
+/// auto-update) renders this same switch so the affordance is
+/// consistent. `msg` is dispatched on click; callers that track the
+/// next state explicitly pass it pre-flipped.
+pub(crate) fn toggle_switch<'a>(value: bool, msg: Message) -> Element<'a, Message> {
+    let toggle_bg = if value { ObsidianSshColors::t().success } else { ObsidianSshColors::t().bg_selected };
+    let toggle_text = if value { "  \u{25CF}" } else { "\u{25CF}  " };
+    button(text(toggle_text).size(12).color(Color::WHITE))
+        .on_press(msg)
+        .padding(Padding { top: 4.0, right: 8.0, bottom: 4.0, left: 8.0 })
+        .style(move |_, _| button::Style {
+            background: Some(Background::Color(toggle_bg)),
+            border: Border { radius: Radius::from(10.0), ..Default::default() },
+            ..Default::default()
+        })
+        .boxed()
+}
+
+/// Inline label + [`toggle_switch`], for compact placements (e.g.
+/// plugin auto-update) where the control sits next to its label rather
+/// than across a full-width row like [`toggle_row`].
+pub(crate) fn toggle_switch_labeled<'a>(
+    label: &'a str,
+    value: bool,
+    msg: Message,
+) -> Element<'a, Message> {
+    dir_row(vec![
+        text(label).size(11).color(ObsidianSshColors::t().text_secondary).boxed(),
+        Space::new().width(8).boxed(),
+        toggle_switch(value, msg),
+    ])
+    .align_y(iced::Alignment::Center)
+    .boxed()
+}
+
+/// A full-width settings row: label on the leading edge, [`toggle_switch`]
+/// on the trailing edge.
+pub(crate) fn toggle_row<'a>(label: &'a str, value: bool, msg: Message) -> Element<'a, Message> {
+    toggle_row_with(text(label).size(13).color(ObsidianSshColors::t().text_primary).boxed(), value, msg)
+}
+
+/// [`toggle_row`] with a label already built ([`setting_label`]).
+pub(crate) fn toggle_row_with<'a>(label: Element<'a, Message>, value: bool, msg: Message) -> Element<'a, Message> {
+    dir_row(vec![label, Space::new().width(Length::Fill).boxed(), toggle_switch(value, msg)])
+        .align_y(iced::Alignment::Center)
+        .boxed()
+}
+
+/// A Settings row's label: the text, then the "this device" badge when
+/// the row writes a device setting (`settings_index::DEVICE_ROWS`) and
+/// so applies to every vault, where the rest of Settings edits the
+/// window's vault. Settings rows only: the same label elsewhere (the
+/// onboarding) asks nothing of the vault.
+pub(crate) fn setting_label<'a>(label: &'a str, size: f32, color: Color) -> Element<'a, Message> {
+    let device = crate::settings_index::is_device_row_label(label);
+    let label = text(label).size(size).color(color);
+    if !device {
+        return label.boxed();
+    }
+    dir_row(vec![label.boxed(), Space::new().width(6).boxed(), device_badge()])
+        .align_y(iced::Alignment::Center)
+        .boxed()
+}
+
+/// The "this device" badge: an icon, its tooltip saying what it means.
+pub(crate) fn device_badge<'a>() -> Element<'a, Message> {
+    crate::views::terminal::icon_tooltip(
+        iced_fonts::lucide::monitor().size(11).color(ObsidianSshColors::t().text_muted).boxed(),
+        crate::i18n::t("setting_device_badge_tip"),
+    )
+}
+
+/// Like [`toggle_row`] but with a muted description line under the
+/// label. The toggle stays vertically centered against the whole
+/// label+description block on the trailing edge.
+pub(crate) fn toggle_row_desc<'a>(
+    label: &'a str,
+    desc: &'a str,
+    value: bool,
+    msg: Message,
+) -> Element<'a, Message> {
+    toggle_row_desc_with(text(label).size(13).color(ObsidianSshColors::t().text_primary).boxed(), desc, value, msg)
+}
+
+/// [`toggle_row_desc`] with a label already built ([`setting_label`]).
+pub(crate) fn toggle_row_desc_with<'a>(
+    label: Element<'a, Message>,
+    desc: &'a str,
+    value: bool,
+    msg: Message,
+) -> Element<'a, Message> {
+    dir_row(vec![
+        iced::widget::column![
+            label,
+            Space::new().height(2),
+            text(desc).size(11).color(ObsidianSshColors::t().text_muted),
+        ]
+        .width(Length::Fill)
+        .align_x(dir_align_x())
+        .boxed(),
+        Space::new().width(12).boxed(),
+        toggle_switch(value, msg),
+    ]).align_y(iced::Alignment::Center)
+    .boxed()
+}
+
+/// Small semibold "h2" header used to segregate a settings section
+/// into labelled groups (e.g. "General", "Dashboard", "Advanced") so
+/// related cards read as a cluster and are easier to locate.
+pub(crate) fn settings_group_header<'a>(label: &'a str) -> Element<'a, Message> {
+    text(label)
+        .size(12)
+        .font(iced::Font {
+            weight: iced::font::Weight::Semibold,
+            ..iced::Font::DEFAULT
+        })
+        .color(ObsidianSshColors::t().text_secondary)
+        .boxed()
+}
+
+pub(crate) fn panel_divider<'a>() -> Element<'a, Message> {
+    container(Space::new().height(1))
+        .width(Length::Fill)
+        .style(|_| container::Style {
+            background: Some(Background::Color(ObsidianSshColors::t().border)),
+            ..Default::default()
+        })
+        .boxed()
+}
+
+/// An option row shell: icon + label on the leading edge, a caller
+/// supplied trailing control (usually a pick_list). Keyboard-navigable
+/// callers wrap the control itself in `panel_nav_slot` before passing
+/// it in, so the focus ring hugs the pick_list rather than the row.
+pub(crate) fn panel_option_row<'a>(
+    icon_widget: iced::widget::Text<'a>,
+    label: &'a str,
+    control: Element<'a, Message>,
+) -> Element<'a, Message> {
+    container(
+        dir_row(vec![
+            icon_widget.size(13).color(ObsidianSshColors::t().text_muted).boxed(),
+            Space::new().width(10).boxed(),
+            text(label).size(13).color(ObsidianSshColors::t().text_secondary).boxed(),
+            Space::new().width(Length::Fill).boxed(),
+            control,
+        ])
+        .align_y(iced::Alignment::Center),
+    )
+    .padding(Padding { top: 4.0, right: 0.0, bottom: 4.0, left: 0.0 })
+    .boxed()
+}
+
+pub(crate) fn settings_row<'a>(label: &'static str, value: String) -> Element<'a, Message> {
+    // Transparent row inside the surrounding `panel_section` (which
+    // already supplies the bg + border + radius). The earlier
+    // `bg_surface` fill made these rows render lighter than the
+    // panel around them and out of step with the rest of Settings,
+    // where panel children sit directly on the panel background.
+    container(
+        dir_row(vec![
+            text(label).size(13).color(ObsidianSshColors::t().text_secondary).boxed(),
+            Space::new().width(Length::Fill).boxed(),
+            text(value).size(13).color(ObsidianSshColors::t().text_primary).boxed(),
+        ]),
+    )
+    .padding(Padding { top: 6.0, right: 4.0, bottom: 6.0, left: 4.0 })
+    .width(Length::Fill)
+    .boxed()
+}
+
+/// Same shape as `settings_row`, but the value text renders in the
+/// accent color and a click anywhere on the row dispatches
+/// `Message::OpenUrl(url)` so the OS default browser opens it. Used in
+/// the About panel for the GitHub line.
+pub(crate) fn settings_row_link<'a>(
+    label: &'a str,
+    display: String,
+    url: String,
+) -> Element<'a, Message> {
+    let body = container(
+        dir_row(vec![
+            text(label.to_owned())
+                .size(13)
+                .color(ObsidianSshColors::t().text_secondary)
+                .boxed(),
+            Space::new().width(Length::Fill).boxed(),
+            text(display).size(13).color(ObsidianSshColors::t().accent).boxed(),
+        ]),
+    )
+    .padding(Padding { top: 6.0, right: 4.0, bottom: 6.0, left: 4.0 })
+    .width(Length::Fill);
+    iced::widget::MouseArea::new(body)
+        .on_press(Message::OpenUrl(url))
+        .interaction(iced::mouse::Interaction::Pointer)
+        .boxed()
+}
+
+/// Same shape as `settings_row`, but the whole row is clickable and
+/// dispatches an arbitrary message (pointer cursor as the affordance).
+/// Used by the About > Vault Statistics rows to jump to each section.
+pub(crate) fn settings_row_nav<'a>(
+    label: &'a str,
+    value: String,
+    msg: Message,
+) -> Element<'a, Message> {
+    let body = container(
+        dir_row(vec![
+            text(label.to_owned())
+                .size(13)
+                .color(ObsidianSshColors::t().text_secondary)
+                .boxed(),
+            Space::new().width(Length::Fill).boxed(),
+            text(value).size(13).color(ObsidianSshColors::t().text_primary).boxed(),
+        ]),
+    )
+    .padding(Padding { top: 6.0, right: 4.0, bottom: 6.0, left: 4.0 })
+    .width(Length::Fill);
+    iced::widget::MouseArea::new(body)
+        .on_press(msg)
+        .interaction(iced::mouse::Interaction::Pointer)
+        .boxed()
+}
+
+
+
+/// Chrome for the right-side editor panels (host editor, key import /
+/// generate, identity, snippet, port-forward, cloud forms, ...):
+/// `width` total (pass the live `ObsidianSsh::panel_width`), the given panel
+/// background, and a 4 px draggable handle on the LEADING edge (between
+/// main content and panel) instead of a full frame. The handle replaces
+/// the old 1 px separator and doubles as the resize grip: pressing it
+/// arms `panel_resize_drag`, the global mouse-move handler in
+/// `dispatch_tabs/window.rs` follows the cursor, and the global
+/// left-release ends the drag and persists the width. Same affordance
+/// (width, colour, cursor) as the terminal sidebar's region handle. The
+/// full border used to double up with the status-bar hairline below and
+/// the tab-bar hairline above (a visible 2 px "double border" at the
+/// panel's bottom edge), and with the 1 px window frame on the trailing
+/// edge; those chrome lines already bound the other three sides. Under
+/// RTL the panel sits on the leading (left) side, and `dir_row` mirrors
+/// the handle onto the panel's content-facing edge automatically.
+pub(crate) fn side_panel_frame(
+    content: Element<'_, Message>,
+    background: iced::Color,
+    width: f32,
+) -> Element<'_, Message> {
+    let handle = iced::widget::MouseArea::new(
+        container(Space::new().width(Length::Fixed(4.0)).height(Length::Fill))
+            .width(Length::Fixed(4.0))
+            .height(Length::Fill)
+            .style(|_| container::Style {
+                background: Some(Background::Color(ObsidianSshColors::t().border)),
+                ..Default::default()
+            }),
+    )
+    .on_press(Message::Tabs(crate::app::TabsMessage::SidePanelResizeStart))
+    .interaction(iced::mouse::Interaction::ResizingHorizontally);
+    let body = container(content)
+        .width(width - 4.0)
+        .height(Length::Fill)
+        .style(move |_| container::Style {
+            background: Some(Background::Color(background)),
+            ..Default::default()
+        });
+    dir_row(vec![handle.boxed(), body.boxed()])
+        .height(Length::Fill)
+        .boxed()
+}

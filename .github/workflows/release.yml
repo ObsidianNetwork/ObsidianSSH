@@ -14,8 +14,8 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
-  ORYXIS_SIGNALING_URL: ${{ secrets.ORYXIS_SIGNALING_URL }}
-  ORYXIS_SIGNALING_TOKEN: ${{ secrets.ORYXIS_SIGNALING_TOKEN }}
+  OBSIDIANSSH_SIGNALING_URL: ${{ secrets.OBSIDIANSSH_SIGNALING_URL }}
+  OBSIDIANSSH_SIGNALING_TOKEN: ${{ secrets.OBSIDIANSSH_SIGNALING_TOKEN }}
 
 jobs:
   build-linux-x86:
@@ -40,28 +40,28 @@ jobs:
       - name: Package tarball
         run: |
           mkdir -p dist
-          cp target/release/oryxis dist/
-          cp README.md resources/logo_64.png resources/oryxis.desktop dist/
-          cd dist && tar czf ../oryxis-linux-x86_64.tar.gz *
+          cp target/release/obsidianssh dist/
+          cp README.md resources/logo_64.png resources/obsidianssh.desktop dist/
+          cd dist && tar czf ../obsidianssh-linux-x86_64.tar.gz *
       # The pinned font downloads, read off the binary just built
       # (`fonts.rs` is the only copy of the pins). Emitted here rather
       # than in the bundle job, which runs on a bare runner without the
       # `-dev` packages this dynamically linked binary needs to start.
       - name: Export font pins for the offline bundle
-        run: target/release/oryxis --font-pins > font-pins.json && head -c 400 font-pins.json
+        run: target/release/obsidianssh --font-pins > font-pins.json && head -c 400 font-pins.json
       - uses: actions/upload-artifact@v7
         with:
           name: font-pins
           path: font-pins.json
 
       # `.deb` for Debian/Ubuntu/derivatives. cargo-deb reads
-      # [package.metadata.deb] in oryxis-app/Cargo.toml.
+      # [package.metadata.deb] in obsidianssh-app/Cargo.toml.
       - name: Install cargo-deb
         run: cargo install cargo-deb --locked
       - name: Build .deb
         run: |
-          cargo deb -p oryxis-app --no-build
-          cp target/debian/*.deb oryxis-linux-x86_64.deb
+          cargo deb -p obsidianssh-app --no-build
+          cp target/debian/*.deb obsidianssh-linux-x86_64.deb
 
       # AppImage via linuxdeploy. Builds an .AppDir with the binary +
       # .desktop + icon, then bundles it into a single self-contained
@@ -72,9 +72,9 @@ jobs:
           curl -L -o linuxdeploy https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
           chmod +x linuxdeploy
           mkdir -p AppDir/usr/bin AppDir/usr/share/applications AppDir/usr/share/icons/hicolor/256x256/apps
-          cp target/release/oryxis AppDir/usr/bin/
-          cp resources/oryxis.desktop AppDir/usr/share/applications/
-          cp resources/logo_256.png AppDir/usr/share/icons/hicolor/256x256/apps/oryxis.png
+          cp target/release/obsidianssh AppDir/usr/bin/
+          cp resources/obsidianssh.desktop AppDir/usr/share/applications/
+          cp resources/logo_256.png AppDir/usr/share/icons/hicolor/256x256/apps/obsidianssh.png
           # winit opens libxkbcommon(-x11) with dlopen, which linuxdeploy
           # cannot see; without them the app panics at start on a system
           # that lacks them (the AppImage catalog's test machine did).
@@ -88,17 +88,17 @@ jobs:
           for lib in libxkbcommon.so.0 libxkbcommon-x11.so.0 libxcb-xkb.so.1; do
             [ -e "AppDir/usr/lib/$lib" ] || { echo "::error::$lib is missing from the AppImage"; exit 1; }
           done
-          mv Oryxis-*.AppImage oryxis-linux-x86_64.AppImage 2>/dev/null \
-            || mv oryxis-*.AppImage oryxis-linux-x86_64.AppImage 2>/dev/null \
-            || mv *.AppImage oryxis-linux-x86_64.AppImage
+          mv Obsidian_SSH-*.AppImage obsidianssh-linux-x86_64.AppImage 2>/dev/null \
+            || mv obsidianssh-*.AppImage obsidianssh-linux-x86_64.AppImage 2>/dev/null \
+            || mv *.AppImage obsidianssh-linux-x86_64.AppImage
 
       - uses: actions/upload-artifact@v7
         with:
-          name: oryxis-linux-x86_64
+          name: obsidianssh-linux-x86_64
           path: |
-            oryxis-linux-x86_64.tar.gz
-            oryxis-linux-x86_64.deb
-            oryxis-linux-x86_64.AppImage
+            obsidianssh-linux-x86_64.tar.gz
+            obsidianssh-linux-x86_64.deb
+            obsidianssh-linux-x86_64.AppImage
 
   build-linux-arm:
     name: Linux ARM64
@@ -122,24 +122,24 @@ jobs:
       - name: Package tarball
         run: |
           mkdir -p dist
-          cp target/release/oryxis dist/
-          cp README.md resources/logo_64.png resources/oryxis.desktop dist/
-          cd dist && tar czf ../oryxis-linux-aarch64.tar.gz *
+          cp target/release/obsidianssh dist/
+          cp README.md resources/logo_64.png resources/obsidianssh.desktop dist/
+          cd dist && tar czf ../obsidianssh-linux-aarch64.tar.gz *
       - name: Install cargo-deb
         run: cargo install cargo-deb --locked
       - name: Build .deb
         run: |
-          cargo deb -p oryxis-app --no-build
-          cp target/debian/*.deb oryxis-linux-aarch64.deb
+          cargo deb -p obsidianssh-app --no-build
+          cp target/debian/*.deb obsidianssh-linux-aarch64.deb
       - name: Build AppImage
         run: |
           set -e
           curl -L -o linuxdeploy https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-aarch64.AppImage
           chmod +x linuxdeploy
           mkdir -p AppDir/usr/bin AppDir/usr/share/applications AppDir/usr/share/icons/hicolor/256x256/apps
-          cp target/release/oryxis AppDir/usr/bin/
-          cp resources/oryxis.desktop AppDir/usr/share/applications/
-          cp resources/logo_256.png AppDir/usr/share/icons/hicolor/256x256/apps/oryxis.png
+          cp target/release/obsidianssh AppDir/usr/bin/
+          cp resources/obsidianssh.desktop AppDir/usr/share/applications/
+          cp resources/logo_256.png AppDir/usr/share/icons/hicolor/256x256/apps/obsidianssh.png
           # winit opens libxkbcommon(-x11) with dlopen, which linuxdeploy
           # cannot see; without them the app panics at start on a system
           # that lacks them (the AppImage catalog's test machine did).
@@ -153,16 +153,16 @@ jobs:
           for lib in libxkbcommon.so.0 libxkbcommon-x11.so.0 libxcb-xkb.so.1; do
             [ -e "AppDir/usr/lib/$lib" ] || { echo "::error::$lib is missing from the AppImage"; exit 1; }
           done
-          mv Oryxis-*.AppImage oryxis-linux-aarch64.AppImage 2>/dev/null \
-            || mv oryxis-*.AppImage oryxis-linux-aarch64.AppImage 2>/dev/null \
-            || mv *.AppImage oryxis-linux-aarch64.AppImage
+          mv Obsidian_SSH-*.AppImage obsidianssh-linux-aarch64.AppImage 2>/dev/null \
+            || mv obsidianssh-*.AppImage obsidianssh-linux-aarch64.AppImage 2>/dev/null \
+            || mv *.AppImage obsidianssh-linux-aarch64.AppImage
       - uses: actions/upload-artifact@v7
         with:
-          name: oryxis-linux-aarch64
+          name: obsidianssh-linux-aarch64
           path: |
-            oryxis-linux-aarch64.tar.gz
-            oryxis-linux-aarch64.deb
-            oryxis-linux-aarch64.AppImage
+            obsidianssh-linux-aarch64.tar.gz
+            obsidianssh-linux-aarch64.deb
+            obsidianssh-linux-aarch64.AppImage
 
   build-macos-arm:
     name: macOS Apple Silicon
@@ -192,14 +192,14 @@ jobs:
       - name: Package tarball
         run: |
           mkdir -p dist
-          cp target/release/oryxis dist/
+          cp target/release/obsidianssh dist/
           cp README.md resources/logo_64.png dist/
           # The Gatekeeper steps. Without an Apple Developer ID the first
           # launch is refused, and the project README does not say a word
           # about that, so the person who most needs the instructions is
           # the one who downloaded this file.
           cp resources/INSTALL-macOS.md dist/
-          cd dist && tar czf ../oryxis-macos-aarch64.tar.gz *
+          cd dist && tar czf ../obsidianssh-macos-aarch64.tar.gz *
       - name: Build .app bundle
         run: |
           # On a tag the ref is v0.7.4 -> 0.7.4. On a manual workflow_dispatch
@@ -209,10 +209,10 @@ jobs:
           else
             VERSION="0.0.0"
           fi
-          APP="Oryxis.app"
+          APP="ObsidianSSH.app"
           mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-          cp target/release/oryxis "$APP/Contents/MacOS/oryxis"
-          cp resources/Oryxis.icns "$APP/Contents/Resources/Oryxis.icns"
+          cp target/release/obsidianssh "$APP/Contents/MacOS/obsidianssh"
+          cp resources/ObsidianSSH.icns "$APP/Contents/Resources/ObsidianSSH.icns"
           sed "s/__VERSION__/${VERSION}/g" resources/Info.plist > "$APP/Contents/Info.plist"
       - name: Sign .app bundle
         # Developer ID signing when secrets are present; otherwise an ad-hoc
@@ -224,7 +224,7 @@ jobs:
           APPLE_CERT_PASSWORD: ${{ secrets.APPLE_CERT_PASSWORD }}
           APPLE_SIGN_IDENTITY: ${{ secrets.APPLE_SIGN_IDENTITY }}
         run: |
-          APP="Oryxis.app"
+          APP="ObsidianSSH.app"
           if [ -n "$APPLE_CERT_P12_BASE64" ]; then
             KEYCHAIN="$RUNNER_TEMP/build.keychain"
             KEYCHAIN_PW="$(uuidgen)"
@@ -264,7 +264,7 @@ jobs:
           # `mv`, not `cp -R`: nothing after this reads the bundle from
           # the workspace (the .dmg is what gets notarized and uploaded),
           # and a second copy of it is space the image itself needs.
-          mv Oryxis.app "$STAGING/"
+          mv ObsidianSSH.app "$STAGING/"
           ln -s /Applications "$STAGING/Applications"
           # Same reason as the tarball: the .dmg is where the blocked
           # first launch actually happens.
@@ -279,8 +279,8 @@ jobs:
           # the slack away, so the .dmg that ships is no bigger for it.
           SIZE_MB=$(( $(du -sm "$STAGING" | cut -f1) + 300 ))
           echo "staging is $(du -sh "$STAGING" | cut -f1), image sized ${SIZE_MB}m"
-          hdiutil create -volname "Oryxis" -srcfolder "$STAGING" \
-            -size "${SIZE_MB}m" -ov -format UDZO oryxis-macos-aarch64.dmg
+          hdiutil create -volname "Obsidian SSH" -srcfolder "$STAGING" \
+            -size "${SIZE_MB}m" -ov -format UDZO obsidianssh-macos-aarch64.dmg
       - name: Notarize .dmg
         # Runs only when the App Store Connect secrets are present. Submits the
         # .dmg to Apple, waits for the ticket, then staples it so the app opens
@@ -299,19 +299,19 @@ jobs:
             exit 0
           fi
           if [ -n "$APPLE_ID" ] && [ -n "$APPLE_PASSWORD" ] && [ -n "$APPLE_TEAM_ID" ]; then
-            xcrun notarytool submit oryxis-macos-aarch64.dmg \
+            xcrun notarytool submit obsidianssh-macos-aarch64.dmg \
               --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" \
               --team-id "$APPLE_TEAM_ID" --wait
-            xcrun stapler staple oryxis-macos-aarch64.dmg
+            xcrun stapler staple obsidianssh-macos-aarch64.dmg
           else
             echo "No notarization secrets set; shipping unsigned .dmg."
           fi
       - uses: actions/upload-artifact@v7
         with:
-          name: oryxis-macos-aarch64
+          name: obsidianssh-macos-aarch64
           path: |
-            oryxis-macos-aarch64.tar.gz
-            oryxis-macos-aarch64.dmg
+            obsidianssh-macos-aarch64.tar.gz
+            obsidianssh-macos-aarch64.dmg
 
   build-windows:
     name: Windows x86_64
@@ -332,10 +332,10 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist
-          Copy-Item target\release\oryxis.exe dist\
+          Copy-Item target\release\obsidianssh.exe dist\
           Copy-Item README.md dist\
           Copy-Item resources\logo_64.png dist\
-          Compress-Archive -Path dist\* -DestinationPath oryxis-windows-x86_64.zip
+          Compress-Archive -Path dist\* -DestinationPath obsidianssh-windows-x86_64.zip
       - name: Install NSIS + EnVar plugin
         shell: pwsh
         run: |
@@ -395,11 +395,11 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: oryxis-windows-x86_64
+          name: obsidianssh-windows-x86_64
           path: |
-            oryxis-windows-x86_64.zip
-            oryxis-setup-x86_64.exe
-            oryxis-user-setup-x86_64.exe
+            obsidianssh-windows-x86_64.zip
+            obsidianssh-setup-x86_64.exe
+            obsidianssh-user-setup-x86_64.exe
 
   build-windows-arm:
     name: Windows ARM64
@@ -422,10 +422,10 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist
-          Copy-Item target\aarch64-pc-windows-msvc\release\oryxis.exe dist\
+          Copy-Item target\aarch64-pc-windows-msvc\release\obsidianssh.exe dist\
           Copy-Item README.md dist\
           Copy-Item resources\logo_64.png dist\
-          Compress-Archive -Path dist\* -DestinationPath oryxis-windows-aarch64.zip
+          Compress-Archive -Path dist\* -DestinationPath obsidianssh-windows-aarch64.zip
       - name: Install NSIS + EnVar plugin
         shell: pwsh
         run: |
@@ -475,11 +475,11 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: oryxis-windows-aarch64
+          name: obsidianssh-windows-aarch64
           path: |
-            oryxis-windows-aarch64.zip
-            oryxis-setup-aarch64.exe
-            oryxis-user-setup-aarch64.exe
+            obsidianssh-windows-aarch64.zip
+            obsidianssh-setup-aarch64.exe
+            obsidianssh-user-setup-aarch64.exe
 
   release:
     name: Create Release
@@ -491,19 +491,19 @@ jobs:
 
       - uses: actions/download-artifact@v8
         with:
-          name: oryxis-linux-x86_64
+          name: obsidianssh-linux-x86_64
       - uses: actions/download-artifact@v8
         with:
-          name: oryxis-linux-aarch64
+          name: obsidianssh-linux-aarch64
       - uses: actions/download-artifact@v8
         with:
-          name: oryxis-macos-aarch64
+          name: obsidianssh-macos-aarch64
       - uses: actions/download-artifact@v8
         with:
-          name: oryxis-windows-x86_64
+          name: obsidianssh-windows-x86_64
       - uses: actions/download-artifact@v8
         with:
-          name: oryxis-windows-aarch64
+          name: obsidianssh-windows-aarch64
 
       # Detached Ed25519 signature per asset (`<asset>.sig`, base64).
       # The auto-updater verifies the downloaded artifact against the
@@ -512,13 +512,13 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: Sign release assets
         env:
-          ORYXIS_SIGNING_KEY: ${{ secrets.ORYXIS_SIGNING_KEY }}
+          OBSIDIANSSH_SIGNING_KEY: ${{ secrets.OBSIDIANSSH_SIGNING_KEY }}
         run: |
           set -euo pipefail
-          cargo build --locked --release -p oryxis-plugin-signer
-          for f in oryxis-*; do
+          cargo build --locked --release -p obsidianssh-plugin-signer
+          for f in obsidianssh-*; do
             case "$f" in *.sig) continue ;; esac
-            ./target/release/oryxis-plugin-signer sign "$f" > "$f.signinfo"
+            ./target/release/obsidianssh-plugin-signer sign "$f" > "$f.signinfo"
             grep '^signature_b64' "$f.signinfo" | awk '{print $3}' > "$f.sig"
             rm "$f.signinfo"
           done
@@ -528,27 +528,27 @@ jobs:
         with:
           generate_release_notes: true
           files: |
-            oryxis-linux-x86_64.tar.gz
-            oryxis-linux-x86_64.deb
-            oryxis-linux-x86_64.AppImage
-            oryxis-linux-aarch64.tar.gz
-            oryxis-linux-aarch64.deb
-            oryxis-linux-aarch64.AppImage
-            oryxis-macos-aarch64.tar.gz
-            oryxis-macos-aarch64.dmg
-            oryxis-windows-x86_64.zip
-            oryxis-setup-x86_64.exe
-            oryxis-user-setup-x86_64.exe
-            oryxis-windows-aarch64.zip
-            oryxis-setup-aarch64.exe
-            oryxis-user-setup-aarch64.exe
-            oryxis-*.sig
+            obsidianssh-linux-x86_64.tar.gz
+            obsidianssh-linux-x86_64.deb
+            obsidianssh-linux-x86_64.AppImage
+            obsidianssh-linux-aarch64.tar.gz
+            obsidianssh-linux-aarch64.deb
+            obsidianssh-linux-aarch64.AppImage
+            obsidianssh-macos-aarch64.tar.gz
+            obsidianssh-macos-aarch64.dmg
+            obsidianssh-windows-x86_64.zip
+            obsidianssh-setup-x86_64.exe
+            obsidianssh-user-setup-x86_64.exe
+            obsidianssh-windows-aarch64.zip
+            obsidianssh-setup-aarch64.exe
+            obsidianssh-user-setup-aarch64.exe
+            obsidianssh-*.sig
 
   # The offline bundle: one ADDITIONAL asset per platform / arch,
-  # `oryxis-offline-<platform>-<arch>.{tar.gz,zip}`, carrying the app
+  # `obsidianssh-offline-<platform>-<arch>.{tar.gz,zip}`, carrying the app
   # plus every plugin binary plus the pinned font files, with offline
   # mode already on at first run (the `offline-bundle` marker,
-  # `crates/oryxis-app/src/bundle.rs`). Additional is the point: the
+  # `crates/obsidianssh-app/src/bundle.rs`). Additional is the point: the
   # plugins and fonts together are ~5x the installer, for what a
   # minority needs.
   #
@@ -575,19 +575,19 @@ jobs:
           name: font-pins
       - uses: actions/download-artifact@v8
         with:
-          name: oryxis-linux-x86_64
+          name: obsidianssh-linux-x86_64
       - uses: actions/download-artifact@v8
         with:
-          name: oryxis-linux-aarch64
+          name: obsidianssh-linux-aarch64
       - uses: actions/download-artifact@v8
         with:
-          name: oryxis-macos-aarch64
+          name: obsidianssh-macos-aarch64
       - uses: actions/download-artifact@v8
         with:
-          name: oryxis-windows-x86_64
+          name: obsidianssh-windows-x86_64
       - uses: actions/download-artifact@v8
         with:
-          name: oryxis-windows-aarch64
+          name: obsidianssh-windows-aarch64
 
       - name: Fetch the pinned fonts
         run: |
@@ -609,9 +609,9 @@ jobs:
           for cat in plugins/*.json; do
             id=$(basename "$cat" .json)
             case "$id" in
-              mcp) bin=oryxis-mcp ;;
-              gif) bin=oryxis-gif ;;
-              *)   bin="oryxis-cloud-$id-plugin" ;;
+              mcp) bin=obsidianssh-mcp ;;
+              gif) bin=obsidianssh-gif ;;
+              *)   bin="obsidianssh-cloud-$id-plugin" ;;
             esac
             # The newest version in the catalog: the same pick the app
             # makes for a current build. Its platform rows name the
@@ -645,28 +645,28 @@ jobs:
             cp -r "seed/plugins-$os-$arch" "$stage/plugins"
             cp -r seed/fonts "$stage/fonts"
             case "$kind" in
-              tar) (cd "$stage" && tar czf "$GITHUB_WORKSPACE/oryxis-offline-$label.tar.gz" .) ;;
-              zip) (cd "$stage" && zip -qr "$GITHUB_WORKSPACE/oryxis-offline-$label.zip" .) ;;
+              tar) (cd "$stage" && tar czf "$GITHUB_WORKSPACE/obsidianssh-offline-$label.tar.gz" .) ;;
+              zip) (cd "$stage" && zip -qr "$GITHUB_WORKSPACE/obsidianssh-offline-$label.zip" .) ;;
             esac
           }
-          pack linux-x86_64   linux   x86_64  oryxis-linux-x86_64.tar.gz  tar
-          pack linux-aarch64  linux   aarch64 oryxis-linux-aarch64.tar.gz tar
-          pack macos-aarch64  macos   aarch64 oryxis-macos-aarch64.tar.gz tar
-          pack windows-x86_64  windows x86_64  oryxis-windows-x86_64.zip  zip
-          pack windows-aarch64 windows aarch64 oryxis-windows-aarch64.zip zip
-          ls -la oryxis-offline-*
+          pack linux-x86_64   linux   x86_64  obsidianssh-linux-x86_64.tar.gz  tar
+          pack linux-aarch64  linux   aarch64 obsidianssh-linux-aarch64.tar.gz tar
+          pack macos-aarch64  macos   aarch64 obsidianssh-macos-aarch64.tar.gz tar
+          pack windows-x86_64  windows x86_64  obsidianssh-windows-x86_64.zip  zip
+          pack windows-aarch64 windows aarch64 obsidianssh-windows-aarch64.zip zip
+          ls -la obsidianssh-offline-*
 
       # The same detached Ed25519 signature every other asset carries.
       - uses: dtolnay/rust-toolchain@stable
       - name: Sign the bundles
         env:
-          ORYXIS_SIGNING_KEY: ${{ secrets.ORYXIS_SIGNING_KEY }}
+          OBSIDIANSSH_SIGNING_KEY: ${{ secrets.OBSIDIANSSH_SIGNING_KEY }}
         run: |
           set -euo pipefail
-          cargo build --locked --release -p oryxis-plugin-signer
-          for f in oryxis-offline-*; do
+          cargo build --locked --release -p obsidianssh-plugin-signer
+          for f in obsidianssh-offline-*; do
             case "$f" in *.sig) continue ;; esac
-            ./target/release/oryxis-plugin-signer sign "$f" > "$f.signinfo"
+            ./target/release/obsidianssh-plugin-signer sign "$f" > "$f.signinfo"
             grep '^signature_b64' "$f.signinfo" | awk '{print $3}' > "$f.sig"
             rm "$f.signinfo"
           done
@@ -674,7 +674,7 @@ jobs:
       - name: Upload to the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "$GITHUB_REF_NAME" oryxis-offline-* --clobber
+        run: gh release upload "$GITHUB_REF_NAME" obsidianssh-offline-* --clobber
 
   aur:
     name: Publish to AUR
@@ -692,17 +692,17 @@ jobs:
       # if the release assets are replaced later.
       - uses: actions/download-artifact@v8
         with:
-          name: oryxis-linux-x86_64
+          name: obsidianssh-linux-x86_64
       - uses: actions/download-artifact@v8
         with:
-          name: oryxis-linux-aarch64
+          name: obsidianssh-linux-aarch64
 
       - name: Stamp PKGBUILD
         run: |
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
-          SHA_X86=$(sha256sum oryxis-linux-x86_64.tar.gz | awk '{print $1}')
-          SHA_ARM=$(sha256sum oryxis-linux-aarch64.tar.gz | awk '{print $1}')
+          SHA_X86=$(sha256sum obsidianssh-linux-x86_64.tar.gz | awk '{print $1}')
+          SHA_ARM=$(sha256sum obsidianssh-linux-aarch64.tar.gz | awk '{print $1}')
           sed -i \
             -e "s/^pkgver=.*/pkgver=$VERSION/" \
             -e "s/^pkgrel=.*/pkgrel=1/" \
@@ -711,14 +711,14 @@ jobs:
             packaging/aur/PKGBUILD
 
       # Regenerates .SRCINFO via makepkg inside an Arch container and
-      # pushes PKGBUILD + .SRCINFO to ssh://aur@aur.archlinux.org/oryxis-bin.
+      # pushes PKGBUILD + .SRCINFO to ssh://aur@aur.archlinux.org/obsidianssh-bin.
       - name: Push to AUR
         # Pinned to the v4.1.3 commit SHA: this maintainer publishes no
         # major-version alias tag (@v4 does not resolve), and a Docker
         # action handling the AUR push key must not ride a mutable ref.
         uses: KSXGitHub/github-actions-deploy-aur@da03e160361ce01bf087e790b6ffd196d7dccff7
         with:
-          pkgname: oryxis-bin
+          pkgname: obsidianssh-bin
           pkgbuild: packaging/aur/PKGBUILD
           commit_username: Wilson Glasser
           commit_email: wilsonglasser@gmail.com
@@ -735,15 +735,15 @@ jobs:
         # so it must not ride a mutable major tag.
         uses: vedantmgoyal9/winget-releaser@4ffc7888bffd451b357355dc214d43bb9f23917e
         with:
-          identifier: WilsonGlasser.Oryxis
+          identifier: ObsidianNetwork.ObsidianSSH
           # Match all four installers (x86_64 / aarch64, system and
           # per-user) in a single submission. Komac (the action's
           # backend) updates the published manifest, which since
           # winget-pkgs PR #443970 (0.19.0) carries both scopes on both
           # architectures: the system installers as `Scope: machine`,
-          # the oryxis-user-setup-* ones as `Scope: user`. Every entry
+          # the obsidianssh-user-setup-* ones as `Scope: user`. Every entry
           # there needs a URL here, or the next version cannot carry it.
-          installers-regex: 'oryxis-(user-)?setup-(x86_64|aarch64)\.exe$'
+          installers-regex: 'obsidianssh-(user-)?setup-(x86_64|aarch64)\.exe$'
           token: ${{ secrets.WINGET_TOKEN }}
 
   # Sync the published assets + API snapshots to the download mirror

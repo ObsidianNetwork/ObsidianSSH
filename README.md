@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="resources/logo_128.png" width="120" alt="Oryxis logo">
+  <img src="resources/logo_128.png" width="120" alt="Obsidian SSH logo">
 </p>
 
-<h1 align="center">Oryxis</h1>
+<h1 align="center">Obsidian SSH</h1>
 
 <p align="center">
   A modern SSH client built entirely in Rust. Fast, encrypted, native.
@@ -13,33 +13,33 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/wilsonglasser/oryxis/actions/workflows/ci.yml"><img src="https://github.com/wilsonglasser/oryxis/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://github.com/wilsonglasser/oryxis/releases/latest"><img src="https://img.shields.io/github/v/release/wilsonglasser/oryxis?color=green" alt="Release"></a>
-  <a href="https://github.com/wilsonglasser/oryxis/releases"><img src="https://img.shields.io/github/downloads/wilsonglasser/oryxis/total?color=blue" alt="Downloads"></a>
+  <a href="https://github.com/ObsidianNetwork/ObsidianSSH/actions/workflows/ci.yml"><img src="https://github.com/ObsidianNetwork/ObsidianSSH/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/ObsidianNetwork/ObsidianSSH/releases/latest"><img src="https://img.shields.io/github/v/release/ObsidianNetwork/ObsidianSSH?color=green" alt="Release"></a>
+  <a href="https://github.com/ObsidianNetwork/ObsidianSSH/releases"><img src="https://img.shields.io/github/downloads/ObsidianNetwork/ObsidianSSH/total?color=blue" alt="Downloads"></a>
   <img src="https://img.shields.io/badge/platforms-linux%20%7C%20macos%20%7C%20windows-blue" alt="Platforms">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue" alt="License"></a>
-  <a href="https://oryxis.app"><img src="https://img.shields.io/badge/website-oryxis.app-3CBBB1" alt="Website"></a>
+  <a href="https://github.com/ObsidianNetwork/ObsidianSSH"><img src="https://img.shields.io/badge/website-obsidianssh.app-3CBBB1" alt="Website"></a>
   <a href="https://ko-fi.com/wilsonglasser"><img src="https://img.shields.io/badge/Ko--fi-Support%20me-ff5e5b?logo=ko-fi&logoColor=white" alt="Ko-fi"></a>
   <a href="https://buymeacoffee.com/wilsonglasser"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-donate-yellow?logo=buymeacoffee&logoColor=black" alt="Buy Me a Coffee"></a>
 </p>
 
 <p align="center">
-  <img src="resources/screen_1.gif" width="720" alt="Oryxis in action: connecting, running snippets, browsing SFTP">
+  <img src="resources/screen_1.gif" width="720" alt="Obsidian SSH in action: connecting, running snippets, browsing SFTP">
 </p>
 
-## What is Oryxis?
+## What is Obsidian SSH?
 
-Oryxis is an open-source alternative to [Termius](https://termius.com/): a
+Obsidian SSH is an open-source alternative to [Termius](https://termius.com/): a
 desktop SSH client with a modern UI, an encrypted local vault for
 credentials, and no cloud account anywhere in the loop. No Electron, no
 webview, no vendor servers. Just a single native binary.
 
 Most SSH clients make you pick two out of three: powerful but dated
 (PuTTY), pretty but Electron-heavy (Termius, Tabby), or minimal and
-terminal-only (OpenSSH). Oryxis aims at all three: **beautiful, fast, and
+terminal-only (OpenSSH). Obsidian SSH aims at all three: **beautiful, fast, and
 native**.
 
-|  | Oryxis | Termius | PuTTY | Tabby |
+|  | Obsidian SSH | Termius | PuTTY | Tabby |
 |--|--------|---------|-------|-------|
 | UI stack | Native Rust (iced + wgpu) | Electron | Native | Electron |
 | License | AGPL-3.0, open source | Proprietary | MIT | MIT |
@@ -57,43 +57,43 @@ native**.
 or, from a terminal:
 
 ```powershell
-winget install WilsonGlasser.Oryxis
+winget install ObsidianNetwork.ObsidianSSH
 ```
 
 **Arch Linux (AUR)**
 
 ```bash
-yay -S oryxis-bin
+yay -S obsidianssh-bin
 ```
 
-**Direct downloads** from the [latest release](https://github.com/wilsonglasser/oryxis/releases/latest):
+**Direct downloads** from the [latest release](https://github.com/ObsidianNetwork/ObsidianSSH/releases/latest):
 
 | Platform | Architecture | Download |
 |----------|-------------|----------|
-| Linux | x86_64 | [`.tar.gz`](https://github.com/wilsonglasser/oryxis/releases/latest/download/oryxis-linux-x86_64.tar.gz) · [`.deb`](https://github.com/wilsonglasser/oryxis/releases/latest/download/oryxis-linux-x86_64.deb) · [`.AppImage`](https://github.com/wilsonglasser/oryxis/releases/latest/download/oryxis-linux-x86_64.AppImage) |
-| Linux | ARM64 | [`.tar.gz`](https://github.com/wilsonglasser/oryxis/releases/latest/download/oryxis-linux-aarch64.tar.gz) · [`.deb`](https://github.com/wilsonglasser/oryxis/releases/latest/download/oryxis-linux-aarch64.deb) · [`.AppImage`](https://github.com/wilsonglasser/oryxis/releases/latest/download/oryxis-linux-aarch64.AppImage) |
-| macOS | Apple Silicon | [`.dmg`](https://github.com/wilsonglasser/oryxis/releases/latest/download/oryxis-macos-aarch64.dmg) · [`.tar.gz`](https://github.com/wilsonglasser/oryxis/releases/latest/download/oryxis-macos-aarch64.tar.gz) |
-| Windows | x86_64 | [`setup.exe`](https://github.com/wilsonglasser/oryxis/releases/latest/download/oryxis-setup-x86_64.exe) · [`user-setup.exe`](https://github.com/wilsonglasser/oryxis/releases/latest/download/oryxis-user-setup-x86_64.exe) · [`.zip` portable](https://github.com/wilsonglasser/oryxis/releases/latest/download/oryxis-windows-x86_64.zip) |
-| Windows | ARM64 | [`setup.exe`](https://github.com/wilsonglasser/oryxis/releases/latest/download/oryxis-setup-aarch64.exe) · [`user-setup.exe`](https://github.com/wilsonglasser/oryxis/releases/latest/download/oryxis-user-setup-aarch64.exe) · [`.zip` portable](https://github.com/wilsonglasser/oryxis/releases/latest/download/oryxis-windows-aarch64.zip) |
+| Linux | x86_64 | [`.tar.gz`](https://github.com/ObsidianNetwork/ObsidianSSH/releases/latest/download/obsidianssh-linux-x86_64.tar.gz) · [`.deb`](https://github.com/ObsidianNetwork/ObsidianSSH/releases/latest/download/obsidianssh-linux-x86_64.deb) · [`.AppImage`](https://github.com/ObsidianNetwork/ObsidianSSH/releases/latest/download/obsidianssh-linux-x86_64.AppImage) |
+| Linux | ARM64 | [`.tar.gz`](https://github.com/ObsidianNetwork/ObsidianSSH/releases/latest/download/obsidianssh-linux-aarch64.tar.gz) · [`.deb`](https://github.com/ObsidianNetwork/ObsidianSSH/releases/latest/download/obsidianssh-linux-aarch64.deb) · [`.AppImage`](https://github.com/ObsidianNetwork/ObsidianSSH/releases/latest/download/obsidianssh-linux-aarch64.AppImage) |
+| macOS | Apple Silicon | [`.dmg`](https://github.com/ObsidianNetwork/ObsidianSSH/releases/latest/download/obsidianssh-macos-aarch64.dmg) · [`.tar.gz`](https://github.com/ObsidianNetwork/ObsidianSSH/releases/latest/download/obsidianssh-macos-aarch64.tar.gz) |
+| Windows | x86_64 | [`setup.exe`](https://github.com/ObsidianNetwork/ObsidianSSH/releases/latest/download/obsidianssh-setup-x86_64.exe) · [`user-setup.exe`](https://github.com/ObsidianNetwork/ObsidianSSH/releases/latest/download/obsidianssh-user-setup-x86_64.exe) · [`.zip` portable](https://github.com/ObsidianNetwork/ObsidianSSH/releases/latest/download/obsidianssh-windows-x86_64.zip) |
+| Windows | ARM64 | [`setup.exe`](https://github.com/ObsidianNetwork/ObsidianSSH/releases/latest/download/obsidianssh-setup-aarch64.exe) · [`user-setup.exe`](https://github.com/ObsidianNetwork/ObsidianSSH/releases/latest/download/obsidianssh-user-setup-aarch64.exe) · [`.zip` portable](https://github.com/ObsidianNetwork/ObsidianSSH/releases/latest/download/obsidianssh-windows-aarch64.zip) |
 
 <details>
 <summary><b>Which Windows installer?</b> (system vs per-user, VSCode-style)</summary>
 
-- **System** (`oryxis-setup-*.exe`): installs to `Program Files`, registers
+- **System** (`obsidianssh-setup-*.exe`): installs to `Program Files`, registers
   under `HKLM`, requires UAC. Use this for shared machines or when all
   Windows users should share the install. This is the build
   `winget install` targets.
-- **Per-user** (`oryxis-user-setup-*.exe`): installs to
-  `%LOCALAPPDATA%\Programs\Oryxis`, registers under `HKCU`, no admin
+- **Per-user** (`obsidianssh-user-setup-*.exe`): installs to
+  `%LOCALAPPDATA%\Programs\Obsidian SSH`, registers under `HKCU`, no admin
   rights. Use this on locked-down machines or when you don't want UAC
   prompts on every update.
 
-Both register `oryxis` and `oryxis-mcp` on `PATH` so they resolve from any
+Both register `obsidianssh` and `obsidianssh-mcp` on `PATH` so they resolve from any
 shell. The auto-updater detects the install scope and downloads the
 matching installer. Windows binaries are Authenticode-signed (see
 [Code signing policy](#code-signing-policy)).
 
-- **Portable** (`oryxis-windows-*.zip`): unzip anywhere (a USB key) and run `oryxis.exe`; the auto-updater replaces the exe in place. A new copy keeps everything (device settings, the vault list, the vaults, plugins, logs) in a `data` folder it creates next to `oryxis.exe`, so the folder travels with it. On a computer where Oryxis already keeps its data in `%USERPROFILE%\.oryxis`, the copy keeps using that: create the `data` folder yourself to switch, and copy the contents of `%USERPROFILE%\.oryxis` into it to bring the setup along (nothing is moved for you). A vault opened from another drive (a VeraCrypt volume) stays where it is; vaults and folders on the USB key itself are remembered relative to the `data` folder, so another drive letter does not break them. Biometric unlock, the MCP client configs and the `oryxis://` link registration belong to each computer. On Linux and macOS the same works by creating an `oryxis-data` folder next to the binary, the `.AppImage` file or `Oryxis.app` (named after the app because those usually sit in a shared folder).
+- **Portable** (`obsidianssh-windows-*.zip`): unzip anywhere (a USB key) and run `obsidianssh.exe`; the auto-updater replaces the exe in place. A new copy keeps everything (device settings, the vault list, the vaults, plugins, logs) in a `data` folder it creates next to `obsidianssh.exe`, so the folder travels with it. On a computer where Obsidian SSH already keeps its data in `%USERPROFILE%\.obsidianssh`, the copy keeps using that: create the `data` folder yourself to switch, and copy the contents of `%USERPROFILE%\.obsidianssh` into it to bring the setup along (nothing is moved for you). A vault opened from another drive (a VeraCrypt volume) stays where it is; vaults and folders on the USB key itself are remembered relative to the `data` folder, so another drive letter does not break them. Biometric unlock, the MCP client configs and the `obsidianssh://` link registration belong to each computer. On Linux and macOS the same works by creating an `obsidianssh-data` folder next to the binary, the `.AppImage` file or `ObsidianSSH.app` (named after the app because those usually sit in a shared folder).
 
 </details>
 
@@ -125,7 +125,7 @@ matching installer. Windows binaries are Authenticode-signed (see
   (or the sessions folder) and the format is detected for you; an
   edited host CSV export comes back as updates, removals and folders.
 - **Offline when you say so.** One switch, offered at first run and in
-  Settings, and Oryxis makes no request of its own: no update checks,
+  Settings, and Obsidian SSH makes no request of its own: no update checks,
   no font or plugin downloads. What you configured yourself still
   travels. For a machine that never had a network, an offline bundle
   ships next to every release with the plugins and font packs already
@@ -262,8 +262,8 @@ Click any thumbnail for the full-size image.
    [self-hosting guide](SELF_HOSTING.md)).
 
 Questions? Check the
-[FAQ](https://github.com/wilsonglasser/oryxis/discussions/66) or open a
-[Discussion](https://github.com/wilsonglasser/oryxis/discussions).
+[FAQ](https://github.com/ObsidianNetwork/ObsidianSSH/discussions) or open a
+[Discussion](https://github.com/ObsidianNetwork/ObsidianSSH/discussions).
 
 ## Security
 
@@ -277,11 +277,11 @@ The full security model and the vulnerability disclosure policy live in
 
 ## Roadmap
 
-Oryxis ships small and often (roughly weekly). This section is
+Obsidian SSH ships small and often (roughly weekly). This section is
 forward-looking: items land incrementally as they are ready rather than
 being tied to a specific version. Latest stable is **v0.23.0**;
 [CHANGELOG.md](CHANGELOG.md) has the full history, and the
-[roadmap discussion](https://github.com/wilsonglasser/oryxis/discussions/67)
+[roadmap discussion](https://github.com/ObsidianNetwork/ObsidianSSH/discussions)
 tracks it interactively.
 
 **Planned**
@@ -314,8 +314,8 @@ Rust stable (via [rustup](https://rustup.rs/)), plus:
 - **Windows:** Visual Studio Build Tools with the C++ workload
 
 ```bash
-git clone https://github.com/wilsonglasser/oryxis.git
-cd oryxis
+git clone https://github.com/ObsidianNetwork/ObsidianSSH.git
+cd obsidianssh
 cargo run             # debug
 cargo build --release # release
 cargo test --workspace
@@ -335,7 +335,7 @@ handling).
 
 Copyright (C) 2026 Wilson Glasser. Licensed under
 [AGPL-3.0-or-later](LICENSE). Free and open-source forever: anyone can
-use, modify, and distribute Oryxis, but any modified version made
+use, modify, and distribute Obsidian SSH, but any modified version made
 available over a network must also share its source code under the same
 license. See [NOTICE](NOTICE) for details.
 

@@ -1,0 +1,23 @@
+[package]
+name = "obsidianssh-zmodem"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tokio = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+# The protocol state machine: no_std / heapless, poll/submit API. We
+# own only the terminal-side glue (auto-detection + the async driver
+# that maps its Actions onto our transport / file I/O).
+# 0.7.2 is the first release carrying our upstreamed fixes (flow control,
+# manual file acceptance / resume, ZSINIT handling, corrupt-subpacket
+# recovery via ZRPOS, the 4 GiB offset guard). The `[patch]` that pinned
+# our fork while those were in review is gone: the published crate is now
+# byte-identical to upstream main.
+zmodem2 = "0.7.3"
+
+[dev-dependencies]
+# test-util enables tokio::time::pause so the silent-peer retry test
+# runs its 60 s of timeout windows on a virtual clock.
+tokio = { version = "1", features = ["full", "test-util"] }

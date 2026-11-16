@@ -1,0 +1,214 @@
+//! Known SSH hosts list screen.
+
+use iced::Widget as _;
+use iced::border::Radius;
+use iced::widget::button::Status as BtnStatus;
+use iced::widget::{button, column, container, scrollable, text, Space};
+use iced::{Background, Border, Color, Element, Length, Padding};
+
+use crate::app::{KnownHostMessage, Message, ObsidianSsh};
+use crate::i18n::t;
+use crate::theme::ObsidianSshColors;
+use crate::widgets::dir_row;
+
+impl ObsidianSsh {
+    pub(crate) fn view_known_hosts(&self) -> Element<'_, Message> {
+        // Header with a "Re-verify all" / "Clear all" action so users can wipe
+        // every entry at once (e.g. when every host was auto-accepted by an
+        // older build and they want the verification dialog back).
+        let has_entries = !self.vaults.cur().known_hosts.is_empty();
+        // Solid destructive style, matching the Logs "CLEAR ALL"
+        // primary action. Only requests the wipe; the actual
+        // ClearAllKnownHosts runs from the confirm dialog.
+        let clear_all_btn: Element<'_, Message> = if has_entries {
+            button(
+                container(
+                    text(t("re_verify_all").to_uppercase())
+                        .size(11)
+                        .font(iced::Font {
+                            weight: iced::font::Weight::Bold,
+                            ..iced::Font::new(crate::theme::SYSTEM_UI_FAMILY)
+                        })
+                        .color(ObsidianSshColors::t().button_text),
+                )
+                .center_y(Length::Fixed(24.0))
+                .padding(Padding { top: 0.0, right: 14.0, bottom: 0.0, left: 14.0 }),
+            )
+            .on_press(Message::KnownHost(KnownHostMessage::RequestClearAllKnownHosts))
+            .style(|_, status| {
+                let base = ObsidianSshColors::t().error;
+                let bg = match status {
+                    BtnStatus::Hovered => Color { a: 0.85, ..base },
+                    BtnStatus::Pressed => Color { a: 0.70, ..base },
+                    _ => base,
+                };
+                button::Style {
+                    background: Some(Background::Color(bg)),
+                    border: Border { radius: Radius::from(6.0), ..Default::default() },
+                    ..Default::default()
+                }
+            })
+            .boxed()
+        } else {
+            Space::new().boxed()
+        };
+
+        // Privacy reveal toggle, shown only when the global Privacy Mode is on
+        // (known hosts follow the global setting). Same eye affordance as Logs.
+        // `keynav_toolbar_slot` records each rendered action for the
+        // keyboard router (push order == visual order here; the empty
+        // state has no actions, so nothing is recorded there).
+        self.keynav_toolbar_reset();
+        let mut toolbar_items: Vec<Element<'_, Message>> = vec![
+            // Title dropped (the nav shows the active section).
+            Space::new().boxed(),
+            Space::new().width(Length::Fill).boxed(),
+        ];
+        if self.privacy_global_active() {
+            // Rendered on the empty path too (the toolbar survives the
+            // empty state here), so it is always recorded.
+            toolbar_items.push(self.keynav_toolbar_slot(
+                crate::keynav::ToolbarItem::PrivacyReveal,
+                crate::widgets::privacy_reveal_btn(self.vaults.cur().privacy.revealed),
+            ));
+            toolbar_items.push(Space::new().width(8).boxed());
+        }
+        toolbar_items.push(if has_entries {
+            self.keynav_toolbar_slot(crate::keynav::ToolbarItem::Primary, clear_all_btn)
+        } else {
+            clear_all_btn
+        });
+        let toolbar = container(
+            dir_row(toolbar_items).align_y(iced::Alignment::Center),
+        )
+        .padding(Padding { top: 16.0, right: 24.0, bottom: 16.0, left: 24.0 })
+        .width(Length::Fill);
+
+        if self.vaults.cur().known_hosts.is_empty() {
+            // Nothing navigable in the empty state.
+            self.keynav_clear_content();
+            let empty = crate::widgets::empty_state(
+                iced_fonts::lucide::shield_check()
+                    .size(32)
+                    .color(ObsidianSshColors::t().text_muted)
+                    .boxed(),
+                t("no_known_hosts_yet").to_string(),
+                t("known_hosts_empty_desc").to_string(),
+                None,
+            );
+            return column![toolbar, empty]
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .boxed();
+        }
+
+        let mut rows: Vec<Element<'_, Message>> = Vec::new();
+        // Keyboard-navigation order: one row per entry (no filter on
+        // this view). Enter triggers the row's only action, the
+        // confirm-gated Remove.
+        self.keynav_set_content_rows(
+            (0..self.vaults.cur().known_hosts.len())
+                .map(|i| vec![crate::keynav::NavItem::KnownHost(i)])
+                .collect(),
+        );
+
+        for (idx, kh) in self.vaults.cur().known_hosts.iter().enumerate() {
+            let kb_selected = self.kn().selected_in(crate::keynav::FocusZone::Content)
+                == Some(crate::keynav::NavItem::KnownHost(idx));
+            let fp_short = if kh.fingerprint.len() > 40 {
+                format!("{}...", &kh.fingerprint[..40])
+            } else {
+                kh.fingerprint.clone()
+            };
+            // Stored UTC; show it in the user's local timezone.
+            let seen = kh
+                .last_seen
+                .with_timezone(&chrono::Local)
+                .format("%Y-%m-%d %H:%M")
+                .to_string();
+
+            // Bordered destructive style, matching the Logs per-row
+            // "Delete" button. Opens the confirm dialog first.
+            let del_btn = button(
+                container(
+                    text(t("remove"))
+                        .size(11)
+                        .color(ObsidianSshColors::t().error),
+                )
+                .padding(Padding { top: 4.0, right: 10.0, bottom: 4.0, left: 10.0 }),
+            )
+            .on_press(Message::KnownHost(KnownHostMessage::RequestDeleteKnownHost(idx)))
+            .style(|_, status| {
+                let bg = match status {
+                    BtnStatus::Hovered => Color { a: 0.15, ..ObsidianSshColors::t().error },
+                    _ => Color::TRANSPARENT,
+                };
+                button::Style {
+                    background: Some(Background::Color(bg)),
+                    border: Border {
+                        radius: Radius::from(6.0),
+                        color: ObsidianSshColors::t().error,
+                        width: 1.0,
+                    },
+                    ..Default::default()
+                }
+            });
+
+            // Privacy Mode masks the hostname:port; the eye toggle in the
+            // toolbar reveals. Known hosts aren't tied to a saved connection,
+            // so this follows the global setting.
+            let host_title = format!("{}:{}", kh.hostname, kh.port);
+            let host_title = if self.privacy_global_active() && !self.vaults.cur().privacy.revealed {
+                crate::widgets::mask_blocks(&host_title)
+            } else {
+                host_title
+            };
+
+            let entry = container(
+                dir_row(vec![
+                    iced_fonts::lucide::shield_check().size(14).color(ObsidianSshColors::t().success).boxed(),
+                    Space::new().width(12).boxed(),
+                    column![
+                        text(host_title).size(13).color(ObsidianSshColors::t().text_primary),
+                        Space::new().height(2),
+                        text(format!("{} · {}", kh.key_type, fp_short)).size(10).color(ObsidianSshColors::t().text_muted).font(iced::Font::MONOSPACE),
+                        Space::new().height(2),
+                        text(format!("{} {}", t("last_seen"), seen)).size(10).color(ObsidianSshColors::t().text_muted),
+                    ]
+                    .width(Length::Fill)
+                    .align_x(crate::widgets::dir_align_x())
+                    .boxed(),
+                    Space::new().width(12).boxed(),
+                    del_btn.boxed(),
+                ]).align_y(iced::Alignment::Center),
+            )
+            .padding(Padding { top: 10.0, right: 16.0, bottom: 10.0, left: 16.0 })
+            .width(Length::Fill)
+            .style(|_| container::Style {
+                background: Some(Background::Color(ObsidianSshColors::t().bg_surface)),
+                border: Border { radius: Radius::from(8.0), ..Default::default() },
+                ..Default::default()
+            });
+
+            rows.push(crate::widgets::select_ring_opt(
+                entry.boxed(),
+                8.0,
+                kb_selected.then(|| ObsidianSshColors::t().accent),
+            ));
+            rows.push(Space::new().height(6).boxed());
+        }
+
+        let list = scrollable(
+            column(rows).padding(Padding { top: 0.0, right: 24.0, bottom: 24.0, left: 24.0 }),
+        )
+        // Stable id so the keyboard router can keep the selected row
+        // scrolled into view.
+        .id(iced::widget::Id::new("known-hosts-scroll"))
+        .height(Length::Fill);
+
+        column![toolbar, list]
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .boxed()
+    }
+}

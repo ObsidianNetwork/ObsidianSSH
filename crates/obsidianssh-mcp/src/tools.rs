@@ -1,0 +1,209 @@
+use serde_json::{json, Value};
+
+/// Every tool, each taking the optional `vault` parameter, after
+/// `list_vaults`.
+pub fn tool_definitions() -> Vec<Value> {
+    let mut tools = vec![list_vaults()];
+    tools.extend(base_tools().into_iter().map(with_vault_param));
+    tools
+}
+
+/// `list_vaults`: the vaults this server serves.
+fn list_vaults() -> Value {
+    json!({
+        "name": "list_vaults",
+        "description": "List the Obsidian SSH vaults this server serves: `vault` (the slug every other answer carries and the `vault` parameter takes), `label`, and whether host writes (`writes_enabled`) and file transfers (`transfers_enabled`) are on in each. A vault whose MCP is off is not listed.",
+        "inputSchema": { "type": "object", "properties": {} }
+    })
+}
+
+/// `tool` with the optional `vault` parameter.
+fn with_vault_param(mut tool: Value) -> Value {
+    if let Some(props) = tool
+        .get_mut("inputSchema")
+        .and_then(|s| s.get_mut("properties"))
+        .and_then(|p| p.as_object_mut())
+    {
+        props.insert(
+            "vault".into(),
+            json!({
+                "type": "string",
+                "description": "Vault slug (the `vault` field answers carry; list_vaults lists them). Narrows the call to that vault; needed only when several vaults are served and the call would be ambiguous: create_host, or a host or refused key two vaults share."
+            }),
+        );
+    }
+    tool
+}
+
+fn base_tools() -> Vec<Value> {
+    vec![
+        json!({
+            "name": "list_hosts",
+            "description": "List all MCP-enabled SSH hosts in every vault served (each with its `vault`). `username` is the host's own field (null when it leaves the user to its group or identity); `effective_username` is the login ssh_execute will use.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "group_id": {
+                        "type": "string",
+                        "description": "Optional group UUID to filter by"
+                    },
+                    "tag": {
+                        "type": "string",
+                        "description": "Optional tag to filter by"
+                    }
+                }
+            }
+        }),
+        json!({
+            "name": "get_host",
+            "description": "Get detailed information about a specific SSH host. `username` is the host's own field (null when inherited); `effective_username` is the login ssh_execute will use.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "Connection UUID"
+                    }
+                },
+                "required": ["id"]
+            }
+        }),
+        json!({
+            "name": "ssh_execute",
+            "description": "Execute a command on a remote SSH host and return the output",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "Connection UUID"
+                    },
+                    "command": {
+                        "type": "string",
+                        "description": "Shell command to execute"
+                    },
+                    "timeout_secs": {
+                        "type": "integer",
+                        "description": "Timeout in seconds for the command (default: 30, max: 180)"
+                    },
+                    "sudo": {
+                        "type": "boolean",
+                        "description": "Run the command as root through sudo (default: false). The command runs under `sh` as root with stdin closed; do not prefix it with `sudo` yourself. When sudo needs the login's password, Obsidian SSH asks the user, in the Obsidian SSH app, to let sudo use the password stored for this host (this command only, or every sudo call to this host until this MCP server exits); the call then waits up to 10 s for Obsidian SSH to show the question and up to 60 s for the answer. Passwordless sudo and a root login ask nobody. The answer's `sudo` field says which path ran: `root_login`, `passwordless` or `stored_password`."
+                    }
+                },
+                "required": ["id", "command"]
+            }
+        }),
+        json!({
+            "name": "sftp_upload",
+            "description": "Send a file from the machine this MCP server runs on to a remote SSH host over SFTP, any size. Needs \"Allow the MCP server to send files to hosts\" switched on in Obsidian SSH Settings > MCP Server. local_path is a path on the SERVER's machine: when the server is the Windows binary driven from WSL, /mnt/<drive>/... is that drive and any other absolute path is read inside the WSL distro. The bytes go to a scratch name renamed into place at the end, so a cancelled or failed upload leaves the remote name untouched. An existing remote file is replaced only with overwrite: true and keeps its permission bits. The answer gives the final remote_path and the byte count.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "Connection UUID"
+                    },
+                    "local_path": {
+                        "type": "string",
+                        "description": "Absolute path of the local file to send"
+                    },
+                    "remote_path": {
+                        "type": "string",
+                        "description": "Destination on the host: a file path, or a directory (or a path ending in /) to keep the local file's name"
+                    },
+                    "overwrite": {
+                        "type": "boolean",
+                        "description": "Replace a file already at the destination (default: false)"
+                    },
+                    "mode": {
+                        "type": "string",
+                        "description": "Permission bits for the uploaded file as octal digits, e.g. \"664\" (default: the replaced file's, or the server's default for a new one)"
+                    },
+                    "timeout_secs": {
+                        "type": "integer",
+                        "description": "Fail when no byte moved for this many seconds (default: 60, max: 600). Not a bound on the whole transfer."
+                    }
+                },
+                "required": ["id", "local_path", "remote_path"]
+            }
+        }),
+        json!({
+            "name": "accept_host_key",
+            "description": "Pin a server host key that a previous ssh_execute refused as not yet trusted. Pass exactly the host, port, key_type and fingerprint that refusal reported; only a key this server saw refused as unknown is accepted, and a key that CHANGED against the vault's pin is never accepted here (a person reviews it in Obsidian SSH > Known Hosts). Ask the user to confirm the fingerprint against what the server's administrator published before calling.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "host": { "type": "string", "description": "Hostname or IP exactly as the refusal reported it" },
+                    "port": { "type": "integer", "description": "SSH port the refusal reported" },
+                    "key_type": { "type": "string", "description": "Key algorithm, e.g. ssh-ed25519" },
+                    "fingerprint": { "type": "string", "description": "SHA256:... fingerprint the refusal reported" }
+                },
+                "required": ["host", "port", "key_type", "fingerprint"]
+            }
+        }),
+        json!({
+            "name": "create_host",
+            "description": "Create a new SSH host in the Obsidian SSH vault. Requires \"Allow the MCP server to add and edit hosts\" in Obsidian SSH Settings > MCP Server. A folder (`group`) must already exist (path like \"Prod / Web\" or a label); keys, identities and jump hops are named by label or id. The password is stored encrypted and never returned. Proxies cannot be set here.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "label": { "type": "string", "description": "Display name" },
+                    "hostname": { "type": "string", "description": "Hostname or IP" },
+                    "port": { "type": "integer", "description": "SSH port (default 22)" },
+                    "username": { "type": "string", "description": "Login user; omit to inherit from the folder or identity" },
+                    "auth_method": { "type": "string", "description": "auto | password | key | agent | interactive | password_prompt (default auto)" },
+                    "password": { "type": "string", "description": "Password to store encrypted" },
+                    "key": { "type": "string", "description": "Vault SSH key, by label or id" },
+                    "identity": { "type": "string", "description": "Saved identity, by label or id" },
+                    "group": { "type": "string", "description": "Existing folder, by path or label" },
+                    "tags": { "type": "array", "items": { "type": "string" } },
+                    "notes": { "type": "string" },
+                    "jump_chain": { "type": "array", "items": { "type": "string" }, "description": "Bastions to hop through, by label or id, in order" },
+                    "mcp_enabled": { "type": "boolean", "description": "Expose the host to MCP (default true)" }
+                },
+                "required": ["label", "hostname"]
+            }
+        }),
+        json!({
+            "name": "update_host",
+            "description": "Change fields of an existing MCP-enabled SSH host. Only the fields given change; pass null to clear an optional field (username, group, key, identity, notes, password). Same rules and the same setting as create_host.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string", "description": "Connection UUID" },
+                    "label": { "type": "string" },
+                    "hostname": { "type": "string" },
+                    "port": { "type": "integer" },
+                    "username": { "type": ["string", "null"] },
+                    "auth_method": { "type": "string" },
+                    "password": { "type": ["string", "null"], "description": "New password, or null to clear the stored one" },
+                    "key": { "type": ["string", "null"] },
+                    "identity": { "type": ["string", "null"] },
+                    "group": { "type": ["string", "null"], "description": "Existing folder by path or label; null moves the host to the top level" },
+                    "tags": { "type": ["array", "null"], "items": { "type": "string" } },
+                    "notes": { "type": ["string", "null"] },
+                    "jump_chain": { "type": ["array", "null"], "items": { "type": "string" } },
+                    "mcp_enabled": { "type": "boolean" }
+                },
+                "required": ["id"]
+            }
+        }),
+        json!({
+            "name": "list_groups",
+            "description": "List all host groups in the vault",
+            "inputSchema": {
+                "type": "object",
+                "properties": {}
+            }
+        }),
+        json!({
+            "name": "list_keys",
+            "description": "List SSH keys stored in the vault (metadata only, no private key material)",
+            "inputSchema": {
+                "type": "object",
+                "properties": {}
+            }
+        }),
+    ]
+}

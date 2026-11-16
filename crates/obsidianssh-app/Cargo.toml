@@ -1,0 +1,318 @@
+[package]
+name = "obsidianssh-app"
+version = "0.23.0"
+edition = "2024"
+description = "Modern SSH client built in Rust, terminal, SFTP, and host management with a sane keyboard-driven UI."
+license.workspace = true
+homepage = "https://github.com/ObsidianNetwork/ObsidianSSH"
+
+[[bin]]
+name = "obsidianssh"
+path = "src/main.rs"
+
+# cargo-deb metadata. Run `cargo deb -p obsidianssh-app --no-build` after a
+# `cargo build --release` to produce a Debian package under
+# `target/debian/`. Depends only on the GUI runtime libs winit needs.
+[package.metadata.deb]
+name = "obsidianssh"
+maintainer = "Wilson Glasser <wilsonglasser@gmail.com>"
+copyright = "2026, Wilson Glasser <wilsonglasser@gmail.com>"
+license-file = ["../../LICENSE", "0"]
+extended-description = """Obsidian SSH is a Rust-native SSH client. It bundles a terminal, an
+SFTP browser, and host management with a focus on keyboard-driven flow."""
+depends = "$auto, libgtk-3-0, libwayland-client0, libxkbcommon0"
+section = "net"
+priority = "optional"
+assets = [
+    ["target/release/obsidianssh", "usr/bin/", "755"],
+    # `obsidianssh-mcp` is no longer bundled; the app downloads it as a
+    # plugin into `~/.obsidianssh/bin/obsidianssh-mcp` on first enable. See
+    # `crates/obsidianssh-app/src/mcp_install.rs` for the migration path
+    # v0.6 users hit on first boot after the upgrade.
+    ["../../resources/obsidianssh.desktop", "usr/share/applications/", "644"],
+    ["../../resources/logo_64.png", "usr/share/icons/hicolor/64x64/apps/obsidianssh.png", "644"],
+    ["../../resources/logo_128.png", "usr/share/icons/hicolor/128x128/apps/obsidianssh.png", "644"],
+    ["../../resources/logo_256.png", "usr/share/icons/hicolor/256x256/apps/obsidianssh.png", "644"],
+    ["../../README.md", "usr/share/doc/obsidianssh/README.md", "644"],
+]
+
+[dependencies]
+# ssh-agent server (agent_server): key encoding + signing, pinned to
+# the same ssh-key russh 0.62 consumes (matches obsidianssh-vault's pin).
+ssh-key = { version = "=0.7.0-rc.11", features = ["ed25519", "std", "rand_core", "encryption", "rsa", "p256", "p384", "p521"] }
+ssh-encoding = "0.3"
+# The `Signer` trait ssh-key's key data implements (raw-data signing
+# for the agent). Pinned to ssh-key 0.7's signature version.
+signature = "3"
+# Native OS notifications (OSC 9): macOS and Linux libnotify/D-Bus. The
+# Windows half is taken directly from notify-rust's own backend below, so
+# it is declared per-target rather than here.
+# OS locale detection for the "Auto (OS)" language default (BCP-47
+# tags on all three platforms; the preference *list* on macOS).
+sys-locale = "0.3"
+obsidianssh-core = { workspace = true }
+obsidianssh-ssh = { workspace = true }
+obsidianssh-archive = { workspace = true }
+obsidianssh-telnet = { workspace = true }
+obsidianssh-mosh = { workspace = true }
+obsidianssh-serial = { workspace = true }
+obsidianssh-zmodem = { workspace = true }
+obsidianssh-terminal = { workspace = true }
+obsidianssh-vault = { workspace = true }
+obsidianssh-biometric = { workspace = true }
+obsidianssh-sync = { workspace = true }
+obsidianssh-cloud = { workspace = true }
+obsidianssh-plugin-protocol = { workspace = true }
+# `obsidianssh-cloud-aws` is intentionally NOT a dependency, the AWS
+# provider (and its ~1.2 GB of aws-sdk codegen) now lives in the
+# `obsidianssh-cloud-aws-plugin` subprocess. The app talks to it over
+# JSON-RPC via `plugins::PluginProvider`.
+# `CloudProvider` is an async trait, the app needs `async-trait` to
+# implement it for `PluginProvider`.
+async-trait = "0.1"
+# Zeroize the decrypted private-key PEM in the agent sign path so the
+# decrypt-per-signature contract leaves no plaintext copy in freed heap.
+zeroize = { workspace = true }
+# Ed25519 verify-only for plugin binary signatures. The workspace
+# pin carries `rand_core` (sync needs key generation); the plugin
+# host only ever calls `VerifyingKey::verify`, the extra feature is
+# inert here.
+ed25519-dalek = { workspace = true }
+# SHA-256 over downloaded plugin binaries, checked against the
+# manifest before the Ed25519 signature gate.
+sha2 = "0.11"
+# mRemoteNG importer: confCons.xml is XML (quick-xml, no transitive
+# deps), and its passwords are AES-256-GCM with a PBKDF2-HMAC-SHA1
+# key (BouncyCastle defaults on the mRemoteNG side; the 16-byte nonce
+# is why the generic AesGcm type is used instead of the Aes256Gcm
+# alias). Decode-only: nothing here ever encrypts.
+getrandom = "0.4"
+quick-xml = "0.41"
+aes-gcm = "0.11"
+pbkdf2 = "0.13"
+sha1 = "0.11"
+# Base64 decode for the manifest's signature field.
+base64 = { workspace = true }
+# Plugin cache lives under the same `~/.obsidianssh` root the vault uses;
+# `dirs` resolves the home directory cross-platform.
+dirs = "7"
+# Process-wide TLS crypto provider for rustls 0.23, the workspace
+# pins `ring`, but rustls 0.23 requires explicit `install_default()`
+# at startup before any TLS connection is opened. Without it the AWS
+# SDK reports "dispatch failure" on the first STS call.
+rustls = { workspace = true }
+iced = { workspace = true }
+# Headless end-to-end harness (`--features harness`). The `iced_test`
+# crate lives in the same wilsonglasser/iced fork the app renders
+# with, so Cargo resolves it to the exact locked revision; its
+# Emulator runs the real program (subscriptions, tasks, side effects)
+# without a window and renders screenshots via wgpu-headless or
+# tiny-skia. See src/harness.rs and docs/HARNESS.md.
+iced_test = { git = "https://github.com/wilsonglasser/iced", branch = "oryxis", optional = true }
+# Boot-time GPU adapter probe (renderer_probe.rs). Same wgpu the iced
+# fork renders with (one build in the tree via feature unification),
+# so the probe sees exactly the adapters iced's compositor will.
+wgpu = "30"
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-appender = { workspace = true }
+tokio-stream = { workspace = true }
+uuid = { workspace = true }
+regex = { workspace = true }
+chrono = { workspace = true }
+# 0.17 resolves windows-sys 0.61 (0.15 pinned 0.59), so the file dialogs
+# stop being one of the holders of an older windows-sys line.
+rfd = "0.17"
+image = "0.25"
+iced_fonts = { git = "https://github.com/wilsonglasser/iced_fonts", branch = "text-selection-iced-0.15", features = ["lucide", "codicon"] }
+# Parses the embedded Lucide font's glyph-name table at runtime so the icon
+# picker can search the full library. The whole font is already bundled, so
+# this only pulls in the parser, no extra glyph weight.
+ttf-parser = "0.25"
+serde = { workspace = true }
+serde_json = { workspace = true }
+toml_edit = "0.25"
+thiserror = { workspace = true }
+# Certificates are verified by the OS (rustls-platform-verifier): the
+# system's roots, the ones a company or the user installed, and its
+# revocation checks, instead of a root list frozen into the binary. The
+# `rustls` feature brings aws-lc-rs, the backend russh already links, so
+# the build still carries one crypto provider.
+reqwest = { version = "0.13", features = ["json", "rustls", "stream"], default-features = false }
+# Async stream combinators, used by the AI streaming path to fold the
+# reqwest byte stream into provider-specific SSE chunks.
+futures-util = "0.3"
+# No `arboard` here on purpose: the iced runtime owns the system clipboard
+# and serves one access at a time (`iced::clipboard::read_text` / `write`).
+# A direct arboard call from the UI thread races the runtime's own paste
+# read and kills the process on Windows (STATUS_HEAP_CORRUPTION inside
+# user32!GetClipboardData). See `obsidianssh_terminal::host_clipboard`.
+# Cross-platform "open this file with the OS default app", used by the
+# SFTP edit-in-place flow to launch the user's editor on a downloaded
+# temp copy. Tiny crate, no transitive deps of note.
+open = "5"
+# The link confirmation shows a non-ASCII host as punycode, the way a
+# browser's address bar does, so a Cyrillic `а` cannot pass for Apple's
+# domain in a dialog that exists to be read. Already in the lock via `url`.
+idna = "1"
+# v0.7: enumerate monospace fonts installed on the host so the
+# Terminal -> Font picker can offer the actual system list instead of
+# the hardcoded 20-name array. Already pulled in transitively by
+# cosmic-text (the iced renderer), declared explicitly here to avoid
+# depending on internal re-exports.
+fontdb = "0.24"
+# OS name + version for the Settings > Advanced environment report and
+# the debug-log session header (distro from /etc/os-release on Linux,
+# RtlGetVersion on Windows, SystemVersion.plist on macOS). Serde
+# support is off, the report is plain text.
+os_info = { version = "3", default-features = false }
+# Unprivileged ICMP for the network tools panel's ping and traceroute
+# (`net_tools/icmp.rs`): a datagram ICMP socket on Linux, so neither
+# needs the system binary to be installed. Already in the tree
+# transitively; the socket options it wraps (TTL, hop limit, timeouts)
+# are the ones a traceroute is built from.
+socket2 = "0.6"
+# Typed DNS for the network tools panel: the system resolver alone
+# answers A/AAAA and nothing else, and the panel reports MX / TXT / NS /
+# SOA / PTR and the DNSBL zones. Default features are `system-config`
+# (read the host's resolvers) plus `tokio`; every TLS feature stays off,
+# so this pulls in no second crypto provider next to the aws-lc-rs one
+# `main` installs.
+hickory-resolver = "0.26"
+# The network tools panel's certificate probe drives a handshake of its
+# own (reqwest gives no access to the chain a server presented). Default
+# features off: the crypto provider comes from the `rustls` dep above,
+# and a second one would be a second implementation in the binary.
+tokio-rustls = { version = "0.26", default-features = false }
+# Decodes the DER the TLS probe captures during its handshake, so the
+# certificate card can report subject / issuer / SANs / validity. No
+# crypto backend feature: the panel INSPECTS a chain, it never verifies
+# one (see `net_tools::http`).
+x509-parser = "0.18"
+[target.'cfg(windows)'.build-dependencies]
+winresource = "0.1"
+
+# PID liveness probe (`kill(pid, 0)`) for the cross-process deep-link
+# inbox in `tray_ipc`: a `obsidianssh://` launcher process needs to know
+# whether a live window exists before deciding to forward or boot.
+# Already in the tree transitively; 0.2.186 matches the lock.
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+# Native OS notifications everywhere except Windows. On Windows this crate
+# is just a thin wrapper over `tauri-winrt-notification`, so the Windows
+# half calls that backend directly below rather than through it. Since
+# 4.18.1 notify-rust requires the backend's 0.8 line, which sits on the
+# same `windows` 0.62 as wgpu-hal, gpu-allocator and our own Win32 code,
+# so the requirement costs nothing and this stays cfg-gated only because
+# the direct call is better.
+[target.'cfg(not(target_os = "windows"))'.dependencies]
+notify-rust = "4.18.1"
+
+# `NSEvent.doubleClickInterval`, the "Double-click speed" slider the file
+# browsers judge a double click by (`double_click.rs`). objc2-app-kit is
+# already in the macOS build through winit, on the same 0.3 line, so this
+# names the one class it needs and adds no crate.
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSEvent"] }
+
+# ShellExecuteW for the auto-updater. CreateProcess (what
+# `Command::new().spawn()` uses) ignores the installer manifest and fails
+# with ERROR_ELEVATION_REQUIRED (740) on the system NSIS .exe, which
+# declares `requireAdministrator`. ShellExecuteW reads the manifest and
+# triggers UAC for the system installer, while the per-user installer
+# (asInvoker) launches without a prompt, same code path serves both.
+[target.'cfg(windows)'.dependencies]
+# 0.61: newest line, and the one most of the tree already resolves to.
+# See the note in obsidianssh-ssh; `windows-sys` is a different crate from
+# `windows` (0.62 above) and numbers on its own.
+# `Win32_NetworkManagement_IpHelper` is IcmpSendEcho2, the network
+# tools panel's unprivileged ping / traceroute on Windows.
+# `Win32_Globalization` is GetOEMCP and MultiByteToWideChar, for the
+# console code page `ping` and `tracert` write their output in.
+# `Win32_UI_Input_KeyboardAndMouse` is GetDoubleClickTime, the interval
+# the file browsers judge a double click by (`double_click.rs`).
+# `Win32_System_ProcessStatus` is K32EnumProcesses, how the in-place
+# update finds another process running the exe it is about to replace.
+windows-sys = { version = "0.61", features = ["Win32_UI_Shell", "Win32_UI_WindowsAndMessaging", "Win32_Foundation", "Win32_System_Threading", "Win32_System_Diagnostics_Debug", "Win32_Globalization", "Win32_Security", "Win32_Security_Authorization", "Win32_System_Pipes", "Win32_Storage_Packaging_Appx", "Win32_System_Registry", "Win32_NetworkManagement_IpHelper", "Win32_UI_Input_KeyboardAndMouse", "Win32_System_ProcessStatus"] }
+# The #[implement] proc-macro's expansion references `::windows_core`
+# directly, so the COM objects in drag_out.rs need it as an explicit
+# dependency (same 0.62 line the `windows` crate itself resolves).
+windows-core = "0.62"
+# Higher-level COM ergonomics for the taskbar JumpList (ICustomDestinationList
+# / IShellLink / IPropertyStore), which windows-sys' raw vtables make painful.
+# Same 0.62 the obsidianssh-biometric crate uses, so Cargo shares one build.
+windows = { version = "0.62", features = [
+    "Win32_Foundation",
+    "Win32_System_Com",
+    "Win32_System_Com_StructuredStorage",
+    "Win32_System_Variant",
+    "Win32_UI_Shell",
+    "Win32_UI_Shell_Common",
+    "Win32_UI_Shell_PropertiesSystem",
+    # Drag-out (issue #167): DoDragDrop + the virtual-file data object.
+    # Gdi rides along because STGMEDIUM's union carries an HBITMAP arm.
+    "Win32_System_Ole",
+    "Win32_Graphics_Gdi",
+    "Win32_System_Memory",
+    "Win32_System_DataExchange",
+    "Win32_System_SystemServices",
+    # Remote desktop launch (issue #251): the Credential Manager entry
+    # (`TERMSRV/<host>`) mstsc reads its saved login from.
+    "Win32_Security_Credentials",
+] }
+# The toast backend notify-rust itself uses on Windows, called directly so
+# the toast carries our AppUserModelID instead of the `POWERSHELL_APP_ID`
+# fallback the wrapper picks. Same 0.8 line notify-rust requires, so one
+# version of this crate serves both edges and the build has a single major
+# of `windows`. See the note on the not(windows) block.
+tauri-winrt-notification = "0.8"
+# Cross-platform tray icon, but only built on Windows. macOS and
+# Linux need different lifecycle conventions (LSUIElement on macOS,
+# SNI/AppIndicator on Linux), deferred to a later release.
+#
+# Default features (`gtk`, `libxdo`) drag in `libappindicator 0.9` ->
+# `gtk 0.18` -> `glib 0.18.5` for Linux + BSD targets. We never
+# build those code paths, and `glib 0.18.5` has an open security
+# advisory whose fix only lives in `glib 0.20`. Disable defaults and
+# keep only `common-controls-v6` (Windows menu styling) so the
+# vulnerable chain disappears from Cargo.lock for every target.
+tray-icon = { version = "0.26", default-features = false, features = ["muda-common-controls-v6"] }
+
+[dev-dependencies]
+# Drive a `UserInterface` by hand in the IME root tests
+# (`widgets/ime_host_tests.rs`): the input method a frame settles on is
+# only visible there. Same fork and branch as `iced`, one package.
+iced_runtime = { git = "https://github.com/wilsonglasser/iced", branch = "oryxis" }
+# russh AgentClient drives the agent_server protocol tests (proves
+# our wire encoding against a real client).
+russh = { workspace = true }
+# Build in-process certificates for the cert-validation tests via
+# ssh-key's Builder (rand 0.10 = the rand_core ssh-key 0.7 wants).
+# Renamed because the crate's normal `rand` dep is still 0.8.
+rand010 = { package = "rand", version = "0.10", features = ["thread_rng"] }
+tempfile = "3"
+# Property-based fuzzing for path/name helpers, generates random
+# inputs to flush out edge cases the hand-written cases missed.
+proptest = "1"
+# Same fontdb cosmic-text/iced resolve the UI font through, pinned to
+# the transitive version. Used by the bundled-font test to assert the
+# three Noto Sans weights group under one family (the assumption the
+# whole Inter -> Noto swap rests on).
+fontdb = "0.24"
+# Parse the bundled MenuCJK subset's cmap to prove it covers every
+# CJK language-picker name (한국어 / 中文 / 日本語), so those entries are
+# always renderable from the bundle, even before the on-demand CJK font.
+ttf-parser = "0.25"
+
+[features]
+# Headless end-to-end harness: `cargo run --features harness -- --harness-repl`
+# drives the full app (real vault, real subscriptions) without a window,
+# executing .ice instructions and dumping PNG screenshots. Dev-only; never
+# enabled in release/CI artifact builds.
+harness = ["dep:iced_test"]
+# In-app test recorder: `cargo run --features tester` runs the real windowed
+# app with iced's tester overlay; F12 opens a record/play panel that captures
+# interactions as .ice files the harness replays headless. Dev-only.
+tester = ["iced/tester"]

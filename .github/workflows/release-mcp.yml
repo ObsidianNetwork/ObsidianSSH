@@ -1,8 +1,8 @@
 name: Release MCP plugin
 
-# Triggered by tags of the form `mcp-v0.1.0`. Builds the `oryxis-mcp`
+# Triggered by tags of the form `mcp-v0.1.0`. Builds the `obsidianssh-mcp`
 # binary for every supported platform, signs each with the production
-# Ed25519 key (from the `ORYXIS_SIGNING_KEY` secret), uploads
+# Ed25519 key (from the `OBSIDIANSSH_SIGNING_KEY` secret), uploads
 # everything to the GitHub Release, and finally builds the `mcp.json`
 # manifest from the same-release assets and uploads that too.
 #
@@ -75,28 +75,28 @@ jobs:
           key: mcp-plugin-${{ matrix.label }}-${{ matrix.runner }}-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Build plugin (release)
-        run: cargo build --release -p oryxis-mcp --target ${{ matrix.target }}
+        run: cargo build --release -p obsidianssh-mcp --target ${{ matrix.target }}
 
       - name: Strip (unix)
         if: runner.os != 'Windows'
-        run: strip target/${{ matrix.target }}/release/oryxis-mcp${{ matrix.ext }}
+        run: strip target/${{ matrix.target }}/release/obsidianssh-mcp${{ matrix.ext }}
 
       - name: Build signer
-        run: cargo build --release -p oryxis-plugin-signer
+        run: cargo build --release -p obsidianssh-plugin-signer
 
       - name: Sign + hash
         shell: bash
         env:
-          ORYXIS_SIGNING_KEY: ${{ secrets.ORYXIS_SIGNING_KEY }}
+          OBSIDIANSSH_SIGNING_KEY: ${{ secrets.OBSIDIANSSH_SIGNING_KEY }}
         run: |
           set -euo pipefail
-          BIN="target/${{ matrix.target }}/release/oryxis-mcp${{ matrix.ext }}"
-          OUT="dist/oryxis-mcp-${{ matrix.label }}${{ matrix.ext }}"
+          BIN="target/${{ matrix.target }}/release/obsidianssh-mcp${{ matrix.ext }}"
+          OUT="dist/obsidianssh-mcp-${{ matrix.label }}${{ matrix.ext }}"
           mkdir -p dist
           cp "$BIN" "$OUT"
           # The signer prints `sha256 = …`, `signature_b64 = …`,
           # and `size = …` on three separate lines.
-          ./target/release/oryxis-plugin-signer sign "$BIN" > "$OUT.signinfo"
+          ./target/release/obsidianssh-plugin-signer sign "$BIN" > "$OUT.signinfo"
           grep '^sha256'        "$OUT.signinfo" | awk '{print $3}' > "$OUT.sha256"
           grep '^signature_b64' "$OUT.signinfo" | awk '{print $3}' > "$OUT.sig"
           grep '^size'          "$OUT.signinfo" | awk '{print $3}' > "$OUT.size"
@@ -110,10 +110,10 @@ jobs:
           # website's /releases/latest/ download links target the app release.
           make_latest: false
           files: |
-            dist/oryxis-mcp-${{ matrix.label }}${{ matrix.ext }}
-            dist/oryxis-mcp-${{ matrix.label }}${{ matrix.ext }}.sig
-            dist/oryxis-mcp-${{ matrix.label }}${{ matrix.ext }}.sha256
-            dist/oryxis-mcp-${{ matrix.label }}${{ matrix.ext }}.size
+            dist/obsidianssh-mcp-${{ matrix.label }}${{ matrix.ext }}
+            dist/obsidianssh-mcp-${{ matrix.label }}${{ matrix.ext }}.sig
+            dist/obsidianssh-mcp-${{ matrix.label }}${{ matrix.ext }}.sha256
+            dist/obsidianssh-mcp-${{ matrix.label }}${{ matrix.ext }}.size
 
   manifest:
     name: Publish manifest
@@ -139,9 +139,9 @@ jobs:
           mkdir -p assets
           gh release download "${{ steps.tag.outputs.tag }}" \
             --repo "${{ github.repository }}" \
-            --pattern 'oryxis-mcp-*.sha256' \
-            --pattern 'oryxis-mcp-*.sig' \
-            --pattern 'oryxis-mcp-*.size' \
+            --pattern 'obsidianssh-mcp-*.sha256' \
+            --pattern 'obsidianssh-mcp-*.sig' \
+            --pattern 'obsidianssh-mcp-*.size' \
             --dir assets
 
       - name: Build mcp.json
@@ -157,14 +157,14 @@ jobs:
           # scalar's indent rules: a dedented `EOF` ends the YAML scalar
           # before bash sees it).
           binaries='[]'
-          for sha_file in assets/oryxis-mcp-*.sha256; do
+          for sha_file in assets/obsidianssh-mcp-*.sha256; do
             [ -f "$sha_file" ] || continue
             base="${sha_file%.sha256}"
             name=$(basename "$base")
             # Parse `os` + `arch` from the filename:
-            #   oryxis-mcp-linux-x86_64
-            #   oryxis-mcp-windows-aarch64.exe
-            stripped="${name#oryxis-mcp-}"
+            #   obsidianssh-mcp-linux-x86_64
+            #   obsidianssh-mcp-windows-aarch64.exe
+            stripped="${name#obsidianssh-mcp-}"
             stripped="${stripped%.exe}"
             os="${stripped%-*}"
             arch="${stripped##*-}"

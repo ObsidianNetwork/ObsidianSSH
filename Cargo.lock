@@ -5237,6 +5237,547 @@ dependencies = [
 ]
 
 [[package]]
+name = "obsidianssh-app"
+version = "0.23.0"
+dependencies = [
+ "aes-gcm",
+ "async-trait",
+ "base64 0.23.1",
+ "chrono",
+ "dirs",
+ "ed25519-dalek",
+ "fontdb",
+ "futures-util",
+ "getrandom 0.4.3",
+ "hickory-resolver",
+ "iced",
+ "iced_fonts",
+ "iced_runtime",
+ "iced_test",
+ "idna",
+ "image",
+ "libc",
+ "notify-rust",
+ "objc2-app-kit",
+ "obsidianssh-archive",
+ "obsidianssh-biometric",
+ "obsidianssh-cloud",
+ "obsidianssh-core",
+ "obsidianssh-mosh",
+ "obsidianssh-plugin-protocol",
+ "obsidianssh-serial",
+ "obsidianssh-ssh",
+ "obsidianssh-sync",
+ "obsidianssh-telnet",
+ "obsidianssh-terminal",
+ "obsidianssh-vault",
+ "obsidianssh-zmodem",
+ "open",
+ "os_info",
+ "pbkdf2",
+ "proptest",
+ "quick-xml",
+ "rand 0.10.3",
+ "regex",
+ "reqwest",
+ "rfd",
+ "russh",
+ "rustls",
+ "serde",
+ "serde_json",
+ "sha1 0.11.0",
+ "sha2 0.11.1",
+ "signature",
+ "socket2",
+ "ssh-encoding",
+ "ssh-key",
+ "sys-locale",
+ "tauri-winrt-notification",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
+ "tokio-rustls",
+ "tokio-stream",
+ "toml_edit",
+ "tracing",
+ "tracing-appender",
+ "tracing-subscriber",
+ "tray-icon",
+ "ttf-parser",
+ "uuid",
+ "wgpu",
+ "windows",
+ "windows-core",
+ "windows-sys 0.61.2",
+ "winresource",
+ "x509-parser",
+ "zeroize",
+]
+
+[[package]]
+name = "obsidianssh-archive"
+version = "0.1.0"
+dependencies = [
+ "flate2",
+ "tar",
+ "tempfile",
+ "thiserror 2.0.21",
+ "walkdir",
+ "zip",
+]
+
+[[package]]
+name = "obsidianssh-biometric"
+version = "0.1.0"
+dependencies = [
+ "block2",
+ "core-foundation 0.10.1",
+ "core-foundation-sys",
+ "keyring",
+ "objc2",
+ "objc2-foundation",
+ "objc2-local-authentication",
+ "pollster",
+ "thiserror 2.0.21",
+ "tracing",
+ "windows",
+ "windows-future",
+]
+
+[[package]]
+name = "obsidianssh-cloud"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "obsidianssh-core",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "obsidianssh-cloud-aliyun"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "obsidianssh-cloud",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "obsidianssh-cloud-aliyun-plugin"
+version = "0.1.0"
+dependencies = [
+ "obsidianssh-cloud",
+ "obsidianssh-cloud-aliyun",
+ "obsidianssh-plugin-protocol",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "obsidianssh-cloud-aws"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "aws-config",
+ "aws-sdk-ec2",
+ "aws-sdk-ec2instanceconnect",
+ "aws-sdk-ecs",
+ "aws-sdk-ssm",
+ "aws-sdk-sts",
+ "chrono",
+ "obsidianssh-cloud",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "obsidianssh-cloud-aws-plugin"
+version = "0.1.0"
+dependencies = [
+ "obsidianssh-cloud",
+ "obsidianssh-cloud-aws",
+ "obsidianssh-plugin-protocol",
+ "rustls",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "obsidianssh-cloud-azure"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "obsidianssh-cloud",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "obsidianssh-cloud-azure-plugin"
+version = "0.1.0"
+dependencies = [
+ "obsidianssh-cloud",
+ "obsidianssh-cloud-azure",
+ "obsidianssh-plugin-protocol",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "obsidianssh-cloud-gcp"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "obsidianssh-cloud",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "obsidianssh-cloud-gcp-plugin"
+version = "0.1.0"
+dependencies = [
+ "obsidianssh-cloud",
+ "obsidianssh-cloud-gcp",
+ "obsidianssh-plugin-protocol",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "obsidianssh-cloud-k8s"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "obsidianssh-cloud",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "obsidianssh-cloud-k8s-plugin"
+version = "0.1.0"
+dependencies = [
+ "obsidianssh-cloud",
+ "obsidianssh-cloud-k8s",
+ "obsidianssh-plugin-protocol",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "obsidianssh-cloud-tencent"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "obsidianssh-cloud",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "obsidianssh-cloud-tencent-plugin"
+version = "0.1.0"
+dependencies = [
+ "obsidianssh-cloud",
+ "obsidianssh-cloud-tencent",
+ "obsidianssh-plugin-protocol",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "obsidianssh-core"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "data-encoding",
+ "dirs",
+ "encoding_rs",
+ "hmac",
+ "libc",
+ "regex",
+ "serde",
+ "serde_json",
+ "sha1 0.11.0",
+ "sha2 0.11.1",
+ "thiserror 2.0.21",
+ "uuid",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "obsidianssh-fido2"
+version = "0.1.0"
+dependencies = [
+ "aes 0.9.3",
+ "cbc",
+ "core-foundation-sys",
+ "getrandom 0.4.3",
+ "hkdf",
+ "hmac",
+ "io-kit-sys",
+ "libc",
+ "p256",
+ "sha2 0.11.1",
+ "thiserror 2.0.21",
+ "tracing",
+ "windows-sys 0.61.2",
+ "zeroize",
+]
+
+[[package]]
+name = "obsidianssh-mcp"
+version = "0.1.16"
+dependencies = [
+ "chrono",
+ "obsidianssh-core",
+ "obsidianssh-ssh",
+ "obsidianssh-vault",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+ "zeroize",
+]
+
+[[package]]
+name = "obsidianssh-mosh"
+version = "0.1.0"
+dependencies = [
+ "alacritty_terminal",
+ "mosh-rs",
+ "thiserror 2.0.21",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "obsidianssh-plugin-protocol"
+version = "0.1.0"
+dependencies = [
+ "obsidianssh-cloud",
+ "obsidianssh-core",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "obsidianssh-plugin-signer"
+version = "0.1.0"
+dependencies = [
+ "base64 0.23.1",
+ "ed25519-dalek",
+ "getrandom 0.4.3",
+ "obsidianssh-plugin-protocol",
+ "sha2 0.11.1",
+]
+
+[[package]]
+name = "obsidianssh-relay"
+version = "0.1.1"
+dependencies = [
+ "anyhow",
+ "axum",
+ "bytes",
+ "chrono",
+ "clap",
+ "ed25519-dalek",
+ "hex",
+ "reqwest",
+ "rustls",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
+name = "obsidianssh-serial"
+version = "0.1.0"
+dependencies = [
+ "nix 0.31.3",
+ "obsidianssh-core",
+ "thiserror 2.0.21",
+ "tokio",
+ "tokio-serial",
+ "tracing",
+]
+
+[[package]]
+name = "obsidianssh-ssh"
+version = "0.1.0"
+dependencies = [
+ "base64 0.23.1",
+ "dirs",
+ "dunce",
+ "ed25519-dalek",
+ "encoding_rs",
+ "filetime",
+ "getrandom 0.4.3",
+ "libc",
+ "obsidianssh-core",
+ "obsidianssh-fido2",
+ "p256",
+ "rand 0.10.3",
+ "russh",
+ "russh-sftp",
+ "tempfile",
+ "testcontainers",
+ "thiserror 2.0.21",
+ "tokio",
+ "tokio-socks",
+ "tracing",
+ "tracing-subscriber",
+ "unicode-width",
+ "uuid",
+ "windows-sys 0.61.2",
+ "zeroize",
+]
+
+[[package]]
+name = "obsidianssh-sync"
+version = "0.1.0"
+dependencies = [
+ "chacha20poly1305",
+ "chrono",
+ "ed25519-dalek",
+ "getrandom 0.4.3",
+ "hex",
+ "hkdf",
+ "mdns-sd",
+ "obsidianssh-core",
+ "obsidianssh-vault",
+ "quinn",
+ "rcgen",
+ "reqwest",
+ "rustls",
+ "serde",
+ "serde_json",
+ "sha2 0.11.1",
+ "subtle",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
+ "tracing",
+ "uuid",
+ "wincode",
+ "x25519-dalek",
+]
+
+[[package]]
+name = "obsidianssh-telnet"
+version = "0.1.0"
+dependencies = [
+ "encoding_rs",
+ "obsidianssh-core",
+ "rustls",
+ "thiserror 2.0.21",
+ "tokio",
+ "tokio-rustls",
+ "tracing",
+ "webpki-roots",
+]
+
+[[package]]
+name = "obsidianssh-terminal"
+version = "0.1.0"
+dependencies = [
+ "alacritty_terminal",
+ "iced",
+ "portable-pty",
+ "regex",
+ "tokio",
+ "tracing",
+ "unicode-width",
+ "vte",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "obsidianssh-vault"
+version = "0.1.0"
+dependencies = [
+ "aes 0.9.3",
+ "argon2",
+ "base64 0.23.1",
+ "cbc",
+ "chacha20poly1305",
+ "chrono",
+ "des",
+ "flate2",
+ "getrandom 0.4.3",
+ "hmac",
+ "md-5",
+ "obsidianssh-core",
+ "p256",
+ "p384",
+ "p521",
+ "pkcs8",
+ "rand 0.10.3",
+ "rsa",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sha1 0.11.0",
+ "sha2 0.11.1",
+ "ssh-key",
+ "subtle",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tracing",
+ "uuid",
+ "zeroize",
+]
+
+[[package]]
+name = "obsidianssh-zmodem"
+version = "0.1.0"
+dependencies = [
+ "thiserror 2.0.21",
+ "tokio",
+ "tracing",
+ "zmodem2",
+]
+
+[[package]]
 name = "ocb3"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5321,547 +5862,6 @@ checksum = "9aa2b01e1d916879f73a53d01d1d6cee68adbb31d6d9177a8cfce093cced1d50"
 dependencies = [
  "futures-core",
  "pin-project-lite",
-]
-
-[[package]]
-name = "oryxis-app"
-version = "0.23.0"
-dependencies = [
- "aes-gcm",
- "async-trait",
- "base64 0.23.1",
- "chrono",
- "dirs",
- "ed25519-dalek",
- "fontdb",
- "futures-util",
- "getrandom 0.4.3",
- "hickory-resolver",
- "iced",
- "iced_fonts",
- "iced_runtime",
- "iced_test",
- "idna",
- "image",
- "libc",
- "notify-rust",
- "objc2-app-kit",
- "open",
- "oryxis-archive",
- "oryxis-biometric",
- "oryxis-cloud",
- "oryxis-core",
- "oryxis-mosh",
- "oryxis-plugin-protocol",
- "oryxis-serial",
- "oryxis-ssh",
- "oryxis-sync",
- "oryxis-telnet",
- "oryxis-terminal",
- "oryxis-vault",
- "oryxis-zmodem",
- "os_info",
- "pbkdf2",
- "proptest",
- "quick-xml",
- "rand 0.10.3",
- "regex",
- "reqwest",
- "rfd",
- "russh",
- "rustls",
- "serde",
- "serde_json",
- "sha1 0.11.0",
- "sha2 0.11.1",
- "signature",
- "socket2",
- "ssh-encoding",
- "ssh-key",
- "sys-locale",
- "tauri-winrt-notification",
- "tempfile",
- "thiserror 2.0.21",
- "tokio",
- "tokio-rustls",
- "tokio-stream",
- "toml_edit",
- "tracing",
- "tracing-appender",
- "tracing-subscriber",
- "tray-icon",
- "ttf-parser",
- "uuid",
- "wgpu",
- "windows",
- "windows-core",
- "windows-sys 0.61.2",
- "winresource",
- "x509-parser",
- "zeroize",
-]
-
-[[package]]
-name = "oryxis-archive"
-version = "0.1.0"
-dependencies = [
- "flate2",
- "tar",
- "tempfile",
- "thiserror 2.0.21",
- "walkdir",
- "zip",
-]
-
-[[package]]
-name = "oryxis-biometric"
-version = "0.1.0"
-dependencies = [
- "block2",
- "core-foundation 0.10.1",
- "core-foundation-sys",
- "keyring",
- "objc2",
- "objc2-foundation",
- "objc2-local-authentication",
- "pollster",
- "thiserror 2.0.21",
- "tracing",
- "windows",
- "windows-future",
-]
-
-[[package]]
-name = "oryxis-cloud"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "chrono",
- "oryxis-core",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "oryxis-cloud-aliyun"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "oryxis-cloud",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
-name = "oryxis-cloud-aliyun-plugin"
-version = "0.1.0"
-dependencies = [
- "oryxis-cloud",
- "oryxis-cloud-aliyun",
- "oryxis-plugin-protocol",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "oryxis-cloud-aws"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "aws-config",
- "aws-sdk-ec2",
- "aws-sdk-ec2instanceconnect",
- "aws-sdk-ecs",
- "aws-sdk-ssm",
- "aws-sdk-sts",
- "chrono",
- "oryxis-cloud",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "oryxis-cloud-aws-plugin"
-version = "0.1.0"
-dependencies = [
- "oryxis-cloud",
- "oryxis-cloud-aws",
- "oryxis-plugin-protocol",
- "rustls",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "oryxis-cloud-azure"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "chrono",
- "oryxis-cloud",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
-name = "oryxis-cloud-azure-plugin"
-version = "0.1.0"
-dependencies = [
- "oryxis-cloud",
- "oryxis-cloud-azure",
- "oryxis-plugin-protocol",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "oryxis-cloud-gcp"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "chrono",
- "oryxis-cloud",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
-name = "oryxis-cloud-gcp-plugin"
-version = "0.1.0"
-dependencies = [
- "oryxis-cloud",
- "oryxis-cloud-gcp",
- "oryxis-plugin-protocol",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "oryxis-cloud-k8s"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "chrono",
- "oryxis-cloud",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
-name = "oryxis-cloud-k8s-plugin"
-version = "0.1.0"
-dependencies = [
- "oryxis-cloud",
- "oryxis-cloud-k8s",
- "oryxis-plugin-protocol",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "oryxis-cloud-tencent"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "oryxis-cloud",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
-name = "oryxis-cloud-tencent-plugin"
-version = "0.1.0"
-dependencies = [
- "oryxis-cloud",
- "oryxis-cloud-tencent",
- "oryxis-plugin-protocol",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "oryxis-core"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "data-encoding",
- "dirs",
- "encoding_rs",
- "hmac",
- "libc",
- "regex",
- "serde",
- "serde_json",
- "sha1 0.11.0",
- "sha2 0.11.1",
- "thiserror 2.0.21",
- "uuid",
- "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "oryxis-fido2"
-version = "0.1.0"
-dependencies = [
- "aes 0.9.3",
- "cbc",
- "core-foundation-sys",
- "getrandom 0.4.3",
- "hkdf",
- "hmac",
- "io-kit-sys",
- "libc",
- "p256",
- "sha2 0.11.1",
- "thiserror 2.0.21",
- "tracing",
- "windows-sys 0.61.2",
- "zeroize",
-]
-
-[[package]]
-name = "oryxis-mcp"
-version = "0.1.16"
-dependencies = [
- "chrono",
- "oryxis-core",
- "oryxis-ssh",
- "oryxis-vault",
- "serde",
- "serde_json",
- "tempfile",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "uuid",
- "zeroize",
-]
-
-[[package]]
-name = "oryxis-mosh"
-version = "0.1.0"
-dependencies = [
- "alacritty_terminal",
- "mosh-rs",
- "thiserror 2.0.21",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "oryxis-plugin-protocol"
-version = "0.1.0"
-dependencies = [
- "oryxis-cloud",
- "oryxis-core",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "oryxis-plugin-signer"
-version = "0.1.0"
-dependencies = [
- "base64 0.23.1",
- "ed25519-dalek",
- "getrandom 0.4.3",
- "oryxis-plugin-protocol",
- "sha2 0.11.1",
-]
-
-[[package]]
-name = "oryxis-relay"
-version = "0.1.1"
-dependencies = [
- "anyhow",
- "axum",
- "bytes",
- "chrono",
- "clap",
- "ed25519-dalek",
- "hex",
- "reqwest",
- "rustls",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "uuid",
-]
-
-[[package]]
-name = "oryxis-serial"
-version = "0.1.0"
-dependencies = [
- "nix 0.31.3",
- "oryxis-core",
- "thiserror 2.0.21",
- "tokio",
- "tokio-serial",
- "tracing",
-]
-
-[[package]]
-name = "oryxis-ssh"
-version = "0.1.0"
-dependencies = [
- "base64 0.23.1",
- "dirs",
- "dunce",
- "ed25519-dalek",
- "encoding_rs",
- "filetime",
- "getrandom 0.4.3",
- "libc",
- "oryxis-core",
- "oryxis-fido2",
- "p256",
- "rand 0.10.3",
- "russh",
- "russh-sftp",
- "tempfile",
- "testcontainers",
- "thiserror 2.0.21",
- "tokio",
- "tokio-socks",
- "tracing",
- "tracing-subscriber",
- "unicode-width",
- "uuid",
- "windows-sys 0.61.2",
- "zeroize",
-]
-
-[[package]]
-name = "oryxis-sync"
-version = "0.1.0"
-dependencies = [
- "chacha20poly1305",
- "chrono",
- "ed25519-dalek",
- "getrandom 0.4.3",
- "hex",
- "hkdf",
- "mdns-sd",
- "oryxis-core",
- "oryxis-vault",
- "quinn",
- "rcgen",
- "reqwest",
- "rustls",
- "serde",
- "serde_json",
- "sha2 0.11.1",
- "subtle",
- "tempfile",
- "thiserror 2.0.21",
- "tokio",
- "tracing",
- "uuid",
- "wincode",
- "x25519-dalek",
-]
-
-[[package]]
-name = "oryxis-telnet"
-version = "0.1.0"
-dependencies = [
- "encoding_rs",
- "oryxis-core",
- "rustls",
- "thiserror 2.0.21",
- "tokio",
- "tokio-rustls",
- "tracing",
- "webpki-roots",
-]
-
-[[package]]
-name = "oryxis-terminal"
-version = "0.1.0"
-dependencies = [
- "alacritty_terminal",
- "iced",
- "portable-pty",
- "regex",
- "tokio",
- "tracing",
- "unicode-width",
- "vte",
- "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "oryxis-vault"
-version = "0.1.0"
-dependencies = [
- "aes 0.9.3",
- "argon2",
- "base64 0.23.1",
- "cbc",
- "chacha20poly1305",
- "chrono",
- "des",
- "flate2",
- "getrandom 0.4.3",
- "hmac",
- "md-5",
- "oryxis-core",
- "p256",
- "p384",
- "p521",
- "pkcs8",
- "rand 0.10.3",
- "rsa",
- "rusqlite",
- "serde",
- "serde_json",
- "sha1 0.11.0",
- "sha2 0.11.1",
- "ssh-key",
- "subtle",
- "tempfile",
- "thiserror 2.0.21",
- "tracing",
- "uuid",
- "zeroize",
-]
-
-[[package]]
-name = "oryxis-zmodem"
-version = "0.1.0"
-dependencies = [
- "thiserror 2.0.21",
- "tokio",
- "tracing",
- "zmodem2",
 ]
 
 [[package]]

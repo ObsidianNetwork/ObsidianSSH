@@ -1,5 +1,5 @@
 # Publishes release assets and API-metadata snapshots to the download
-# mirror bucket (Cloudflare R2 `oryxis-dl`, served as dl.oryxis.app and
+# mirror bucket (Cloudflare R2 `obsidianssh-dl`, served as dl.oryxis.app and
 # fronted for mainland China by Tencent EdgeOne at dl-cn.oryxis.app).
 #
 # The app's `net_mirror::asset_path` maps GitHub URLs onto this layout;
@@ -52,7 +52,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     env:
-      BUCKET: oryxis-dl
+      BUCKET: obsidianssh-dl
       # The account id is not a secret (it is visible in every R2 URL);
       # the credentials below are.
       AWS_ENDPOINT_URL: https://acd6c60770173234a03c6311de016dff.r2.cloudflarestorage.com
@@ -106,7 +106,7 @@ jobs:
           # Bucket keys are the DECODED file names ([wght], not %5B):
           # the server percent-decodes the request path before matching
           # keys, so the app's %5B URLs resolve to these objects. The
-          # pinned source URLs live in crates/oryxis-app/src/fonts.rs.
+          # pinned source URLs live in crates/obsidianssh-app/src/fonts.rs.
           commit=c89741abbf4eeabce432c3ed2fd7dc28b022701e
           base="https://raw.githubusercontent.com/google/fonts/$commit/ofl"
           # Terminal font pack (issue #109): pinned at the nerd-fonts

@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="resources/logo_128.png" width="120" alt="Oryxis logo">
+  <img src="resources/logo_128.png" width="120" alt="Obsidian SSH logo">
 </p>
 
-<h1 align="center">Oryxis</h1>
+<h1 align="center">Obsidian SSH</h1>
 
 <p align="center">
   전부 Rust로 만든 모던 SSH 클라이언트. 빠르고, 암호화되고, 네이티브.
@@ -13,28 +13,28 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/wilsonglasser/oryxis/releases/latest"><img src="https://img.shields.io/github/v/release/wilsonglasser/oryxis?color=green" alt="Release"></a>
+  <a href="https://github.com/ObsidianNetwork/ObsidianSSH/releases/latest"><img src="https://img.shields.io/github/v/release/ObsidianNetwork/ObsidianSSH?color=green" alt="Release"></a>
   <img src="https://img.shields.io/badge/platforms-linux%20%7C%20macos%20%7C%20windows-blue" alt="Platforms">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue" alt="License"></a>
-  <a href="https://oryxis.app"><img src="https://img.shields.io/badge/website-oryxis.app-3CBBB1" alt="Website"></a>
+  <a href="https://github.com/ObsidianNetwork/ObsidianSSH"><img src="https://img.shields.io/badge/website-obsidianssh.app-3CBBB1" alt="Website"></a>
 </p>
 
 <p align="center">
-  <img src="resources/screen_1.gif" width="720" alt="Oryxis 시연: 호스트 접속, 스니펫 실행, SFTP 탐색">
+  <img src="resources/screen_1.gif" width="720" alt="Obsidian SSH 시연: 호스트 접속, 스니펫 실행, SFTP 탐색">
 </p>
 
 > 이 문서는 v0.23.0 이후의 영어 README를 번역한 것입니다(2026-10-29 동기화).
 > 상세 문서([기능 소개](docs/FEATURES.md), [아키텍처](docs/ARCHITECTURE.md))는 영어로 제공됩니다.
 
-## Oryxis란?
+## Obsidian SSH란?
 
-Oryxis는 [Termius](https://termius.com/)의 오픈 소스 대안입니다.
+Obsidian SSH는 [Termius](https://termius.com/)의 오픈 소스 대안입니다.
 모던한 UI와 자격 증명을 보관하는 로컬 암호화 볼트를 갖춘 데스크톱
 SSH 클라이언트이며, 그 어디에도 클라우드 계정이 끼어들지 않습니다.
 Electron 없음, webview 없음, 벤더 서버 없음. 네이티브 바이너리
 하나뿐입니다.
 
-|  | Oryxis | Termius | PuTTY | Tabby |
+|  | Obsidian SSH | Termius | PuTTY | Tabby |
 |--|--------|---------|-------|-------|
 | UI 스택 | 네이티브 Rust(iced + wgpu) | Electron | 네이티브 | Electron |
 | 라이선스 | AGPL-3.0, 오픈 소스 | 독점 | MIT | MIT |
@@ -52,24 +52,24 @@ Electron 없음, webview 없음, 벤더 서버 없음. 네이티브 바이너리
 또는 터미널에서:
 
 ```powershell
-winget install WilsonGlasser.Oryxis
+winget install ObsidianNetwork.ObsidianSSH
 ```
 
 **Arch Linux (AUR)**
 
 ```bash
-yay -S oryxis-bin
+yay -S obsidianssh-bin
 ```
 
-**직접 다운로드**: [최신 릴리스](https://github.com/wilsonglasser/oryxis/releases/latest)에서
+**직접 다운로드**: [최신 릴리스](https://github.com/ObsidianNetwork/ObsidianSSH/releases/latest)에서
 Linux(`.tar.gz` / `.deb` / `.AppImage`, x86_64 및 ARM64),
 macOS(Apple Silicon `.dmg`), Windows(시스템 / 사용자 단위 설치
 프로그램과 포터블 `.zip`, x86_64 및 ARM64)를 제공합니다. Windows
 바이너리는 Authenticode 서명이 되어 있습니다. 포터블 `.zip`은 모든
-것(설정, 볼트, 플러그인, 로그)을 `oryxis.exe` 옆에 만드는 `data`
-폴더에 보관합니다. 단, 컴퓨터에 이미 Oryxis 프로필이 있으면 그것을
+것(설정, 볼트, 플러그인, 로그)을 `obsidianssh.exe` 옆에 만드는 `data`
+폴더에 보관합니다. 단, 컴퓨터에 이미 Obsidian SSH 프로필이 있으면 그것을
 계속 씁니다. Linux와 macOS에서는 바이너리, `.AppImage` 파일 또는
-`Oryxis.app` 옆에 `oryxis-data` 폴더를 직접 만들면 같은 효과가 납니다.
+`ObsidianSSH.app` 옆에 `obsidianssh-data` 폴더를 직접 만들면 같은 효과가 납니다.
 
 ### 글꼴과 인코딩
 
@@ -109,7 +109,7 @@ UI 언어를 한국어로 바꾸면 Noto Sans KR 글꼴이 자동으로 다운�
   감지되고, 수정한 호스트 CSV 내보내기는 업데이트, 삭제, 폴더로
   되돌아옵니다.
 - **원할 때만 오프라인.** 첫 실행 때와 설정에서 제공되는 스위치
-  하나로 Oryxis는 스스로 요청을 보내지 않습니다. 업데이트 확인도,
+  하나로 Obsidian SSH는 스스로 요청을 보내지 않습니다. 업데이트 확인도,
   글꼴이나 플러그인 다운로드도 하지 않습니다. 직접 설정한 것은
   그대로 오갑니다. 네트워크가 아예 없는 컴퓨터를 위해, 플러그인과
   폰트 팩이 이미 들어 있고 스위치도 이미 켜진 오프라인 번들이
@@ -193,8 +193,8 @@ tmux를 사용하시나요? **[tmux에서의 로그와 명령 기록](docs/TMUX.
 4. **선택 사항:** AI 채팅(설정 > AI), MCP 서버(설정 > 보안),
    기기 간 P2P 동기화(설정 > 동기화).
 
-궁금한 점은 [FAQ](https://github.com/wilsonglasser/oryxis/discussions/66)를
-보거나 [Discussion](https://github.com/wilsonglasser/oryxis/discussions)을
+궁금한 점은 [FAQ](https://github.com/ObsidianNetwork/ObsidianSSH/discussions)를
+보거나 [Discussion](https://github.com/ObsidianNetwork/ObsidianSSH/discussions)을
 열어 주세요.
 
 ## 보안
@@ -209,10 +209,10 @@ ChaCha20-Poly1305), 호스트 키는 TOFU로 고정되며, 동기화 페이로�
 
 ## 로드맵
 
-Oryxis는 대략 매주 작은 단위로 릴리스하며, 기능은 준비되는 대로
+Obsidian SSH는 대략 매주 작은 단위로 릴리스하며, 기능은 준비되는 대로
 출시됩니다. 최신 안정 버전은 **v0.23.0**입니다. 전체 이력은
 [CHANGELOG.md](CHANGELOG.md), 인터랙티브 로드맵은
-[로드맵 Discussion](https://github.com/wilsonglasser/oryxis/discussions/67)에서
+[로드맵 Discussion](https://github.com/ObsidianNetwork/ObsidianSSH/discussions)에서
 볼 수 있습니다. 0.15.0 이후 출시된 것: 분할 창과 SFTP 콘솔, 번들을
 갖춘 오프라인 모드, Alibaba Cloud와 Tencent Cloud, 네트워크 도구
 패널, 원클릭 릴레이 배포, 네이티브 보안 키, 한 프로세스 안의 여러
@@ -234,7 +234,7 @@ sudo, `data` 폴더를 쓰는 포터블 모드, 볼트를 관리하는 호스트
 
 Copyright (C) 2026 Wilson Glasser.
 [AGPL-3.0-or-later](LICENSE) 라이선스로 배포됩니다. 누구나
-Oryxis를 사용, 수정, 배포할 수 있지만, 수정한 버전을 네트워크로
+Obsidian SSH를 사용, 수정, 배포할 수 있지만, 수정한 버전을 네트워크로
 제공하는 경우 동일한 라이선스로 소스 코드를 공개해야 합니다.
 자세한 내용은 [NOTICE](NOTICE)를 참고하세요.
 

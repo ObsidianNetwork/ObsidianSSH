@@ -1,6 +1,6 @@
 # Headless E2E harness
 
-Oryxis ships a headless end-to-end harness behind the `harness` cargo
+Obsidian SSH ships a headless end-to-end harness behind the `harness` cargo
 feature. It runs the **real application**, real vault, real
 subscriptions, real SSH side effects, inside `iced_test`'s `Emulator`
 (from the same wilsonglasser/iced fork the app renders with), with no
@@ -12,9 +12,9 @@ it, so it adds zero weight to shipped binaries.
 
 ## Isolation
 
-Both modes redirect `$HOME` (and `%USERPROFILE%` on Windows) to a sandbox directory **before anything reads the vault**, and point `ORYXIS_HOME` at it too: the app resolves its whole `.oryxis` tree through that override (`oryxis_core::paths`), which is what makes the sandbox hold on Windows as well, where the OS home comes from a WinAPI call that ignores env vars. A harness run can never touch your real `~/.oryxis`. The variable also wins over a portable `data` folder beside the binary under test.
+Both modes redirect `$HOME` (and `%USERPROFILE%` on Windows) to a sandbox directory **before anything reads the vault**, and point `OBSIDIANSSH_HOME` at it too: the app resolves its whole `.obsidianssh` tree through that override (`obsidianssh_core::paths`), which is what makes the sandbox hold on Windows as well, where the OS home comes from a WinAPI call that ignores env vars. A harness run can never touch your real `~/.obsidianssh`. The variable also wins over a portable `data` folder beside the binary under test.
 
-- Default sandbox: `<system tmp>/oryxis-harness`. It persists across
+- Default sandbox: `<system tmp>/obsidianssh-harness`. It persists across
   runs on purpose: a master password set in one session is still
   there in the next, which keeps iterative QA cheap.
 - Override with `--home <dir>`. Batch runs in CI should always pass a
@@ -23,13 +23,13 @@ Both modes redirect `$HOME` (and `%USERPROFILE%` on Windows) to a sandbox direct
 ## Batch mode (CI): `--harness-run <dir>`
 
 ```bash
-cargo run -p oryxis-app --features harness -- \
-    --harness-run crates/oryxis-app/tests/e2e --home "$(mktemp -d)"
+cargo run -p obsidianssh-app --features harness -- \
+    --harness-run crates/obsidianssh-app/tests/e2e --home "$(mktemp -d)"
 ```
 
 Runs every `.ice` file in `<dir>` in file-name order (`fs::read_dir`
 order is not deterministic, so the runner sorts), each one on a
-freshly wiped sandbox: the `.oryxis` directory is removed before
+freshly wiped sandbox: the `.obsidianssh` directory is removed before
 every test, so every test starts from the first-run (onboarding)
 state and never depends on what ran before it. That independence is
 what `--harness-shard <i>/<n>` builds on: the process runs only the
@@ -47,7 +47,7 @@ viewport: 1200x750
 mode: Zen
 -----
 # comments and blank lines are skipped
-expect "Welcome to Oryxis"
+expect "Welcome to Obsidian SSH"
 click "Skip"
 expect "Protect your vault"
 click "Continue without password"
@@ -56,7 +56,7 @@ expect "Create host"
 
 `mode` is required: `Zen` waits for all tasks an instruction spawns
 (including indirect ones), `Patient` only for direct ones,
-`Immediate` never waits. See `crates/oryxis-app/tests/e2e/` for the
+`Immediate` never waits. See `crates/obsidianssh-app/tests/e2e/` for the
 committed suite.
 
 The batch runner executes instructions with the same per-instruction
@@ -82,7 +82,7 @@ with the same rhythm.
 ## Interactive mode (agent/manual QA): `--harness-repl`
 
 ```bash
-cargo run -p oryxis-app --features harness -- --harness-repl
+cargo run -p obsidianssh-app --features harness -- --harness-repl
 ```
 
 A line protocol on stdin/stdout. Every response line is prefixed with
@@ -92,7 +92,7 @@ command file:
 
 ```bash
 : > /tmp/cmds.txt
-tail -f -n +1 /tmp/cmds.txt | oryxis --harness-repl > /tmp/out.log 2> /tmp/err.log &
+tail -f -n +1 /tmp/cmds.txt | obsidianssh --harness-repl > /tmp/out.log 2> /tmp/err.log &
 echo 'screenshot boot' >> /tmp/cmds.txt
 grep '^== ' /tmp/out.log
 ```
@@ -140,7 +140,7 @@ ignored, so a command file can be annotated.
 
 | Flag | Default | Meaning |
 |------|---------|---------|
-| `--home <dir>` | `<tmp>/oryxis-harness` | sandbox `$HOME` |
+| `--home <dir>` | `<tmp>/obsidianssh-harness` | sandbox `$HOME` |
 | `--shots <dir>` | `<home>/shots` | where screenshots land |
 | `--viewport <WxH>` | `1200x750` | logical window size |
 | `--scale <f>` | `1` | screenshot scale factor (0.25..=4) |
@@ -157,15 +157,15 @@ delivers commands to it over TCP (127.0.0.1 only, default port 6799,
 `--port` on both sides to override):
 
 ```bash
-oryxis --harness-serve &                  # daemon; prints "harness listening ..."
-oryxis --harness-ctl status               # one command
-oryxis --harness-ctl 'click "Keychain"'   # quote the whole command
-oryxis --harness-ctl <<'EOF'              # or batch via stdin
+obsidianssh --harness-serve &                  # daemon; prints "harness listening ..."
+obsidianssh --harness-ctl status               # one command
+obsidianssh --harness-ctl 'click "Keychain"'   # quote the whole command
+obsidianssh --harness-ctl <<'EOF'              # or batch via stdin
 reset wipe
 click "Skip"
 screenshot onboarding
 EOF
-oryxis --harness-ctl quit                 # stops the daemon
+obsidianssh --harness-ctl quit                 # stops the daemon
 ```
 
 The wire protocol is the REPL line protocol verbatim (same command
@@ -180,7 +180,7 @@ patterns, gotchas) is documented as the project skill
 ## MCP mode (other clients): `--harness-mcp`
 
 ```bash
-oryxis --harness-mcp            # MCP server over stdio
+obsidianssh --harness-mcp            # MCP server over stdio
 ```
 
 Exposes the same driving surface as MCP tools for MCP-capable clients.
@@ -206,7 +206,7 @@ Typical loops:
 - **Visual validation**: `reset {wipe:true}` → `run` a flow →
   `screenshot` and inspect the returned image.
 - **Producing a test**: same, then `save_ice {path}` and commit the
-  file into `crates/oryxis-app/tests/e2e/`; replay with
+  file into `crates/obsidianssh-app/tests/e2e/`; replay with
   `--harness-run`.
 
 ## Driving a terminal session
@@ -257,8 +257,8 @@ Two things to know:
 ## How it works / limitations
 
 The harness relies on harness-grade emulator work that lives in the
-wilsonglasser/iced fork's `oryxis` branch (landed 2026-07-10 via the
-`oryxis-harness` feature branch): a fixed `Emulator::screenshot` (the
+wilsonglasser/iced fork's `obsidianssh` branch (landed 2026-07-10 via the
+`obsidianssh-harness` feature branch): a fixed `Emulator::screenshot` (the
 upstream one loses the widget cache and poisons the next
 instruction), a public `Emulator::operate` (backs `texts`/`find`), an
 in-memory emulated clipboard (runtime tasks + widget-level paste,
@@ -267,7 +267,7 @@ the pending read), interaction-event broadcast to subscriptions
 (this is what makes global hotkeys like `Ctrl+K` work), and the
 `scroll`/chord grammar.
 
-- The emulator boots `Oryxis::boot` through the same
+- The emulator boots `ObsidianSsh::boot` through the same
   `iced::application(...)` builder `main()` uses (fonts, theme,
   subscriptions), so behavior matches the windowed app. Tray,
   single-instance IPC and the window itself are skipped.
@@ -293,7 +293,7 @@ the pending read), interaction-event broadcast to subscriptions
 ## Recording tests from the real app
 
 ```bash
-cargo run -p oryxis-app --features tester
+cargo run -p obsidianssh-app --features tester
 ```
 
 Runs the real windowed app with iced's tester overlay: F12 opens a
@@ -301,7 +301,7 @@ record/play panel that captures your interactions as `.ice` files,
 which this harness replays headless. Chorded shortcuts and wheel
 scrolls record through the same grammar the harness executes
 (`type ctrl+k`, `scroll (0, -3)`). Dev-only, like `harness`; never
-enabled in release builds. Recording against your real `~/.oryxis`
+enabled in release builds. Recording against your real `~/.obsidianssh`
 is fine (it is a windowed run like any other), but replaying the
 recorded `.ice` needs a sandbox `--home` prepared with the same
 state the recording assumed.

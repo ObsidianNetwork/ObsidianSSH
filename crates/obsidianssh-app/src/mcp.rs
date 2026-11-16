@@ -1,0 +1,1153 @@
+//! MCP (Model Context Protocol) setup helpers: command path resolution,
+//! the config snippet in each client's shape, detection of the clients
+//! installed here (and inside a WSL distro), and the merge-in-place
+//! install into each client's own config. The client table itself is
+//! `mcp_clients.rs`; the setup info panel that renders all this lives in
+//! `views/settings/mcp.rs`.
+
+use crate::mcp_clients::{self, McpClient};
+use crate::mcp_install;
+
+/// Binary command external MCP clients (Claude Desktop / Code,
+/// Cursor) should spawn. Resolves to the stable launcher path the
+/// plugin install layer maintains (`~/.obsidianssh/bin/obsidianssh-mcp[.exe]`),
+/// so the JSON snippet the user copies stays valid across plugin
+/// updates. Falls back to the launcher path even when no plugin is
+/// installed yet, the install flow gates the surface, so the user
+/// shouldn't see this snippet with a missing binary.
+pub(crate) fn mcp_binary_command() -> String {
+    mcp_install::launcher_path()
+        .map(|p| {
+            if cfg!(target_os = "windows") {
+                // JSON in the snippet needs `\\` to escape backslashes
+                // when rendered into a `command` string. The display
+                // form embeds them as-is; the JSON builder doubles
+                // them.
+                p.display().to_string()
+            } else {
+                p.display().to_string()
+            }
+        })
+        .unwrap_or_else(|_| "obsidianssh-mcp".to_string())
+}
+
+/// WSL-side path for Windows users whose AI client runs inside WSL.
+/// Translates the Windows launcher path (`C:\Users\<user>\.obsidianssh\bin\
+/// obsidianssh-mcp.exe`) into its WSL mount equivalent
+/// (`/mnt/c/Users/<user>/.obsidianssh/bin/obsidianssh-mcp.exe`). Returns an
+/// empty string when no data tree resolves; the WSL block in the info
+/// panel only renders on Windows, where one always does.
+pub(crate) fn mcp_wsl_command() -> String {
+    // The launcher path is computed against the app's data tree
+    // (`obsidianssh_core::paths`: the profile's `.obsidianssh` or a portable `data`
+    // folder). We post-process the result into the WSL form rather than
+    // resolving the tree again so both helpers stay in lockstep.
+    let Ok(path) = mcp_install::launcher_path() else {
+        return String::new();
+    };
+    wsl_mount_path(&path.to_string_lossy())
+}
+
+/// A Windows path in WSL's default mount form: `E:\Obsidian SSH\data\bin\
+/// obsidianssh-mcp.exe` -> `/mnt/e/Obsidian SSH/data/bin/obsidianssh-mcp.exe`. Any drive
+/// letter, not only `C:` (a portable copy runs from a USB key's). Any
+/// other layout (a network share, a `\\?\` path) is too unusual to guess
+/// at: the bare Windows path, for the user to fix by hand.
+fn wsl_mount_path(win: &str) -> String {
+    let mut chars = win.chars();
+    if let (Some(drive), Some(':'), Some('\\')) = (chars.next(), chars.next(), chars.next())
+        && drive.is_ascii_alphabetic()
+    {
+        return format!("/mnt/{}/{}", drive.to_ascii_lowercase(), chars.as_str().replace('\\', "/"));
+    }
+    win.to_string()
+}
+
+/// One vault's MCP secrets as a client config carries them: the names
+/// of its variables (`obsidianssh_vault::device::mcp_env_names`: the first
+/// vault's are the plain `OBSIDIANSSH_MCP_TOKEN` / `OBSIDIANSSH_VAULT_PASSWORD`,
+/// another's carry its slug) and their values. One `obsidianssh` entry serves
+/// every vault, so a write for one vault replaces ITS variables and
+/// keeps the others' ([`merged_env`]).
+#[derive(Debug, Clone)]
+pub(crate) struct McpSecrets {
+    pub(crate) names: obsidianssh_vault::device::McpEnvNames,
+    /// Empty = the vault runs MCP without a token.
+    pub(crate) token: String,
+    /// The master password, when the user opted in to embedding it.
+    pub(crate) vault_pw: Option<String>,
+}
+
+impl McpSecrets {
+    /// The variables this vault puts in an entry.
+    fn pairs(&self) -> Vec<(String, String)> {
+        let mut out = Vec::new();
+        if !self.token.is_empty() {
+            out.push((self.names.token.clone(), self.token.clone()));
+        }
+        if let Some(pw) = &self.vault_pw {
+            out.push((self.names.password.clone(), pw.clone()));
+        }
+        out
+    }
+
+    /// The same vault with its values replaced for display.
+    fn shown(&self, token: String, vault_pw: Option<String>) -> Self {
+        Self { names: self.names.clone(), token, vault_pw }
+    }
+}
+
+/// The env an entry gets when `secrets`' vault writes it over `existing`
+/// (the variables the entry on disk carries): the other vaults' kept,
+/// this vault's replaced (dropped when it no longer has one), and the
+/// data tree's variable set to what this app uses ([`with_data_dir`]).
+fn merged_env(
+    existing: Vec<(String, String)>,
+    secrets: &McpSecrets,
+    data_dir: Option<&std::path::Path>,
+) -> Vec<(String, String)> {
+    let mine = [&secrets.names.token, &secrets.names.password];
+    let mut env: Vec<(String, String)> =
+        existing.into_iter().filter(|(name, _)| !mine.contains(&name)).collect();
+    env.extend(secrets.pairs());
+    with_data_dir(env, data_dir)
+}
+
+/// `vars` with `OBSIDIANSSH_DATA_DIR` naming `data_dir`, or without it when
+/// `None`. The client spawns `obsidianssh-mcp` from `<tree>/bin`, where
+/// nothing tells it which tree that is: with no variable it reads the
+/// profile's `.obsidianssh`, so an app running on another tree (a portable
+/// `data` folder, issue #271) has to say so in the entry, or the server
+/// would serve other vaults and post its sudo requests where the app
+/// never looks. The tree belongs to the app that WRITES the entry: one
+/// running on the profile's tree takes a stale variable out.
+fn with_data_dir(mut vars: Vec<(String, String)>, data_dir: Option<&std::path::Path>) -> Vec<(String, String)> {
+    vars.retain(|(name, _)| name != obsidianssh_core::paths::DATA_DIR_ENV);
+    if let Some(dir) = data_dir {
+        vars.push((obsidianssh_core::paths::DATA_DIR_ENV.to_string(), dir.display().to_string()));
+    }
+    vars
+}
+
+/// The tree this app tells a spawned `obsidianssh-mcp` about, `None` on the
+/// profile's own `.obsidianssh`.
+fn children_data_dir() -> Option<std::path::PathBuf> {
+    obsidianssh_core::paths::data_dir_for_children()
+}
+
+/// The variables an `obsidianssh` entry already carries: its `env` block, or
+/// the `set VAR=value&&` chain of the WSL cmd.exe wrapper.
+pub(crate) fn entry_env(entry: &serde_json::Value) -> Vec<(String, String)> {
+    if let Some(env) = entry.get("env").and_then(|e| e.as_object()) {
+        return env
+            .iter()
+            .filter_map(|(k, v)| v.as_str().map(|v| (k.clone(), v.to_string())))
+            .collect();
+    }
+    match entry.get("args").and_then(|a| a.as_array()).map(|a| a.as_slice()) {
+        Some([flag, line]) if flag.as_str().is_some_and(|f| f.eq_ignore_ascii_case("/c")) => {
+            line.as_str().map(parse_cmd_sets).unwrap_or_default()
+        }
+        _ => Vec::new(),
+    }
+}
+
+/// The `set VAR=value&& ` segments at the head of a cmd.exe line, values
+/// un-escaped ([`cmd_escape`] reversed: a `^` takes the next character
+/// literally, so an escaped `&` never ends a value).
+fn parse_cmd_sets(line: &str) -> Vec<(String, String)> {
+    let mut out = Vec::new();
+    let mut rest = line;
+    while let Some(after) = rest.strip_prefix("set ") {
+        let Some((name, value_and_more)) = after.split_once('=') else {
+            break;
+        };
+        let mut value = String::new();
+        let mut chars = value_and_more.char_indices();
+        let mut end = None;
+        while let Some((i, c)) = chars.next() {
+            if c == '^' {
+                if let Some((_, next)) = chars.next() {
+                    value.push(next);
+                }
+            } else if value_and_more[i..].starts_with("&& ") {
+                end = Some(i + 3);
+                break;
+            } else {
+                value.push(c);
+            }
+        }
+        let Some(end) = end else {
+            break;
+        };
+        out.push((name.to_string(), value));
+        rest = &value_and_more[end..];
+    }
+    out
+}
+
+/// JSON entry for the `obsidianssh` MCP server: the `command` path plus
+/// the optional `env` block carrying each vault's auth token and, when
+/// the user confirmed a master password in the setup panel, the
+/// password a password-protected vault needs (without it the server
+/// skips that vault at startup). Shared between the copy-to-clipboard
+/// snippet and the on-disk merge so escaping stays consistent on
+/// Windows.
+fn obsidianssh_mcp_entry(cmd: &str, vars: &[(String, String)]) -> serde_json::Value {
+    let mut env = serde_json::Map::new();
+    for (name, value) in vars {
+        env.insert(name.clone(), serde_json::json!(value));
+    }
+    if env.is_empty() {
+        serde_json::json!({ "command": cmd })
+    } else {
+        serde_json::json!({ "command": cmd, "env": env })
+    }
+}
+
+/// Escape a value for a `set VAR=value` segment inside a `cmd /c`
+/// string: cmd metacharacters are neutralized with `^`. Two characters
+/// have no reliable escape in this position and stay as-is: `%`
+/// (cmd expands `%VAR%` even inside quotes) and `"` (the WSL argv ->
+/// Windows command-line translation rewrites embedded quotes to `\"`,
+/// which cmd rejects). A vault password containing those can't ride
+/// the WSL wrapper; the native env block handles every character.
+fn cmd_escape(value: &str) -> String {
+    let mut out = String::with_capacity(value.len());
+    for c in value.chars() {
+        if matches!(c, '^' | '&' | '|' | '<' | '>' | '(' | ')') {
+            out.push('^');
+        }
+        out.push(c);
+    }
+    out
+}
+
+/// MCP entry for an AI client running *inside* WSL on a Windows host.
+///
+/// A Windows process spawned from WSL inherits the *Linux* environment,
+/// and WSL does not forward custom variables (`OBSIDIANSSH_MCP_TOKEN`)
+/// across the boundary. A plain `env` block on a `/mnt/c/...exe` entry
+/// therefore never reaches `obsidianssh-mcp.exe`: the token gate sees an
+/// empty token and rejects every call with "token mismatch". (The
+/// binary still resolves the correct Windows vault via the interop
+/// user's profile, so the token is the only thing missing; an app on a
+/// portable `data` folder sends `OBSIDIANSSH_DATA_DIR` the same way.)
+///
+/// When a token is set we launch through `cmd.exe`, which rebuilds the
+/// Windows environment, and inject the token Windows-side with `set`
+/// before invoking the binary. `cmd.exe`'s UNC-cwd warning lands on
+/// stderr, so the JSON-RPC stream on stdout stays clean. `win_exe` is
+/// the native `C:\...exe` path (cmd is a Windows program), emitted
+/// unquoted: the WSL argv -> Windows command-line translation rewrites
+/// embedded quotes to `\"`, which cmd rejects. A launcher path with a
+/// space is the one unsupported case: a username with one in
+/// `C:\Users\<name>` (standard profile folders have none), or a portable
+/// copy unzipped under a folder with one (`E:\My Tools\Obsidian SSH`).
+///
+/// With neither a token nor a vault password, the plain
+/// `/mnt/c/...exe` launch already works, so we keep `wsl_exe` for that
+/// path. The vault password rides the same cmd.exe wrapper as the
+/// token (an `env` block would never cross the WSL boundary either),
+/// escaped for cmd; see [`cmd_escape`] for the two characters that
+/// can't be carried.
+fn obsidianssh_mcp_entry_wsl(wsl_exe: &str, win_exe: &str, vars: &[(String, String)]) -> serde_json::Value {
+    if vars.is_empty() {
+        return serde_json::json!({ "command": wsl_exe });
+    }
+    // cmd.exe lives under the Windows root; the WSL mount is the only
+    // path the Linux-side client can exec it through.
+    const CMD: &str = "/mnt/c/Windows/System32/cmd.exe";
+    let mut inner = String::new();
+    for (name, value) in vars {
+        inner.push_str(&format!("set {name}={}&& ", cmd_escape(value)));
+    }
+    inner.push_str(win_exe);
+    serde_json::json!({
+        "command": CMD,
+        "args": ["/c", inner],
+    })
+}
+
+/// The `obsidianssh` server entry for a client on this machine: the
+/// launcher path plus the env block the token and the opt-in vault
+/// password ride in.
+fn native_entry(vars: &[(String, String)]) -> serde_json::Value {
+    obsidianssh_mcp_entry(&mcp_binary_command(), vars)
+}
+
+/// The entry for a client living inside a WSL distro: see
+/// [`obsidianssh_mcp_entry_wsl`] for the cmd.exe wrapper that carries the
+/// secrets across the boundary.
+fn wsl_entry(vars: &[(String, String)]) -> serde_json::Value {
+    let vars = with_wsl_distro(vars.to_vec(), wsl_distro().as_deref());
+    obsidianssh_mcp_entry_wsl(&mcp_wsl_command(), &mcp_binary_command(), &vars)
+}
+
+/// `vars` naming the WSL distro the entry is for, when it is known
+/// ([`wsl_distro`]): `obsidianssh-mcp.exe` reads a Linux path the client hands
+/// it inside that distro. Unknown (no detection ran yet), whatever the
+/// entry already said stays.
+fn with_wsl_distro(mut vars: Vec<(String, String)>, distro: Option<&str>) -> Vec<(String, String)> {
+    if let Some(distro) = distro.map(str::trim).filter(|d| !d.is_empty()) {
+        vars.retain(|(name, _)| name != obsidianssh_core::paths::WSL_DISTRO_ENV);
+        vars.push((obsidianssh_core::paths::WSL_DISTRO_ENV.to_string(), distro.to_string()));
+    }
+    vars
+}
+
+/// The default WSL distro's name, as the last detection read it (the
+/// distro every WSL read and write here goes to). Kept for the process:
+/// the entry is built in `update`, which must not spawn `wsl.exe`.
+static WSL_DISTRO: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
+
+fn wsl_distro() -> Option<String> {
+    WSL_DISTRO.lock().unwrap_or_else(|p| p.into_inner()).clone()
+}
+
+/// The line the detection script prints the distro's name on, ahead of
+/// the markers.
+#[cfg(target_os = "windows")]
+const DISTRO_LINE: &str = "@distro=";
+
+/// The snippet users copy for `client`, in that client's own shape
+/// (JSON under `mcpServers`, or Codex's TOML table). When `token` is
+/// non-empty the entry carries an env block passing `OBSIDIANSSH_MCP_TOKEN`;
+/// the server refuses every call when the token mismatches the value
+/// stored in the vault. Empty token keeps the legacy unauth path.
+/// `vault_pw` is the master password of a password-protected vault,
+/// embedded only after the user confirmed it in the setup panel.
+pub(crate) fn mcp_config_snippet(client: McpClient, secrets: &McpSecrets) -> String {
+    mcp_clients::render_snippet(
+        client.format(),
+        &native_entry(&with_data_dir(secrets.pairs(), children_data_dir().as_deref())),
+    )
+}
+
+/// Same as [`mcp_config_snippet`] but for a client running *inside* a
+/// WSL distro on a Windows host; the Windows app produces this so the
+/// user doesn't have to assemble the cmd.exe wrapper by hand.
+pub(crate) fn mcp_config_snippet_wsl(client: McpClient, secrets: &McpSecrets) -> String {
+    mcp_clients::render_snippet(
+        client.format(),
+        &wsl_entry(&with_data_dir(secrets.pairs(), children_data_dir().as_deref())),
+    )
+}
+
+/// Cap on the token's bullet run, mirroring the token row so both
+/// spellings of the same value line up.
+const TOKEN_MASK_CAP: usize = 48;
+
+/// Fixed bullet run for the embedded vault password. Fixed rather than
+/// proportional because it is the user's master password: the row above
+/// never shows it at all, and its length is not ours to publish.
+const VAULT_PW_MASK_WIDTH: usize = 12;
+
+/// Bullet run of `n` characters, the on-screen stand-in for a secret.
+pub(crate) fn secret_mask(n: usize) -> String {
+    "\u{2022}".repeat(n)
+}
+
+/// Mask for the MCP token, capped so a long value can't run the row off
+/// the panel.
+pub(crate) fn token_mask(token: &str) -> String {
+    secret_mask(token.chars().count().min(TOKEN_MASK_CAP))
+}
+
+/// The snippet AS RENDERED in the setup panel: the same generators the
+/// Copy and Install paths use, fed masked values while the panel is
+/// hidden. Masking the token on its own row and then printing it in
+/// full three lines below is a mask in name only, and the embedded
+/// vault password had no reveal affordance at all. Copy and Install
+/// rebuild from state, so what travels is always the real value.
+///
+/// Masking the INPUTS rather than the finished string is what keeps
+/// this correct for every shape at once, the native `env` block, the
+/// WSL `set VAR=...&&` argument and the TOML table, with no second
+/// escaping opinion: a password carrying `"` or `\` is escaped by the
+/// serializer on the way out, so a search-and-replace over the
+/// finished text would silently miss it.
+pub(crate) fn mcp_config_snippet_display(
+    client: McpClient,
+    secrets: &McpSecrets,
+    wsl: bool,
+    revealed: bool,
+) -> String {
+    let token = secrets.token.as_str();
+    let vault_pw = secrets.vault_pw.as_deref();
+    // An unset token stays unset: bullets would fabricate an `env` block
+    // for a server the user is deliberately running without auth.
+    let token_shown = if revealed || token.is_empty() {
+        token.to_string()
+    } else {
+        token_mask(token)
+    };
+    let pw_shown = vault_pw.map(|pw| {
+        if revealed {
+            pw.to_string()
+        } else {
+            secret_mask(VAULT_PW_MASK_WIDTH)
+        }
+    });
+    let shown = secrets.shown(token_shown, pw_shown);
+    if wsl {
+        mcp_config_snippet_wsl(client, &shown)
+    } else {
+        mcp_config_snippet(client, &shown)
+    }
+}
+
+/// Home directory resolved the way external clients see it.
+fn home_dir_for_config() -> Result<std::path::PathBuf, String> {
+    let home_str = if cfg!(target_os = "windows") {
+        std::env::var("USERPROFILE").map_err(|_| "USERPROFILE not set")?
+    } else {
+        std::env::var("HOME").map_err(|_| "HOME not set")?
+    };
+    Ok(std::path::PathBuf::from(home_str))
+}
+
+/// Path this app wrote MCP config to before it was corrected: Claude
+/// Code never reads `~/.claude/.mcp.json` (only `~/.claude.json` and a
+/// project-root `.mcp.json`), so entries installed there were dead.
+/// Kept only so installs can sweep the stale `obsidianssh` entry (issue #72).
+fn legacy_mcp_config_path() -> Result<std::path::PathBuf, String> {
+    Ok(home_dir_for_config()?.join(".claude").join(".mcp.json"))
+}
+
+/// Where `client` reads its MCP servers from on this machine. An
+/// environment relocation (`CLAUDE_CONFIG_DIR`, `CODEX_HOME`,
+/// `COPILOT_HOME`) is honoured, best-effort: a GUI launch may not
+/// carry a shell-only export, in which case the default path is what
+/// the client launched the same way would read anyway.
+fn client_config_path(client: McpClient) -> Result<std::path::PathBuf, String> {
+    let home = home_dir_for_config()?;
+    client
+        .config_path(&home)
+        .ok_or_else(|| format!("{} is not available on this platform", client.name()))
+}
+
+/// The on-screen hint for where `client`'s config lives: the resolved
+/// native path, or the distro-relative one for the WSL target.
+pub(crate) fn client_path_hint(client: McpClient, wsl: bool, wsl_markers: &[String]) -> String {
+    if wsl {
+        client
+            .wsl_config_path(wsl_markers)
+            .map(|p| format!("{p} (WSL)"))
+            .unwrap_or_default()
+    } else {
+        client_config_path(client)
+            .map(|p| p.display().to_string())
+            .unwrap_or_default()
+    }
+}
+
+/// Remove the `obsidianssh` entry from the legacy dead-letter config, if
+/// present, so it can't mislead anyone debugging their MCP setup.
+/// Best-effort: unparsable or missing files are left alone.
+fn sweep_legacy_mcp_config() {
+    let Ok(path) = legacy_mcp_config_path() else { return };
+    let Ok(content) = std::fs::read_to_string(&path) else { return };
+    if let Some(output) =
+        mcp_clients::strip_entry(mcp_clients::ConfigFormat::JsonMcpServers, &content)
+    {
+        let _ = std::fs::write(&path, output);
+    }
+}
+
+/// Whether `client`'s config on this machine currently carries an
+/// `obsidianssh` entry: the user installed into it at some point, so a
+/// plugin update or a vault-password revoke should rewrite it in place.
+/// Never true for a file that does not exist, so a rewrite can never
+/// create a config where none was.
+pub(crate) fn client_has_entry(client: McpClient) -> bool {
+    client_config_path(client).is_ok_and(|p| {
+        std::fs::read_to_string(&p)
+            .ok()
+            .is_some_and(|c| mcp_clients::has_entry(client.format(), &c))
+    })
+}
+
+/// Whether the legacy dead-letter file carries an `obsidianssh` entry: an
+/// install older releases wrote where Claude Code never looked, which
+/// a plugin update migrates to the file it does read.
+pub(crate) fn legacy_config_has_entry() -> bool {
+    legacy_mcp_config_path().is_ok_and(|p| {
+        std::fs::read_to_string(&p)
+            .ok()
+            .is_some_and(|c| mcp_clients::has_entry(mcp_clients::ConfigFormat::JsonMcpServers, &c))
+    })
+}
+
+/// Whether any client's config on this machine (or the legacy
+/// dead-letter file) carries an `obsidianssh` entry, i.e. the user ran
+/// Install at some point and a plugin update should refresh.
+pub(crate) fn mcp_config_installed() -> bool {
+    McpClient::available().into_iter().any(client_has_entry) || legacy_config_has_entry()
+}
+
+/// The clients installed on this machine (native target). Blocking
+/// (a few `stat`s); call from a task, never from `view()`.
+pub(crate) fn detect_native_clients() -> Vec<McpClient> {
+    let Ok(home) = home_dir_for_config() else {
+        return Vec::new();
+    };
+    McpClient::available()
+        .into_iter()
+        .filter(|c| c.detected(&home))
+        .collect()
+}
+
+/// `CREATE_NO_WINDOW`: keeps `wsl.exe` from flashing a console over
+/// the app.
+#[cfg(target_os = "windows")]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
+/// Run `bash -c <script>` in the default WSL distro and return its
+/// stdout. A non-login bash keeps rc-file noise out of stdout while
+/// still expanding `~` via HOME.
+#[cfg(target_os = "windows")]
+fn wsl_bash(script: &str) -> Result<String, String> {
+    use std::os::windows::process::CommandExt;
+    use std::process::Command;
+    let out = Command::new("wsl.exe")
+        .args(["--", "bash", "-c", script])
+        .creation_flags(CREATE_NO_WINDOW)
+        .output()
+        .map_err(|e| format!("Could not run wsl.exe ({e}). Is WSL installed?"))?;
+    if !out.status.success() {
+        let err = String::from_utf8_lossy(&out.stderr);
+        return Err(format!("wsl.exe failed: {}", err.trim()));
+    }
+    Ok(String::from_utf8_lossy(&out.stdout).into_owned())
+}
+
+/// Read a `~/...` file inside the distro; empty when absent (the
+/// trailing `|| true` keeps the exit code at 0 on a first install,
+/// otherwise `cat`'s failure would look like a WSL error).
+#[cfg(target_os = "windows")]
+fn wsl_read_home_file(path: &str) -> Result<String, String> {
+    wsl_bash(&format!("cat {path} 2>/dev/null || true"))
+}
+
+/// Write a `~/...` file inside the distro with owner-only permissions.
+/// The contents go through stdin so they never have to be escaped into
+/// a shell argument. `umask 077` births the temp 0600, then an atomic
+/// `mv` swaps it in: the opt-in vault password embed writes a plaintext
+/// credential, so the real config must never be left world-readable nor
+/// partially written. The parent folder must already exist (it is the
+/// client's own, and its presence is what made the client "detected").
+#[cfg(target_os = "windows")]
+fn wsl_write_home_file_private(path: &str, contents: &str) -> Result<(), String> {
+    use std::io::Write;
+    use std::os::windows::process::CommandExt;
+    use std::process::{Command, Stdio};
+    let script = format!("umask 077 && cat > {path}.tmp && mv {path}.tmp {path}");
+    let mut child = Command::new("wsl.exe")
+        .args(["--", "bash", "-c", &script])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::null())
+        .stderr(Stdio::piped())
+        .creation_flags(CREATE_NO_WINDOW)
+        .spawn()
+        .map_err(|e| format!("Could not run wsl.exe ({e})."))?;
+    child
+        .stdin
+        .take()
+        .ok_or("failed to open wsl.exe stdin")?
+        .write_all(contents.as_bytes())
+        .map_err(|e| format!("Failed to write to WSL: {e}"))?;
+    let status = child
+        .wait()
+        .map_err(|e| format!("wsl.exe did not finish: {e}"))?;
+    if !status.success() {
+        return Err(format!("wsl.exe could not write {path}"));
+    }
+    Ok(())
+}
+
+/// The client marker folders present in the distro's home, in ONE
+/// `wsl.exe` spawn (each spawn costs a noticeable fraction of a
+/// second). Returns the `~`-relative names found.
+#[cfg(target_os = "windows")]
+pub(crate) fn wsl_detect_markers() -> Result<Vec<String>, String> {
+    let checks: Vec<String> = McpClient::wsl_markers()
+        .iter()
+        .map(|m| format!("[ -e \"$HOME/{m}\" ] && echo \"{m}\";"))
+        .collect();
+    let out = wsl_bash(&format!("echo \"{DISTRO_LINE}$WSL_DISTRO_NAME\"; {} true", checks.join(" ")))?;
+    let mut markers = Vec::new();
+    for line in out.lines().map(str::trim).filter(|l| !l.is_empty()) {
+        match line.strip_prefix(DISTRO_LINE) {
+            Some(name) => {
+                let name = name.trim();
+                *WSL_DISTRO.lock().unwrap_or_else(|p| p.into_inner()) =
+                    (!name.is_empty()).then(|| name.to_string());
+            }
+            None => markers.push(line.to_string()),
+        }
+    }
+    Ok(markers)
+}
+
+/// Never-detected elsewhere: the WSL target only renders on Windows.
+#[cfg(not(target_os = "windows"))]
+pub(crate) fn wsl_detect_markers() -> Result<Vec<String>, String> {
+    Err("WSL is only available on the Windows build".to_string())
+}
+
+/// The clients installed inside the WSL distro, plus the markers that
+/// told us (the config paths of clients that moved depend on them).
+pub(crate) fn detect_wsl_clients() -> (Vec<McpClient>, Vec<String>) {
+    let markers = wsl_detect_markers().unwrap_or_default();
+    let found = McpClient::available_in_wsl()
+        .into_iter()
+        .filter(|c| c.detected_in_wsl(&markers))
+        .collect();
+    (found, markers)
+}
+
+/// Whether the distro's config for `client` carries an `obsidianssh`
+/// entry. Same gate as [`client_has_entry`] for the WSL target, so a
+/// rewrite never creates a config inside a distro that never had one.
+#[cfg(target_os = "windows")]
+fn wsl_client_has_entry(client: McpClient, markers: &[String]) -> bool {
+    let Some(path) = client.wsl_config_path(markers) else {
+        return false;
+    };
+    wsl_read_home_file(&path).is_ok_and(|c| mcp_clients::has_entry(client.format(), &c))
+}
+
+/// Scrub the embedded `OBSIDIANSSH_VAULT_PASSWORD` from every client config
+/// that actually carries an `obsidianssh` entry, in place, WITHOUT creating
+/// one anywhere. Covers every client on this machine and (on Windows)
+/// inside the WSL distro, because the password may have been installed
+/// into any of them regardless of the currently selected one. Blocking
+/// I/O; call from a background task. `Ok(())` means nothing failed; the
+/// caller surfaces any `Err` so a "revoked" claim never hides a
+/// plaintext credential still on disk.
+pub(crate) fn strip_vault_password_everywhere(secrets: &McpSecrets) -> Result<(), String> {
+    // This vault's password variable goes; its token and every other
+    // vault's variables stay.
+    let secrets = &secrets.shown(secrets.token.clone(), None);
+    let mut errors: Vec<String> = Vec::new();
+    // Every file an install may have written, not only the one each
+    // client reads today: an install from before an environment override
+    // or a folder move still holds the password where it was written.
+    match home_dir_for_config() {
+        Ok(home) => {
+            for client in McpClient::available() {
+                for path in client.candidate_config_paths(&home) {
+                    let has_entry = std::fs::read_to_string(&path)
+                        .is_ok_and(|c| mcp_clients::has_entry(client.format(), &c));
+                    if has_entry && let Err(e) = rewrite_entry_at(client, &path, secrets) {
+                        errors.push(e);
+                    }
+                }
+            }
+        }
+        // The WSL side below does not need this home; it still runs.
+        Err(e) => errors.push(e),
+    }
+    #[cfg(target_os = "windows")]
+    {
+        let markers = wsl_detect_markers().unwrap_or_default();
+        for client in McpClient::available_in_wsl() {
+            if wsl_client_has_entry(client, &markers)
+                && let Err(e) = install_mcp_config_to_wsl(client, secrets)
+            {
+                errors.push(e);
+            }
+        }
+    }
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors.join("; "))
+    }
+}
+
+/// Re-write the `obsidianssh` entry, with the current token and vault
+/// password, into every client config that already carries one, on
+/// this machine and (on Windows) inside the WSL distro. The plugin
+/// update's refresh: the launcher path is stable, but the entry's
+/// secrets must follow the settings. Errors are logged, not surfaced:
+/// nothing the user is looking at asked for this write.
+pub(crate) fn refresh_installed_clients(secrets: &McpSecrets) {
+    for client in McpClient::available() {
+        if client_has_entry(client)
+            && let Err(e) = install_mcp_config_to_file(client, secrets)
+        {
+            tracing::warn!(client = client.name(), error = %e, "failed to refresh MCP client config");
+        }
+    }
+    #[cfg(target_os = "windows")]
+    {
+        let markers = wsl_detect_markers().unwrap_or_default();
+        for client in McpClient::available_in_wsl() {
+            if wsl_client_has_entry(client, &markers)
+                && let Err(e) = install_mcp_config_to_wsl(client, secrets)
+            {
+                tracing::warn!(client = client.name(), error = %e, "failed to refresh MCP client config (WSL)");
+            }
+        }
+    }
+}
+
+/// Write/merge the obsidianssh MCP entry into `client`'s config on this
+/// machine, in that client's shape (the same place its own `mcp add`
+/// command writes). Merge, never replace: these are the clients' own
+/// state files. Threads `token` and the opt-in vault password through
+/// so the on-disk config always carries whatever the current settings
+/// hold (a `None` password strips a previously installed one).
+///
+/// Refuses when the client's folder is absent: the folder's presence
+/// is what says the client is installed, and a config file dropped
+/// into a folder nothing reads is litter at best and, with the vault
+/// password embedded, a credential nobody is guarding.
+pub(crate) fn install_mcp_config_to_file(client: McpClient, secrets: &McpSecrets) -> Result<String, String> {
+    let config_path = client_config_path(client)?;
+    let parent = config_path
+        .parent()
+        .ok_or_else(|| format!("{} has no config folder", config_path.display()))?;
+    if !parent.is_dir() {
+        return Err(format!(
+            "{} is not installed here ({} does not exist)",
+            client.name(),
+            parent.display()
+        ));
+    }
+
+    rewrite_entry_at(client, &config_path, secrets)?;
+
+    if client == McpClient::ClaudeCode {
+        sweep_legacy_mcp_config();
+    }
+
+    Ok(config_path.display().to_string())
+}
+
+/// Merge the `obsidianssh` entry into the config at `path`, in `client`'s
+/// shape. A parse failure aborts rather than clobbering whatever the
+/// client has stored there.
+fn rewrite_entry_at(client: McpClient, path: &std::path::Path, secrets: &McpSecrets) -> Result<(), String> {
+    let existing = if path.exists() {
+        std::fs::read_to_string(path).map_err(|e| format!("Failed to read {}: {e}", path.display()))?
+    } else {
+        String::new()
+    };
+    let current = mcp_clients::existing_entry(client.format(), &existing).map(|e| entry_env(&e)).unwrap_or_default();
+    let output = mcp_clients::merge_into(client.format(), &existing, native_entry(&merged_env(current, secrets, children_data_dir().as_deref())))
+        .map_err(|e| format!("{e} ({})", path.display()))?;
+    write_config_private(path, &output)
+}
+
+/// Write a client config with owner-only permissions (0600) on Unix,
+/// ATOMICALLY: the new contents go to a temporary file beside it, which
+/// then replaces the config in one rename. These files are the clients'
+/// whole state (`~/.claude.json` holds every project Claude Code knows),
+/// and a write in place that a crash or a full disk cut short left them
+/// empty. A config that is a symlink (a dotfiles checkout) is written
+/// where it points, so the link survives. The opt-in vault password
+/// embed puts a plaintext credential in this file, so it must never be
+/// left world-readable under the default umask (0644); on non-Unix the
+/// ACL story differs and there is no mode bit to set.
+fn write_config_private(path: &std::path::Path, contents: &str) -> Result<(), String> {
+    use std::io::Write as _;
+    let fail = |e: std::io::Error| format!("Failed to write {}: {e}", path.display());
+    // A link whose target does not exist yet is written where it points
+    // (the old in-place write created it there too).
+    let target = if path.is_symlink() {
+        match std::fs::canonicalize(path) {
+            Ok(t) => t,
+            Err(_) => {
+                let link = std::fs::read_link(path).map_err(fail)?;
+                match path.parent() {
+                    Some(dir) if link.is_relative() => dir.join(link),
+                    _ => link,
+                }
+            }
+        }
+    } else {
+        path.to_path_buf()
+    };
+    let dir = target
+        .parent()
+        .ok_or_else(|| format!("{} has no folder", target.display()))?;
+    let name = target
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    // Unique per write, not only per process: two writes of one file from
+    // this process (an install racing a refresh) must not share it.
+    static WRITE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let seq = WRITE.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let tmp = dir.join(format!(".{name}.obsidianssh-{}-{seq}.tmp", std::process::id()));
+    let mut options = std::fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt as _;
+        options.mode(0o600);
+    }
+    // A leftover of a write a predecessor with this PID never finished.
+    let _ = std::fs::remove_file(&tmp);
+    let written = (|| {
+        let mut file = options.open(&tmp)?;
+        file.write_all(contents.as_bytes())?;
+        file.sync_all()?;
+        drop(file);
+        std::fs::rename(&tmp, &target)
+    })();
+    if let Err(e) = written {
+        let _ = std::fs::remove_file(&tmp);
+        return Err(fail(e));
+    }
+    Ok(())
+}
+
+/// Write/merge the obsidianssh MCP entry into `client`'s config inside the
+/// WSL distro, for a client running inside WSL on a Windows host.
+/// Shells out to `wsl.exe` (default distro): reads the current config,
+/// merges in Rust so the file stays well-formed, and writes the result
+/// back through stdin so the payload never has to survive shell
+/// quoting. The entry shape comes from [`obsidianssh_mcp_entry_wsl`]
+/// (cmd.exe wrapper when a secret is set). Claude Code's legacy
+/// dead-letter `~/.claude/.mcp.json` gets its `obsidianssh` entry swept,
+/// mirroring the native install.
+///
+/// Only meaningful on Windows; returns an error elsewhere, where there
+/// is no `wsl.exe` to talk to.
+pub(crate) fn install_mcp_config_to_wsl(client: McpClient, secrets: &McpSecrets) -> Result<String, String> {
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = (client, secrets);
+        Err("WSL install is only available on the Windows build".to_string())
+    }
+    #[cfg(target_os = "windows")]
+    {
+        let markers = wsl_detect_markers()?;
+        if !client.detected_in_wsl(&markers) {
+            return Err(format!("{} is not installed in the WSL distro", client.name()));
+        }
+        let path = client
+            .wsl_config_path(&markers)
+            .ok_or_else(|| format!("{} cannot run inside WSL", client.name()))?;
+        let existing = wsl_read_home_file(&path)?;
+        let current = mcp_clients::existing_entry(client.format(), existing.trim())
+            .map(|e| entry_env(&e))
+            .unwrap_or_default();
+        let output = mcp_clients::merge_into(client.format(), existing.trim(), wsl_entry(&merged_env(current, secrets, children_data_dir().as_deref())))
+            .map_err(|e| format!("{e} (WSL {path})"))?;
+        wsl_write_home_file_private(&path, &output)?;
+
+        if client == McpClient::ClaudeCode {
+            // Sweep a stale `obsidianssh` entry out of the dead-letter path this
+            // app used to write inside the distro. Best-effort, jq-free:
+            // read, strip in Rust, write back only when something changed.
+            if let Ok(content) = wsl_read_home_file("~/.claude/.mcp.json")
+                && let Some(stripped) = mcp_clients::strip_entry(
+                    mcp_clients::ConfigFormat::JsonMcpServers,
+                    content.trim(),
+                )
+            {
+                let _ = wsl_write_home_file_private("~/.claude/.mcp.json", &stripped);
+            }
+        }
+
+        Ok(format!("{path} (WSL)"))
+    }
+}
+
+impl crate::app::ObsidianSsh {
+    /// The vault master password to embed in MCP client configs, or
+    /// `None` when the user hasn't opted in via the setup panel (or
+    /// the vault has no password). Read fresh from `master_password`
+    /// at every use: the password is never copied into MCP state, so
+    /// a vault lock naturally revokes access to it.
+    pub(crate) fn mcp_vault_pw(&self) -> Option<String> {
+        (self.vaults.cur().mcp.include_vault_password && self.vaults.cur().vault_ui.has_user_password)
+            .then(|| self.vaults.cur().master_password.clone())
+            .flatten()
+    }
+
+    /// The acting vault's MCP secrets, under its own variable names.
+    pub(crate) fn mcp_secrets(&self) -> McpSecrets {
+        let id = self.vaults.cur().id;
+        let names = obsidianssh_vault::device::installed()
+            .and_then(|d| d.entry(id))
+            .map(|e| obsidianssh_vault::device::mcp_env_names(&e))
+            .unwrap_or_else(|| obsidianssh_vault::device::McpEnvNames {
+                token: "OBSIDIANSSH_MCP_TOKEN".into(),
+                password: "OBSIDIANSSH_VAULT_PASSWORD".into(),
+            });
+        McpSecrets { names, token: self.vaults.cur().mcp.server_token.clone(), vault_pw: self.mcp_vault_pw() }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn a_known_wsl_distro_is_named_in_the_entry_and_an_unknown_one_keeps_the_old_name() {
+        let env = obsidianssh_core::paths::WSL_DISTRO_ENV;
+        let vars = vec![("OBSIDIANSSH_MCP_TOKEN".to_string(), "t".to_string()), (env.to_string(), "Old".to_string())];
+        let named = super::with_wsl_distro(vars.clone(), Some("Ubuntu-24.04"));
+        assert_eq!(named.iter().filter(|(k, _)| k == env).count(), 1);
+        assert!(named.contains(&(env.to_string(), "Ubuntu-24.04".to_string())));
+        assert_eq!(super::with_wsl_distro(vars.clone(), None), vars);
+        assert_eq!(super::with_wsl_distro(vars.clone(), Some("  ")), vars);
+        // Carried by the cmd.exe wrapper like every other variable.
+        let entry = super::obsidianssh_mcp_entry_wsl("/mnt/c/x/obsidianssh-mcp.exe", "C:\\x\\obsidianssh-mcp.exe", &named);
+        assert!(entry["args"][1].as_str().unwrap().contains("set OBSIDIANSSH_WSL_DISTRO=Ubuntu-24.04&& "));
+    }
+
+    #[test]
+    fn a_config_is_replaced_whole_and_a_symlink_survives() {
+        let dir = tempfile::tempdir().unwrap();
+        let real = dir.path().join("real.json");
+        std::fs::write(&real, "{\"old\": true}").unwrap();
+        super::write_config_private(&real, "{\"new\": true}").unwrap();
+        assert_eq!(std::fs::read_to_string(&real).unwrap(), "{\"new\": true}");
+        let leftovers: Vec<_> = std::fs::read_dir(dir.path())
+            .unwrap()
+            .flatten()
+            .filter(|e| e.file_name().to_string_lossy().ends_with(".tmp"))
+            .collect();
+        assert!(leftovers.is_empty(), "the temporary file is gone");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt as _;
+            let mode = std::fs::metadata(&real).unwrap().permissions().mode() & 0o777;
+            assert_eq!(mode, 0o600);
+            let link = dir.path().join("link.json");
+            std::os::unix::fs::symlink(&real, &link).unwrap();
+            super::write_config_private(&link, "{\"via\": \"link\"}").unwrap();
+            assert!(link.is_symlink(), "the link is kept");
+            assert_eq!(std::fs::read_to_string(&real).unwrap(), "{\"via\": \"link\"}");
+        }
+    }
+
+    use super::{
+        cmd_escape, entry_env, mcp_config_snippet_display, merged_env, obsidianssh_mcp_entry, obsidianssh_mcp_entry_wsl,
+        parse_cmd_sets, with_data_dir, wsl_mount_path, McpClient, McpSecrets,
+    };
+
+    fn vars(pairs: &[(&str, &str)]) -> Vec<(String, String)> {
+        pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect()
+    }
+
+    /// The first vault's secrets (plain names).
+    fn first(token: &str, pw: Option<&str>) -> McpSecrets {
+        McpSecrets {
+            names: obsidianssh_vault::device::McpEnvNames {
+                token: "OBSIDIANSSH_MCP_TOKEN".into(),
+                password: "OBSIDIANSSH_VAULT_PASSWORD".into(),
+            },
+            token: token.into(),
+            vault_pw: pw.map(str::to_string),
+        }
+    }
+
+    const WSL: &str = "/mnt/c/Users/wilso/.obsidianssh/bin/obsidianssh-mcp.exe";
+    const WIN: &str = "C:\\Users\\wilso\\.obsidianssh\\bin\\obsidianssh-mcp.exe";
+
+    // With a token, the WSL entry must launch through cmd.exe and inject
+    // the token Windows-side. A plain `env` block is wrong here: WSL does
+    // not forward env vars to a spawned Windows process, so the binary
+    // would see an empty token and reject every call.
+    #[test]
+    fn wsl_entry_with_token_wraps_through_cmd() {
+        let v = obsidianssh_mcp_entry_wsl(WSL, WIN, &vars(&[("OBSIDIANSSH_MCP_TOKEN", "deadbeef")]));
+        assert_eq!(v["command"], "/mnt/c/Windows/System32/cmd.exe");
+        let args = v["args"].as_array().expect("args array");
+        assert_eq!(args[0], "/c");
+        assert_eq!(args[1], format!("set OBSIDIANSSH_MCP_TOKEN=deadbeef&& {WIN}"));
+        // The token must not also leak into an env block that never arrives.
+        assert!(v.get("env").is_none());
+    }
+
+    // No token means auth is off; the direct /mnt/c/...exe launch already
+    // works, so no cmd.exe wrapper is emitted.
+    #[test]
+    fn wsl_entry_without_token_stays_direct() {
+        let v = obsidianssh_mcp_entry_wsl(WSL, WIN, &[]);
+        assert_eq!(v["command"], WSL);
+        assert!(v.get("args").is_none());
+        assert!(v.get("env").is_none());
+    }
+
+    // The vault password rides the same cmd.exe wrapper as the token
+    // (env blocks never cross the WSL boundary), chained with `set`,
+    // and cmd metacharacters in the password are ^-escaped.
+    #[test]
+    fn wsl_entry_with_vault_password_chains_sets() {
+        let v = obsidianssh_mcp_entry_wsl(
+            WSL,
+            WIN,
+            &vars(&[("OBSIDIANSSH_MCP_TOKEN", "deadbeef"), ("OBSIDIANSSH_VAULT_PASSWORD", "p&ss|word")]),
+        );
+        let args = v["args"].as_array().expect("args array");
+        assert_eq!(
+            args[1],
+            format!(
+                "set OBSIDIANSSH_MCP_TOKEN=deadbeef&& set OBSIDIANSSH_VAULT_PASSWORD=p^&ss^|word&& {WIN}"
+            )
+        );
+    }
+
+    // Password without a token still needs the wrapper: the direct
+    // launch has no way to carry the env var across the boundary.
+    #[test]
+    fn wsl_entry_with_only_vault_password_wraps_through_cmd() {
+        let v = obsidianssh_mcp_entry_wsl(WSL, WIN, &vars(&[("OBSIDIANSSH_VAULT_PASSWORD", "hunter2")]));
+        assert_eq!(v["command"], "/mnt/c/Windows/System32/cmd.exe");
+        let args = v["args"].as_array().expect("args array");
+        assert_eq!(args[1], format!("set OBSIDIANSSH_VAULT_PASSWORD=hunter2&& {WIN}"));
+    }
+
+    // The rendered snippet is what a bystander reads off the screen, so
+    // a masked panel must not spell out the token nor the embedded
+    // master password, in either shape. Structural, because the two
+    // spellings of the same value sit three lines apart and a future
+    // edit to one is easy to make without the other.
+    #[test]
+    fn masked_snippet_carries_neither_secret() {
+        const TOKEN: &str = "6f1c0b9a4d3e2f108c7b6a5948372615";
+        const PW: &str = "correct horse battery staple";
+        for client in McpClient::ALL {
+            for wsl in [false, true] {
+                let masked = mcp_config_snippet_display(client, &first(TOKEN, Some(PW)), wsl, false);
+                assert!(!masked.contains(TOKEN), "token leaked while masked (wsl={wsl})");
+                assert!(!masked.contains(PW), "vault password leaked while masked (wsl={wsl})");
+                let revealed = mcp_config_snippet_display(client, &first(TOKEN, Some(PW)), wsl, true);
+                assert!(revealed.contains(TOKEN), "token missing when revealed (wsl={wsl})");
+                assert!(revealed.contains(PW), "vault password missing when revealed (wsl={wsl})");
+            }
+        }
+    }
+
+    // Masking must not invent auth for a server running without it: an
+    // empty token keeps producing the env-free entry.
+    #[test]
+    fn masked_snippet_keeps_an_unset_token_unset() {
+        for client in McpClient::ALL {
+            let masked = mcp_config_snippet_display(client, &first("", None), false, false);
+            assert!(!masked.contains("OBSIDIANSSH_MCP_TOKEN"));
+            assert!(!masked.contains('\u{2022}'));
+        }
+    }
+
+    #[test]
+    fn cmd_escape_neutralizes_metacharacters() {
+        assert_eq!(cmd_escape("a&b|c<d>e^f(g)h"), "a^&b^|c^<d^>e^^f^(g^)h");
+        assert_eq!(cmd_escape("plain"), "plain");
+    }
+
+    // The native entry carries the vault password in the env block next
+    // to the token; without either the env block is omitted entirely.
+    #[test]
+    fn native_entry_env_block_shapes() {
+        let v = obsidianssh_mcp_entry("obsidianssh-mcp", &first("tok", Some("pw")).pairs());
+        assert_eq!(v["env"]["OBSIDIANSSH_MCP_TOKEN"], "tok");
+        assert_eq!(v["env"]["OBSIDIANSSH_VAULT_PASSWORD"], "pw");
+
+        let v = obsidianssh_mcp_entry("obsidianssh-mcp", &first("", Some("pw")).pairs());
+        assert!(v["env"].get("OBSIDIANSSH_MCP_TOKEN").is_none());
+        assert_eq!(v["env"]["OBSIDIANSSH_VAULT_PASSWORD"], "pw");
+
+        let v = obsidianssh_mcp_entry("obsidianssh-mcp", &first("", None).pairs());
+        assert!(v.get("env").is_none());
+    }
+
+    /// One entry serves every vault: a write for Work replaces Work's
+    /// variables and keeps the first vault's, and revoking Work's
+    /// password takes only that variable.
+    #[test]
+    fn a_vaults_write_keeps_the_other_vaults_variables() {
+        let on_disk = vars(&[("OBSIDIANSSH_MCP_TOKEN", "t1"), ("OBSIDIANSSH_VAULT_PASSWORD", "p1"), ("OBSIDIANSSH_MCP_TOKEN_WORK", "old")]);
+        let work = McpSecrets {
+            names: obsidianssh_vault::device::McpEnvNames {
+                token: "OBSIDIANSSH_MCP_TOKEN_WORK".into(),
+                password: "OBSIDIANSSH_VAULT_PASSWORD_WORK".into(),
+            },
+            token: "t2".into(),
+            vault_pw: Some("p2".into()),
+        };
+        let merged = merged_env(on_disk, &work, None);
+        assert_eq!(
+            merged,
+            vars(&[
+                ("OBSIDIANSSH_MCP_TOKEN", "t1"),
+                ("OBSIDIANSSH_VAULT_PASSWORD", "p1"),
+                ("OBSIDIANSSH_MCP_TOKEN_WORK", "t2"),
+                ("OBSIDIANSSH_VAULT_PASSWORD_WORK", "p2"),
+            ])
+        );
+        let revoked = merged_env(merged, &McpSecrets { vault_pw: None, ..work }, None);
+        assert!(revoked.iter().all(|(k, _)| k != "OBSIDIANSSH_VAULT_PASSWORD_WORK"));
+        assert!(revoked.iter().any(|(k, v)| k == "OBSIDIANSSH_VAULT_PASSWORD" && v == "p1"), "another vault's password stays");
+    }
+
+    /// An app on a portable `data` folder names its tree in the entry,
+    /// because the server it spawns from `<tree>/bin` would otherwise
+    /// read the profile's `.obsidianssh` (issue #271); an app on the profile's
+    /// tree takes a variable another copy left there out, and a rewrite
+    /// never doubles it.
+    #[test]
+    fn the_entry_names_the_apps_data_tree_when_it_is_not_the_profiles() {
+        let tree = std::path::Path::new("E:\\Obsidian SSH\\data");
+        let portable = merged_env(vars(&[("OBSIDIANSSH_MCP_TOKEN", "old")]), &first("tok", None), Some(tree));
+        assert_eq!(portable, vars(&[("OBSIDIANSSH_MCP_TOKEN", "tok"), ("OBSIDIANSSH_DATA_DIR", "E:\\Obsidian SSH\\data")]));
+        let again = merged_env(portable.clone(), &first("tok", None), Some(tree));
+        assert_eq!(again, portable, "a rewrite keeps one variable");
+        let profile = merged_env(portable, &first("tok", None), None);
+        assert_eq!(profile, vars(&[("OBSIDIANSSH_MCP_TOKEN", "tok")]));
+        // Alone, it still needs the WSL wrapper: an env block never
+        // crosses the boundary.
+        let v = obsidianssh_mcp_entry_wsl(WSL, WIN, &with_data_dir(Vec::new(), Some(tree)));
+        assert_eq!(v["args"][1], format!("set OBSIDIANSSH_DATA_DIR=E:\\Obsidian SSH\\data&& {WIN}"));
+        let v = obsidianssh_mcp_entry("obsidianssh-mcp", &with_data_dir(Vec::new(), Some(tree)));
+        assert_eq!(v["env"]["OBSIDIANSSH_DATA_DIR"], "E:\\Obsidian SSH\\data");
+    }
+
+    /// The WSL launch path follows any drive letter (a portable copy runs
+    /// from a USB key's), and leaves what it cannot place as written.
+    #[test]
+    fn the_wsl_path_follows_any_drive_letter() {
+        assert_eq!(wsl_mount_path(WIN), WSL);
+        assert_eq!(
+            wsl_mount_path("E:\\Obsidian SSH\\data\\bin\\obsidianssh-mcp.exe"),
+            "/mnt/e/Obsidian SSH/data/bin/obsidianssh-mcp.exe"
+        );
+        assert_eq!(wsl_mount_path("\\\\server\\share\\obsidianssh-mcp.exe"), "\\\\server\\share\\obsidianssh-mcp.exe");
+        assert_eq!(wsl_mount_path("1:\\x"), "1:\\x");
+        assert_eq!(wsl_mount_path("obsidianssh-mcp"), "obsidianssh-mcp");
+    }
+
+    /// What the WSL wrapper wrote is read back exactly, metacharacters
+    /// and a `&& ` inside a value included, so a second vault's write
+    /// keeps the first's password intact.
+    #[test]
+    fn the_wsl_wrapper_reads_back_what_it_wrote() {
+        let written = vars(&[("OBSIDIANSSH_MCP_TOKEN", "abc"), ("OBSIDIANSSH_VAULT_PASSWORD", "p&& x^y|(z)")]);
+        let entry = obsidianssh_mcp_entry_wsl(WSL, WIN, &written);
+        assert_eq!(entry_env(&entry), written);
+        assert!(parse_cmd_sets(WIN).is_empty(), "a bare launch has no variables");
+        let native = obsidianssh_mcp_entry("obsidianssh-mcp", &written);
+        assert_eq!(entry_env(&native), written);
+    }
+
+    /// Codex keeps the entry as TOML: it reads back as the JSON shape.
+    #[test]
+    fn a_toml_entry_reads_back() {
+        let written = vars(&[("OBSIDIANSSH_MCP_TOKEN", "abc"), ("OBSIDIANSSH_MCP_TOKEN_WORK", "def")]);
+        let text = crate::mcp_clients::render_snippet(
+            crate::mcp_clients::ConfigFormat::TomlMcpServers,
+            &obsidianssh_mcp_entry("obsidianssh-mcp", &written),
+        );
+        let entry = crate::mcp_clients::existing_entry(crate::mcp_clients::ConfigFormat::TomlMcpServers, &text).unwrap();
+        let mut read = entry_env(&entry);
+        read.sort();
+        assert_eq!(read, written);
+    }
+}

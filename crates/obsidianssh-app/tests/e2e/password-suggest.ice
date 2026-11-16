@@ -1,0 +1,213 @@
+viewport: 1200x750
+mode: Zen
+-----
+# Issue #117: a pane blocking on a password prompt offers the
+# credentials the vault holds, at the caret, and never sends one on its
+# own.
+#
+# `read -s -p` is the fixture rather than `sudo`: it prints the exact
+# prompt with echo off and blocks, which is the whole shape the
+# detector keys on, without needing a privileged binary on the CI box.
+# The last section takes the same shell into tmux (issue #232), which
+# used to be a file of its own with this same setup in front of it.
+#
+# Setup is coordinate-driven because none of it is text-selectable: a
+# key must exist before the keychain toolbar (and its "+ ADD" split
+# button) renders at all, and the identity form's fields are
+# text_inputs, whose placeholders the text selector cannot match.
+expect "Welcome to Obsidian SSH"
+click "Skip"
+click "Continue without password"
+expect "Create host"
+click "Keychain"
+expect "Add a key"
+# A key first: the empty keychain shows no toolbar, so "+ ADD" has
+# nowhere to be until the list is non-empty.
+click "Generate key"
+expect "Generate key"
+click (989, 137)
+type "qa-key"
+click "Generate"
+settle 300
+click "Done"
+settle 300
+# The "+ ADD" chevron. The screenshot before it is not decoration: menus
+# anchored on real widget bounds read the LAST DRAWN rect, and the
+# emulator only draws on `screenshot`.
+screenshot pwsuggest-keychain
+click (1155, 120)
+expect "New Identity"
+click "New Identity"
+expect "Save Identity"
+click (989, 147)
+type "ops-admin"
+click (1000, 225)
+type "wilson"
+click (1000, 304)
+type "hunter2"
+click "Save Identity"
+settle 300
+expect "ops-admin"
+screenshot pwsuggest-identity
+
+# A local shell: the popup's identity rows are origin-independent, so
+# this covers the whole path without a server.
+click (161, 20)
+expect "Local Shell"
+# A live PTY never lets the emulator quiesce, so every instruction from
+# here would otherwise burn the full timeout, the spawning click first.
+timeout 500
+click "Local Shell"
+settle 500
+wait 1500
+# The popup anchors at the caret, which needs the pane's DRAWN rect.
+# The emulator only draws on `screenshot`, so this one is load-bearing:
+# without it the pane has never reported its bounds and the popup has
+# nowhere to open. A real window draws every frame.
+screenshot pwsuggest-shell
+
+# 1. The prompt raises the popup, anchored at the caret.
+type "read -s -p '[sudo] password for wilson: ' PW"
+type enter
+wait 1200
+expect "Stored passwords"
+expect "ops-admin"
+screenshot pwsuggest-popup
+
+# 2. Esc hides it and the prompt is still waiting: nothing was sent.
+type escape
+wait 400
+absent "Stored passwords"
+type enter
+wait 600
+
+# 3. A prompt asking the user to CHOOSE a password never offers one.
+# `passwd` would help them overwrite their own password with itself.
+type "read -s -p 'New password: ' PW2"
+type enter
+wait 1200
+absent "Stored passwords"
+type enter
+wait 600
+
+# 4. Clicking a row sends that credential, exactly and only it. No
+# `move` first, deliberately: the click must work with the cursor
+# already sitting where the popup opened, which is the normal case
+# (the popup anchors at the caret, where the user last clicked) and
+# the one where iced never fires a hover.
+type "read -s -p 'Password: ' PW3"
+type enter
+wait 1200
+expect "Stored passwords"
+click (200, 198)
+wait 800
+absent "Stored passwords"
+type "echo [$PW3]"
+type enter
+wait 800
+# What landed in the shell can only be checked visually: text selectors
+# do not reach inside the terminal canvas. The screenshot must show
+# `[hunter2]`, the stored password and nothing else.
+screenshot pwsuggest-sent
+
+# 5. The popup follows its prompt. Cancelling the prompt (Ctrl+C ends
+# the `read`, the shell prompt returns) must close the popup on the
+# next output: a pick on a leftover popup would type the password into
+# an ECHOING shell, putting it on screen, in the scrollback and in the
+# session recording.
+type "read -s -p 'Password: ' PW4"
+type enter
+wait 1200
+expect "Stored passwords"
+type ctrl+c
+wait 800
+absent "Stored passwords"
+
+# 6. A prompt on the LAST terminal row (where a shell prompt lives,
+# so this is the ordinary case) opens the popup ABOVE the caret. The
+# clamp alone only slid the box up until its bottom met the window's,
+# which both clipped the hint line off and covered the prompt line the
+# user is answering.
+#
+# The click coordinate IS the assertion here: it lands on the row only
+# where the flipped box draws it (the clamped placement put that row
+# ~80 px lower, on top of the prompt itself). Text selectors cannot
+# read a clipped box, so the exact geometry is asserted in the unit
+# tests next to `popover_y`; this covers it end to end. It depends on
+# the vault holding exactly ONE credential (the row sits at y=640 only
+# in a 96 px popup): a second one would move the rows and this click
+# would send the wrong password while still reading as a pass.
+type "seq 1 60"
+type enter
+wait 1000
+type "read -s -p 'Password: ' PW5"
+type enter
+wait 1500
+expect "Stored passwords"
+screenshot pwsuggest-flipped
+click (300, 640)
+wait 800
+absent "Stored passwords"
+type "echo [$PW5]"
+type enter
+wait 800
+# Must show `[hunter2]`: the click reached the row, not the terminal.
+screenshot pwsuggest-flipped-sent
+
+# 7. Inside tmux (issue #232). The multiplexer lives on the alternate
+# screen, where the prompt shares its row with the pane beside it and
+# the screen may belong to an editor instead, so the detector cuts the
+# row at tmux's divider and only accepts the exact shapes programs
+# print. The tmux socket lives inside the sandbox (TMUX_TMPDIR), which
+# the runner wipes per test, and `-f /dev/null` keeps a runner's own
+# config out of the layout.
+#
+# 7a. Split tmux left / right. The left pane prints words that would
+# both carry and exclude a match if the row were read from column 0.
+type "export TMUX_TMPDIR=$HOME/.obsidianssh"
+type enter
+type "tmux -L e2e -f /dev/null new-session"
+type enter
+wait 1500
+type "echo old password new; tmux split-window -h"
+type enter
+wait 1500
+screenshot pwsuggest-tmux-split
+
+# 7b. A prompt in the right pane raises the popup at its caret.
+type "read -s -p '[sudo] password for wilson: ' PW"
+type enter
+wait 1500
+expect "Stored passwords"
+expect "ops-admin"
+screenshot pwsuggest-tmux-popup
+
+# 7c. Picking sends that credential into the pane that asked.
+click "ops-admin"
+wait 800
+absent "Stored passwords"
+type "echo [$PW]"
+type enter
+wait 800
+# Must show `[hunter2]` in the RIGHT pane.
+screenshot pwsuggest-tmux-sent
+
+# 7d. What only looks like a prompt stays quiet on the alternate screen:
+# a lower-case key an editor could be sitting after, and a prompt that
+# asks the user to CHOOSE a password.
+type "read -p 'password:' X"
+type enter
+wait 1200
+absent "Stored passwords"
+type enter
+wait 600
+type "read -s -p 'New Password: ' X"
+type enter
+wait 1200
+absent "Stored passwords"
+type enter
+wait 600
+
+type "tmux -L e2e kill-server"
+type enter
+wait 800

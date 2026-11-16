@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Measure how solid the terminal's glyph stems actually are.
 
-    cargo build -q -p oryxis-app --features harness
+    cargo build -q -p obsidianssh-app --features harness
     python3 scripts/stem_contrast.py
 
 Prints, for one row of 41 identical `l` glyphs rendered by the REAL app
@@ -45,7 +45,7 @@ import time
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-BIN = REPO / "target" / "debug" / "oryxis"
+BIN = REPO / "target" / "debug" / "obsidianssh"
 # One row of 41 `l`: a bare vertical stem, repeated far enough to walk
 # every subpixel phase several times over.
 SAMPLE = 41
@@ -90,7 +90,7 @@ def drive(port: int) -> Path:
         )
         + "\n",
     )
-    home = os.environ.get("ORYXIS_HARNESS_HOME", "/tmp/oryxis-harness")
+    home = os.environ.get("OBSIDIANSSH_HARNESS_HOME", "/tmp/obsidianssh-harness")
     return Path(home) / "shots" / "stem-contrast.png"
 
 
@@ -174,7 +174,7 @@ def main() -> None:
         return
 
     if not BIN.exists():
-        sys.exit("build it first: cargo build -q -p oryxis-app --features harness")
+        sys.exit("build it first: cargo build -q -p obsidianssh-app --features harness")
 
     log = Path("/tmp/stem-contrast-serve.log")
     with log.open("w") as sink:

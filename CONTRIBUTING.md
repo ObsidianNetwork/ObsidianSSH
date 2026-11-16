@@ -1,17 +1,17 @@
-# Contributing to Oryxis
+# Contributing to Obsidian SSH
 
-Thanks for considering a contribution. Oryxis is a solo-maintained project
+Thanks for considering a contribution. Obsidian SSH is a solo-maintained project
 that ships small and often; the guidelines below keep reviews fast.
 
 ## Before you start
 
 - **Bugs:** open an issue with the
-  [bug template](https://github.com/wilsonglasser/oryxis/issues/new/choose).
+  [bug template](https://github.com/ObsidianNetwork/ObsidianSSH/issues/new/choose).
   Settings > Advanced > "Copy environment info" gives you the environment
   block; the opt-in debug log in the same section often captures the
   failure.
 - **Features / large changes:** open an issue (or a
-  [Discussion](https://github.com/wilsonglasser/oryxis/discussions)) first.
+  [Discussion](https://github.com/ObsidianNetwork/ObsidianSSH/discussions)) first.
   The [roadmap](README.md#roadmap) is deliberate; agreeing on scope before
   code avoids wasted work on both sides.
 - **Language:** issues and discussions written in Chinese are welcome
@@ -29,14 +29,14 @@ Prerequisites are the same as
 rustup, plus the platform packages listed there.
 
 ```bash
-git clone https://github.com/wilsonglasser/oryxis.git
-cd oryxis
+git clone https://github.com/ObsidianNetwork/ObsidianSSH.git
+cd obsidianssh
 cargo run
 ```
 
 `docs/ARCHITECTURE.md` maps the 30-crate workspace; most UI work lands in
-`crates/oryxis-app`, engine work in `oryxis-ssh` / `oryxis-vault` /
-`oryxis-sync` / `oryxis-terminal`.
+`crates/obsidianssh-app`, engine work in `obsidianssh-ssh` / `obsidianssh-vault` /
+`obsidianssh-sync` / `obsidianssh-terminal`.
 
 ## Quality gates
 
@@ -57,7 +57,7 @@ A few rules that are easy to miss and will come up in review:
   only the files you touched).
 - **i18n is not optional.** Every user-facing string goes through
   `crate::i18n::t("key")`, and every new key must be added to **all 23**
-  language modules in `crates/oryxis-app/src/i18n/`. English is the
+  language modules in `crates/obsidianssh-app/src/i18n/`. English is the
   fallback table; the other languages return `Option` and fall back to it.
 - **RTL awareness.** Horizontal arrangements that should mirror under RTL
   use `widgets::dir_row(...)` (not the `row!` macro) and
@@ -65,7 +65,7 @@ A few rules that are easy to miss and will come up in review:
   `i18n::is_rtl_layout()`.
 - **Keyboard navigation.** Every new interactive surface (view, modal,
   menu, row list) must be wired into the keynav framework
-  (`crates/oryxis-app/src/keynav/`) in the same change. A mouse-only
+  (`crates/obsidianssh-app/src/keynav/`) in the same change. A mouse-only
   surface is an incomplete feature here.
 - **Button feedback.** Every clickable control shows hover and press
   feedback (branch the style closure on `button::Status`); icon-only
@@ -84,7 +84,7 @@ A few rules that are easy to miss and will come up in review:
 ## Contributing a theme
 
 Themes are the one contribution that needs no Rust and no local setup.
-Export yours from Oryxis, add three attribution lines, and drop the file
+Export yours from Obsidian SSH, add three attribution lines, and drop the file
 into `themes/terminal/` or `themes/ui/` through GitHub's web editor; the
 index the gallery reads is regenerated automatically on merge.
 

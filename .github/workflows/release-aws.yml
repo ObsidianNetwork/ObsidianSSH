@@ -1,9 +1,9 @@
 name: Release AWS plugin
 
 # Triggered by tags of the form `aws-v0.4.2`. Builds the
-# `oryxis-cloud-aws-plugin` binary for every supported platform,
+# `obsidianssh-cloud-aws-plugin` binary for every supported platform,
 # signs each with the production Ed25519 key (from the
-# `ORYXIS_SIGNING_KEY` secret), uploads everything to the GitHub
+# `OBSIDIANSSH_SIGNING_KEY` secret), uploads everything to the GitHub
 # Release, and finally builds the `aws.json` manifest from the
 # same-release assets and uploads that too.
 #
@@ -68,28 +68,28 @@ jobs:
           key: aws-plugin-${{ matrix.label }}-${{ matrix.runner }}-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Build plugin (release)
-        run: cargo build --release -p oryxis-cloud-aws-plugin --target ${{ matrix.target }}
+        run: cargo build --release -p obsidianssh-cloud-aws-plugin --target ${{ matrix.target }}
 
       - name: Strip (unix)
         if: runner.os != 'Windows'
-        run: strip target/${{ matrix.target }}/release/oryxis-cloud-aws-plugin${{ matrix.ext }}
+        run: strip target/${{ matrix.target }}/release/obsidianssh-cloud-aws-plugin${{ matrix.ext }}
 
       - name: Build signer
-        run: cargo build --release -p oryxis-plugin-signer
+        run: cargo build --release -p obsidianssh-plugin-signer
 
       - name: Sign + hash
         shell: bash
         env:
-          ORYXIS_SIGNING_KEY: ${{ secrets.ORYXIS_SIGNING_KEY }}
+          OBSIDIANSSH_SIGNING_KEY: ${{ secrets.OBSIDIANSSH_SIGNING_KEY }}
         run: |
           set -euo pipefail
-          BIN="target/${{ matrix.target }}/release/oryxis-cloud-aws-plugin${{ matrix.ext }}"
-          OUT="dist/oryxis-cloud-aws-plugin-${{ matrix.label }}${{ matrix.ext }}"
+          BIN="target/${{ matrix.target }}/release/obsidianssh-cloud-aws-plugin${{ matrix.ext }}"
+          OUT="dist/obsidianssh-cloud-aws-plugin-${{ matrix.label }}${{ matrix.ext }}"
           mkdir -p dist
           cp "$BIN" "$OUT"
           # The signer prints `sha256 = …`, `signature_b64 = …`,
           # and `size = …` on three separate lines.
-          ./target/release/oryxis-plugin-signer sign "$BIN" > "$OUT.signinfo"
+          ./target/release/obsidianssh-plugin-signer sign "$BIN" > "$OUT.signinfo"
           grep '^sha256'        "$OUT.signinfo" | awk '{print $3}' > "$OUT.sha256"
           grep '^signature_b64' "$OUT.signinfo" | awk '{print $3}' > "$OUT.sig"
           grep '^size'          "$OUT.signinfo" | awk '{print $3}' > "$OUT.size"
@@ -103,10 +103,10 @@ jobs:
           # website's /releases/latest/ download links target the app release.
           make_latest: false
           files: |
-            dist/oryxis-cloud-aws-plugin-${{ matrix.label }}${{ matrix.ext }}
-            dist/oryxis-cloud-aws-plugin-${{ matrix.label }}${{ matrix.ext }}.sig
-            dist/oryxis-cloud-aws-plugin-${{ matrix.label }}${{ matrix.ext }}.sha256
-            dist/oryxis-cloud-aws-plugin-${{ matrix.label }}${{ matrix.ext }}.size
+            dist/obsidianssh-cloud-aws-plugin-${{ matrix.label }}${{ matrix.ext }}
+            dist/obsidianssh-cloud-aws-plugin-${{ matrix.label }}${{ matrix.ext }}.sig
+            dist/obsidianssh-cloud-aws-plugin-${{ matrix.label }}${{ matrix.ext }}.sha256
+            dist/obsidianssh-cloud-aws-plugin-${{ matrix.label }}${{ matrix.ext }}.size
 
   manifest:
     name: Publish manifest
@@ -132,9 +132,9 @@ jobs:
           mkdir -p assets
           gh release download "${{ steps.tag.outputs.tag }}" \
             --repo "${{ github.repository }}" \
-            --pattern 'oryxis-cloud-aws-plugin-*.sha256' \
-            --pattern 'oryxis-cloud-aws-plugin-*.sig' \
-            --pattern 'oryxis-cloud-aws-plugin-*.size' \
+            --pattern 'obsidianssh-cloud-aws-plugin-*.sha256' \
+            --pattern 'obsidianssh-cloud-aws-plugin-*.sig' \
+            --pattern 'obsidianssh-cloud-aws-plugin-*.size' \
             --dir assets
 
       - name: Build aws.json
@@ -150,14 +150,14 @@ jobs:
           # scalar's indent rules: a dedented `EOF` ends the YAML scalar
           # before bash sees it).
           binaries='[]'
-          for sha_file in assets/oryxis-cloud-aws-plugin-*.sha256; do
+          for sha_file in assets/obsidianssh-cloud-aws-plugin-*.sha256; do
             [ -f "$sha_file" ] || continue
             base="${sha_file%.sha256}"
             name=$(basename "$base")
             # Parse `os` + `arch` from the filename:
-            #   oryxis-cloud-aws-plugin-linux-x86_64
-            #   oryxis-cloud-aws-plugin-windows-aarch64.exe
-            stripped="${name#oryxis-cloud-aws-plugin-}"
+            #   obsidianssh-cloud-aws-plugin-linux-x86_64
+            #   obsidianssh-cloud-aws-plugin-windows-aarch64.exe
+            stripped="${name#obsidianssh-cloud-aws-plugin-}"
             stripped="${stripped%.exe}"
             os="${stripped%-*}"
             arch="${stripped##*-}"

@@ -1,0 +1,24 @@
+[package]
+name = "obsidianssh-cloud-gcp-plugin"
+version = "0.1.0"
+edition = "2021"
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "obsidianssh-cloud-gcp-plugin"
+path = "src/main.rs"
+
+[dependencies]
+# The GCP provider, a thin wrapper over the `gcloud` CLI. Like the K8s
+# plugin there is no heavy SDK here; it stays a plugin (not in-process)
+# only for architectural consistency with `aws` / `k8s`.
+obsidianssh-cloud-gcp = { workspace = true }
+obsidianssh-cloud = { workspace = true }
+obsidianssh-plugin-protocol = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

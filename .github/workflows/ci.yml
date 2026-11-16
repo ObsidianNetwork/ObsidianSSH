@@ -13,8 +13,8 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
-  ORYXIS_SIGNALING_URL: ${{ secrets.ORYXIS_SIGNALING_URL }}
-  ORYXIS_SIGNALING_TOKEN: ${{ secrets.ORYXIS_SIGNALING_TOKEN }}
+  OBSIDIANSSH_SIGNALING_URL: ${{ secrets.OBSIDIANSSH_SIGNALING_URL }}
+  OBSIDIANSSH_SIGNALING_TOKEN: ${{ secrets.OBSIDIANSSH_SIGNALING_TOKEN }}
 
 jobs:
   check:
@@ -120,7 +120,7 @@ jobs:
           key: ${{ runner.os }}-cargo-e2e-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Build with the harness feature
-        run: cargo build --locked -p oryxis-app --features harness
+        run: cargo build --locked -p obsidianssh-app --features harness
 
       # The sandbox HOME lives in the workspace, not under /tmp, purely so
       # the artifact glob below can name it. A `mktemp -d` sandbox forces
@@ -140,7 +140,7 @@ jobs:
           run_suite() {
             rm -rf "$RUNNER_TEMP/e2e-home"
             mkdir -p "$RUNNER_TEMP/e2e-home"
-            target/debug/oryxis --harness-run crates/oryxis-app/tests/e2e \
+            target/debug/obsidianssh --harness-run crates/obsidianssh-app/tests/e2e \
               --harness-shard "${{ matrix.shard }}/3" \
               --home "$RUNNER_TEMP/e2e-home"
           }

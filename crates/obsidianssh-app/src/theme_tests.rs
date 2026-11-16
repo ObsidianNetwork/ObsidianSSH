@@ -1,0 +1,247 @@
+//! Contrast guards for the bundled themes. WCAG 2.x AA needs ≥ 4.5:1
+//! for body text and ≥ 3.0:1 for large/bold UI labels. We require the
+//! looser bound for accent/success/warning/error backgrounds because
+//! the chip labels we draw on them are bold UI text, not running copy.
+
+use super::*;
+
+const LARGE_TEXT_THRESHOLD: f32 = 3.0;
+const BODY_TEXT_THRESHOLD: f32 = 4.5;
+
+/// All theme tables we ship, DERIVED from `AppTheme::ALL` so a new
+/// built-in can never ship outside the contrast guards. A hand-kept
+/// list here once silently skipped One Dark and Solarized Dark.
+fn all_themes() -> Vec<(&'static str, &'static ThemeColors)> {
+    AppTheme::ALL
+        .iter()
+        .map(|t| (t.name(), t.colors_ref()))
+        .collect()
+}
+
+#[test]
+fn contrast_suite_covers_every_builtin() {
+    assert_eq!(all_themes().len(), AppTheme::ALL.len());
+}
+
+#[test]
+fn contrast_ratio_known_pairs() {
+    // Spot-check the formula against pairs with well-known ratios.
+    // Black-on-white must be exactly 21.0; white-on-white 1.0.
+    let r = contrast_ratio(Color::BLACK, Color::WHITE);
+    assert!((r - 21.0).abs() < 0.01, "black/white = {r}");
+    let r = contrast_ratio(Color::WHITE, Color::WHITE);
+    assert!((r - 1.0).abs() < 0.001, "white/white = {r}");
+}
+
+#[test]
+fn contrast_text_for_picks_the_better_option() {
+    // The helper must always return whichever foreground gives the
+    // higher ratio against the supplied background.
+    let pure_black = Color::BLACK;
+    let pure_white = Color::WHITE;
+    assert_eq!(contrast_text_for(pure_black), pure_white);
+    assert!(contrast_text_for(pure_white).r < 0.2);
+}
+
+#[test]
+fn body_text_meets_aa_on_surface_in_every_theme() {
+    // text_primary on bg_primary / bg_surface / bg_sidebar is the
+    // baseline of every screen, anything below 4.5 makes the app
+    // unreadable for users on AA-compliant displays.
+    for (name, t) in all_themes() {
+        for (bg_label, bg) in [
+            ("bg_primary", t.bg_primary),
+            ("bg_surface", t.bg_surface),
+            ("bg_sidebar", t.bg_sidebar),
+        ] {
+            let r = contrast_ratio(t.text_primary, bg);
+            assert!(
+                r >= BODY_TEXT_THRESHOLD,
+                "{name}: text_primary on {bg_label} contrast {r:.2} < {BODY_TEXT_THRESHOLD}",
+            );
+        }
+    }
+}
+
+#[test]
+fn buttons_using_helper_meet_large_text_aa() {
+    // `contrast_text_for` picks white on dark-ish bgs and near-black
+    // on pale ones, biased toward visual consistency rather than the
+    // strict ≥ 3.0 large-text bound, flat-UI convention is white on
+    // saturated colors even when WCAG is borderline (Termius cyan
+    // accent_hover, ObsidianSshDark accent_hover, etc. land between 2.5
+    // and 3.0). Test only that the helper picks the better of the
+    // two candidates and that the worst case is still distinguishable
+    // Loose floor (≥ 1.7 : 1), keeping the helper's "always white on
+    // saturated bgs" policy means a few bright-yet-not-quite-pale
+    // success / warning fills (ObsidianSshDark warning yellow lands at
+    // ~1.77) sit below WCAG. The trade-off is intentional: visual
+    // consistency with the surrounding `text_primary` buttons matters
+    // more than a strict ratio, and any future theme that drops below
+    // 1.7 is genuinely unreadable and should be tuned, not papered
+    // over by flipping foregrounds for a single button.
+    const VISUAL_FLOOR: f32 = 1.7;
+    for (name, t) in all_themes() {
+        for (bg_label, bg) in [
+            ("accent", t.accent),
+            ("accent_hover", t.accent_hover),
+            ("success", t.success),
+            ("warning", t.warning),
+            ("error", t.error),
+        ] {
+            let fg = contrast_text_for(bg);
+            let r = contrast_ratio(fg, bg);
+            assert!(
+                r >= VISUAL_FLOOR,
+                "{name}: contrast_text_for({bg_label}) only {r:.2} : 1 (need ≥ {VISUAL_FLOOR} for legibility)",
+            );
+        }
+    }
+}
+
+#[test]
+fn readable_accent_repairs_unreadable_brand_colours() {
+    // Issue #79: AlmaLinux's brand colour is pure black, which painted
+    // the active-tab label invisible on dark themes. The validator must
+    // lift it to AA small-text contrast over every shipped strip
+    // background, and symmetrically darken a pale brand colour
+    // (OpenBSD yellow) on the light themes.
+    let alma_black = Color::from_rgb8(0x00, 0x00, 0x00);
+    let openbsd_yellow = Color::from_rgb8(0xFA, 0xDA, 0x64);
+    for (name, t) in all_themes() {
+        for (accent_label, accent) in
+            [("alma black", alma_black), ("openbsd yellow", openbsd_yellow)]
+        {
+            let fixed = readable_accent_on(accent, t.bg_sidebar);
+            let r = contrast_ratio(fixed, t.bg_sidebar);
+            assert!(
+                r >= BODY_TEXT_THRESHOLD,
+                "{name}: repaired {accent_label} on bg_sidebar only {r:.2} < {BODY_TEXT_THRESHOLD}",
+            );
+        }
+    }
+}
+
+#[test]
+fn readable_accent_keeps_passing_colours_untouched() {
+    // Brand identity must survive bit-for-bit when no repair is needed;
+    // text_primary on bg_sidebar is asserted ≥ 4.5 above, so it makes a
+    // guaranteed-passing probe in every theme.
+    for (name, t) in all_themes() {
+        let fixed = readable_accent_on(t.text_primary, t.bg_sidebar);
+        assert_eq!(
+            fixed, t.text_primary,
+            "{name}: passing colour was altered by the validator",
+        );
+    }
+}
+
+#[test]
+fn muted_label_remains_legible_against_surface() {
+    // text_secondary is used for form labels (e.g. "Forward SSH Agent"
+    // beside the toggle). It can be a softer ratio than body text but
+    // still has to pass the large-text bar against the surface bgs.
+    for (name, t) in all_themes() {
+        for (bg_label, bg) in [
+            ("bg_primary", t.bg_primary),
+            ("bg_surface", t.bg_surface),
+        ] {
+            let r = contrast_ratio(t.text_secondary, bg);
+            assert!(
+                r >= LARGE_TEXT_THRESHOLD,
+                "{name}: text_secondary on {bg_label} contrast {r:.2} < {LARGE_TEXT_THRESHOLD}",
+            );
+        }
+    }
+}
+
+#[test]
+fn terminal_alpha_needs_both_a_transparent_window_and_a_reduced_setting() {
+    use crate::theme::{
+        MIN_TERMINAL_OPACITY, OPACITY_STEPS, alpha_for_opacity, set_terminal_opacity,
+        set_window_transparent, terminal_opacity,
+    };
+    // The global setting is what the app passes when a host has no
+    // override, so the test drives it through the same door.
+    let terminal_bg_alpha = || alpha_for_opacity(terminal_opacity());
+    // One test, not four: these are process globals, and parallel test
+    // threads sharing them would make separate cases flaky.
+
+    // An opaque window can never composite with the desktop, so the
+    // setting alone must not make anything translucent: that is the
+    // state right after the user lowers the slider, before the restart.
+    set_window_transparent(false);
+    set_terminal_opacity(70);
+    assert_eq!(terminal_bg_alpha(), None);
+
+    // With the surface in place the same setting applies, live.
+    set_window_transparent(true);
+    assert_eq!(terminal_bg_alpha(), Some(0.7));
+
+    // Back to fully opaque: no alpha, no translucent layer, even though
+    // the window itself can still composite.
+    set_terminal_opacity(100);
+    assert_eq!(terminal_bg_alpha(), None);
+
+    // A hand-edited vault row below the floor is clamped, not obeyed:
+    // the picker never offers it and the text would be unreadable.
+    set_terminal_opacity(1);
+    assert_eq!(terminal_opacity(), MIN_TERMINAL_OPACITY);
+
+    // Every offered step round-trips, so the picker can't show a value
+    // the store would rewrite under it.
+    for step in OPACITY_STEPS {
+        set_terminal_opacity(step);
+        assert_eq!(terminal_opacity(), step, "step {step} did not round-trip");
+    }
+
+    // Leave the process on the default the rest of the suite expects.
+    set_window_transparent(false);
+    set_terminal_opacity(100);
+}
+
+// Per-window themes: a window on another vault draws in its vault's
+// theme while the process-wide one stays the vault `update` works on.
+// Scope only (thread-local): these never touch the process-wide theme,
+// which other tests of the binary read.
+
+#[test]
+fn a_scoped_theme_answers_inside_and_the_global_one_after() {
+    let outside_colors = ObsidianSshColors::t() as *const ThemeColors;
+    let outside_theme = AppTheme::active();
+    let other = AppTheme::ALL
+        .iter()
+        .copied()
+        .find(|t| *t != outside_theme)
+        .expect("more than one built-in theme");
+    with_selection(ThemeSelection::builtin(other), || {
+        assert_eq!(AppTheme::active(), other);
+        assert!(std::ptr::eq(ObsidianSshColors::t(), other.colors_ref()));
+    });
+    assert_eq!(AppTheme::active(), outside_theme);
+    assert!(std::ptr::eq(ObsidianSshColors::t(), outside_colors));
+}
+
+#[test]
+fn custom_colors_in_scope_win_over_their_builtin() {
+    let colors: &'static ThemeColors = Box::leak(Box::new(*AppTheme::Nord.colors_ref()));
+    with_selection(ThemeSelection::custom(AppTheme::ObsidianSshDark, colors), || {
+        assert!(std::ptr::eq(ObsidianSshColors::t(), colors));
+        assert_eq!(AppTheme::active(), AppTheme::ObsidianSshDark);
+    });
+}
+
+#[test]
+fn nested_scopes_restore_the_outer_one() {
+    with_selection(ThemeSelection::builtin(AppTheme::Dracula), || {
+        with_selection(ThemeSelection::builtin(AppTheme::Nord), || {
+            assert_eq!(AppTheme::active(), AppTheme::Nord);
+        });
+        assert_eq!(AppTheme::active(), AppTheme::Dracula);
+        {
+            let _scope = SelectionScope::enter(ThemeSelection::builtin(AppTheme::Monokai));
+            assert_eq!(AppTheme::active(), AppTheme::Monokai);
+        }
+        assert_eq!(AppTheme::active(), AppTheme::Dracula);
+    });
+}

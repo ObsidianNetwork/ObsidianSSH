@@ -3,8 +3,8 @@
 Fonts in this directory ship inside the binary (see `OFL.txt` for the
 bundled Noto and SauceCodePro / Symbols Nerd Font notices). The fonts
 below are NOT bundled: the app downloads them on demand, verifies them
-against SHA-256 pins baked into `crates/oryxis-app/src/fonts.rs`, and
-caches them under `~/.oryxis/fonts/`. Each downloaded TTF keeps its
+against SHA-256 pins baked into `crates/obsidianssh-app/src/fonts.rs`, and
+caches them under `~/.obsidianssh/fonts/`. Each downloaded TTF keeps its
 own embedded license metadata; this file records provenance and
 license terms for the pinned set.
 

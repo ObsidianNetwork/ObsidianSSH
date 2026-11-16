@@ -1,7 +1,7 @@
 /target/
 # The GIF plugin crate lives outside the workspace (own lockfile,
 # own target dir); its Cargo.lock IS committed, its target isn't.
-/crates/oryxis-gif/target/
+/crates/obsidianssh-gif/target/
 .idea
 .env
 signaling-worker/wrangler.jsonc
@@ -43,4 +43,4 @@ nohup_x11.out
 
 # Harness batch-runner dumps for a failed .ice test (the trimmed script
 # + a screenshot). Build output, not source.
-crates/oryxis-app/tests/e2e/errors/
+crates/obsidianssh-app/tests/e2e/errors/

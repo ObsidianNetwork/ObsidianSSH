@@ -1,0 +1,288 @@
+//! Settings -> Terminal: the user's own highlight rules (C6).
+//!
+//! The list is a preference, so unlike the vault-backed families every
+//! change here ends in one `save_highlight_rules` (persist the JSON,
+//! recompile). The editor works on a copy: a pattern being typed is not
+//! a pattern the terminal should be matching against, and half of a
+//! regex is usually not a regex at all.
+
+use super::*;
+
+use obsidianssh_core::models::{HighlightRule, TriggerAction, MAX_HIGHLIGHT_RULES, MAX_PATTERN_LEN};
+
+use crate::state::RuleScope;
+
+/// The append / replace pick-list, in display order.
+pub(crate) fn host_mode_options() -> [&'static str; 2] {
+    [
+        crate::i18n::t("hl_host_mode_append"),
+        crate::i18n::t("hl_host_mode_replace"),
+    ]
+}
+
+/// The action pick-list, in display order.
+pub(crate) fn action_options() -> Vec<(TriggerAction, &'static str)> {
+    vec![
+        (TriggerAction::None, crate::i18n::t("hl_action_none")),
+        (TriggerAction::Notify, crate::i18n::t("hl_action_notify")),
+        (TriggerAction::Beep, crate::i18n::t("hl_action_beep")),
+        (
+            TriggerAction::Snippet { id: String::new() },
+            crate::i18n::t("hl_action_snippet"),
+        ),
+    ]
+}
+
+/// The localized label for an action, for the pick-list's current value.
+pub(crate) fn action_label(action: &TriggerAction) -> &'static str {
+    match action {
+        TriggerAction::None => crate::i18n::t("hl_action_none"),
+        TriggerAction::Notify => crate::i18n::t("hl_action_notify"),
+        TriggerAction::Beep => crate::i18n::t("hl_action_beep"),
+        TriggerAction::Snippet { .. } => crate::i18n::t("hl_action_snippet"),
+    }
+}
+
+impl ObsidianSsh {
+    /// The rule list a scope addresses. Settings edits the global one;
+    /// the host editor edits the open form's, which is committed to the
+    /// connection when the editor is saved.
+    fn rules_of(&mut self, scope: RuleScope) -> &mut Vec<HighlightRule> {
+        match scope {
+            RuleScope::Global => &mut self.vaults.cur_mut().prefs.highlight_rules,
+            RuleScope::Host => &mut self.vaults.cur_mut().editor_form.highlight_rules.rules,
+        }
+    }
+
+    /// Persist after a change. The global list writes its setting
+    /// straight away; a host's rules are part of the editor's working
+    /// copy and reach the vault when the host is saved, so there is
+    /// nothing to write here.
+    fn commit_rules(&mut self, scope: RuleScope) {
+        if scope == RuleScope::Global {
+            self.save_highlight_rules();
+        }
+    }
+
+    /// Close the editor modal, discarding its working copy. Only the
+    /// editor's own fields are cleared: `scope` and `confirm_delete`
+    /// describe the LIST behind the modal (which list is being shown,
+    /// which row is asking to be deleted), and answering one of those
+    /// by closing the other surface would be a surprise.
+    pub(crate) fn close_highlight_rule_editor(&mut self) {
+        let form = &mut self.vaults.cur_mut().highlight_rule_form;
+        form.editing = None;
+        form.creating = false;
+        form.rule = HighlightRule::default();
+        form.error = None;
+    }
+
+    pub(super) fn handle_settings_highlight_rules(
+        &mut self,
+        message: SettingsMessage,
+    ) -> Result<Task<Message>, SettingsMessage> {
+        match message {
+            // Opening the editor takes the keyboard focus into it. That is
+            // the obvious thing for a form that opens ready to be typed
+            // into, and it is also load-bearing: the modal owns the
+            // keyboard through `any_modal_blocks_input`, which governs the
+            // GLOBAL key subscription only. A field left focused BEHIND the
+            // modal still receives the same press through the widget tree,
+            // and the host editor's fields carry `on_submit(EditorSave)`,
+            // so an Enter meant for Save-the-rule also tried to save the
+            // host (which rebuilt the working copy and dropped the rules
+            // added since the panel opened).
+            SettingsMessage::HighlightRuleAdd(scope) => {
+                if self.rules_of(scope).len() >= MAX_HIGHLIGHT_RULES {
+                    return Ok(self.show_toast(
+                        crate::i18n::t("hl_rule_limit")
+                            .replace("{max}", &MAX_HIGHLIGHT_RULES.to_string()),
+                    ));
+                }
+                let at = self.rules_of(scope).len();
+                self.vaults.cur_mut().highlight_rule_form = crate::state::HighlightRuleForm {
+                    scope,
+                    editing: Some(at),
+                    creating: true,
+                    rule: HighlightRule {
+                        id: uuid::Uuid::new_v4().to_string(),
+                        // The first preset, so a new rule is visible the
+                        // moment it saves instead of painting in the
+                        // fallback colour of an empty string.
+                        color: crate::highlight_rules::RULE_COLOR_PRESETS[0].to_string(),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                };
+                return Ok(crate::widgets::focus_input("set-hl-rule-name"));
+            }
+            SettingsMessage::HighlightRuleEdit(scope, idx) => {
+                if let Some(rule) = self.rules_of(scope).get(idx).cloned() {
+                    self.vaults.cur_mut().highlight_rule_form = crate::state::HighlightRuleForm {
+                        scope,
+                        editing: Some(idx),
+                        creating: false,
+                        rule,
+                        ..Default::default()
+                    };
+                    return Ok(crate::widgets::focus_input("set-hl-rule-name"));
+                }
+            }
+            SettingsMessage::HighlightRuleHostModeChanged(label) => {
+                // Replace is the deliberate choice, so anything that is
+                // not it means append; that also makes an unknown label
+                // (a stale localized string) land on the safe side.
+                self.vaults.cur_mut().editor_form.highlight_rules.replace =
+                    label == crate::i18n::t("hl_host_mode_replace");
+            }
+            SettingsMessage::HighlightRuleCancelEdit => self.close_highlight_rule_editor(),
+            SettingsMessage::HighlightRuleNameChanged(v) => {
+                self.vaults.cur_mut().highlight_rule_form.rule.name = v;
+            }
+            SettingsMessage::HighlightRulePatternChanged(v) => {
+                self.vaults.cur_mut().highlight_rule_form.rule.pattern =
+                    v.chars().filter(|c| *c != '\n' && *c != '\r').take(MAX_PATTERN_LEN).collect();
+                // Typing is how a bad pattern gets fixed, so the error
+                // clears as soon as it changes rather than sitting there
+                // until the next save attempt.
+                self.vaults.cur_mut().highlight_rule_form.error = None;
+            }
+            SettingsMessage::HighlightRuleToggleRegex => {
+                self.vaults.cur_mut().highlight_rule_form.rule.is_regex = !self.vaults.cur_mut().highlight_rule_form.rule.is_regex;
+                self.vaults.cur_mut().highlight_rule_form.error = None;
+            }
+            SettingsMessage::HighlightRuleToggleCaseSensitive => {
+                self.vaults.cur_mut().highlight_rule_form.rule.case_sensitive =
+                    !self.vaults.cur().highlight_rule_form.rule.case_sensitive;
+            }
+            SettingsMessage::HighlightRuleColorChanged(hex) => {
+                self.vaults.cur_mut().highlight_rule_form.rule.color = hex;
+            }
+            SettingsMessage::HighlightRuleActionChanged(label) => {
+                if let Some((action, _)) =
+                    action_options().into_iter().find(|(_, l)| *l == label)
+                {
+                    // Picking "send a snippet" keeps whichever snippet was
+                    // already chosen, so cycling through the list and back
+                    // does not silently drop it.
+                    self.vaults.cur_mut().highlight_rule_form.rule.action = match action {
+                        TriggerAction::Snippet { .. } => {
+                            let id = match &self.vaults.cur().highlight_rule_form.rule.action {
+                                TriggerAction::Snippet { id } => id.clone(),
+                                _ => self
+                                    .vaults.cur().snippets
+                                    .first()
+                                    .map(|s| s.id.to_string())
+                                    .unwrap_or_default(),
+                            };
+                            TriggerAction::Snippet { id }
+                        }
+                        other => other,
+                    };
+                }
+            }
+            SettingsMessage::HighlightRuleSnippetChanged(label) => {
+                if let Some(snippet) = self.vaults.cur().snippets.iter().find(|s| s.label == label) {
+                    self.vaults.cur_mut().highlight_rule_form.rule.action = TriggerAction::Snippet {
+                        id: snippet.id.to_string(),
+                    };
+                }
+            }
+            SettingsMessage::HighlightRuleSave => {
+                let rule = self.vaults.cur().highlight_rule_form.rule.clone();
+                if let Err(e) = crate::highlight_rules::validate(&rule.pattern, rule.is_regex) {
+                    self.vaults.cur_mut().highlight_rule_form.error = Some(if rule.pattern.trim().is_empty() {
+                        crate::i18n::t("hl_rule_pattern_required").to_string()
+                    } else {
+                        format!("{}: {e}", crate::i18n::t("hl_rule_bad_pattern"))
+                    });
+                    return Ok(Task::none());
+                }
+                // An action that names a snippet which no longer exists
+                // is refused here rather than failing silently at match
+                // time, when there is nobody to tell.
+                if let TriggerAction::Snippet { id } = &rule.action
+                    && !self.vaults.cur().snippets.iter().any(|s| s.id.to_string() == *id)
+                {
+                    self.vaults.cur_mut().highlight_rule_form.error =
+                        Some(crate::i18n::t("hl_rule_snippet_required").to_string());
+                    return Ok(Task::none());
+                }
+                let Some(idx) = self.vaults.cur().highlight_rule_form.editing else {
+                    return Ok(Task::none());
+                };
+                let scope = self.vaults.cur().highlight_rule_form.scope;
+                let creating = self.vaults.cur().highlight_rule_form.creating;
+                let list = self.rules_of(scope);
+                if creating {
+                    list.push(rule);
+                } else if let Some(slot) = list.get_mut(idx) {
+                    *slot = rule;
+                }
+                self.vaults.cur_mut().highlight_rule_form = crate::state::HighlightRuleForm {
+                    scope,
+                    ..Default::default()
+                };
+                self.commit_rules(scope);
+            }
+            SettingsMessage::HighlightRuleToggleEnabled(scope, idx) => {
+                if let Some(rule) = self.rules_of(scope).get_mut(idx) {
+                    rule.enabled = !rule.enabled;
+                    self.commit_rules(scope);
+                }
+            }
+            SettingsMessage::HighlightRuleMove(scope, idx, up) => {
+                let other = if up { idx.checked_sub(1) } else { Some(idx + 1) };
+                let list = self.rules_of(scope);
+                if let Some(other) = other
+                    && other < list.len()
+                    && idx < list.len()
+                {
+                    list.swap(idx, other);
+                    // The editor addresses rules by index, so a move
+                    // under an open editor would retarget it.
+                    self.vaults.cur_mut().highlight_rule_form = crate::state::HighlightRuleForm {
+                        scope,
+                        ..Default::default()
+                    };
+                    self.commit_rules(scope);
+                }
+            }
+            SettingsMessage::HighlightRuleRequestDelete(scope, idx) => {
+                self.vaults.cur_mut().highlight_rule_form.scope = scope;
+                self.vaults.cur_mut().highlight_rule_form.confirm_delete = Some(idx);
+            }
+            SettingsMessage::HighlightRuleCancelDelete => {
+                self.vaults.cur_mut().highlight_rule_form.confirm_delete = None;
+            }
+            SettingsMessage::HighlightRuleDelete(scope, idx) => {
+                let list = self.rules_of(scope);
+                if idx < list.len() {
+                    list.remove(idx);
+                    self.vaults.cur_mut().highlight_rule_form = crate::state::HighlightRuleForm {
+                        scope,
+                        ..Default::default()
+                    };
+                    self.commit_rules(scope);
+                }
+            }
+            // Routed here by the parent; anything else is a grouping
+            // mistake, not a runtime case.
+            m => return Err(m),
+        }
+        Ok(Task::none())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn every_action_has_a_label_and_maps_back_from_it() {
+        for (action, label) in action_options() {
+            assert_eq!(action_label(&action), label);
+            assert!(!label.is_empty());
+        }
+    }
+}

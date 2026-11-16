@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="resources/logo_128.png" width="120" alt="Oryxis logo">
+  <img src="resources/logo_128.png" width="120" alt="Obsidian SSH logo">
 </p>
 
-<h1 align="center">Oryxis</h1>
+<h1 align="center">Obsidian SSH</h1>
 
 <p align="center" dir="rtl">
   کلاینت SSH مدرن، ساخته‌شده به‌طور کامل با Rust. سریع، رمزنگاری‌شده، بومی.
@@ -13,14 +13,14 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/wilsonglasser/oryxis/releases/latest"><img src="https://img.shields.io/github/v/release/wilsonglasser/oryxis?color=green" alt="Release"></a>
+  <a href="https://github.com/ObsidianNetwork/ObsidianSSH/releases/latest"><img src="https://img.shields.io/github/v/release/ObsidianNetwork/ObsidianSSH?color=green" alt="Release"></a>
   <img src="https://img.shields.io/badge/platforms-linux%20%7C%20macos%20%7C%20windows-blue" alt="Platforms">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue" alt="License"></a>
-  <a href="https://oryxis.app"><img src="https://img.shields.io/badge/website-oryxis.app-3CBBB1" alt="Website"></a>
+  <a href="https://github.com/ObsidianNetwork/ObsidianSSH"><img src="https://img.shields.io/badge/website-obsidianssh.app-3CBBB1" alt="Website"></a>
 </p>
 
 <p align="center">
-  <img src="resources/screen_1.gif" width="720" alt="Oryxis در عمل: اتصال به میزبان، اجرای قطعه‌کد، مرور SFTP">
+  <img src="resources/screen_1.gif" width="720" alt="Obsidian SSH در عمل: اتصال به میزبان، اجرای قطعه‌کد، مرور SFTP">
 </p>
 
 <div dir="rtl">
@@ -28,14 +28,14 @@
 > این سند ترجمهٔ README انگلیسی پس از نسخهٔ v0.23.0 است (همگام‌سازی: 2026-10-29).
 > مستندات تفصیلی ([معرفی امکانات](docs/FEATURES.md)، [معماری](docs/ARCHITECTURE.md)) به زبان انگلیسی است.
 
-## Oryxis چیست؟
+## Obsidian SSH چیست؟
 
-Oryxis جایگزین متن‌باز [Termius](https://termius.com/) است: یک کلاینت
+Obsidian SSH جایگزین متن‌باز [Termius](https://termius.com/) است: یک کلاینت
 SSH دسکتاپ با رابط کاربری مدرن و یک صندوقچهٔ رمزنگاری‌شدهٔ محلی برای
 نگهداری اطلاعات ورود، بدون هیچ حساب ابری در هیچ کجای مسیر. بدون
 Electron، بدون webview، بدون سرور شرکتی. فقط یک فایل اجرایی بومی.
 
-|  | Oryxis | Termius | PuTTY | Tabby |
+|  | Obsidian SSH | Termius | PuTTY | Tabby |
 |--|--------|---------|-------|-------|
 | فناوری رابط | Rust بومی (iced + wgpu) | Electron | بومی | Electron |
 | مجوز | AGPL-3.0، متن‌باز | انحصاری | MIT | MIT |
@@ -55,7 +55,7 @@ Electron، بدون webview، بدون سرور شرکتی. فقط یک فایل
 </div>
 
 ```powershell
-winget install WilsonGlasser.Oryxis
+winget install ObsidianNetwork.ObsidianSSH
 ```
 
 <div dir="rtl">
@@ -65,21 +65,21 @@ winget install WilsonGlasser.Oryxis
 </div>
 
 ```bash
-yay -S oryxis-bin
+yay -S obsidianssh-bin
 ```
 
 <div dir="rtl">
 
-**دانلود مستقیم**: از [صفحهٔ آخرین نسخه](https://github.com/wilsonglasser/oryxis/releases/latest)،
+**دانلود مستقیم**: از [صفحهٔ آخرین نسخه](https://github.com/ObsidianNetwork/ObsidianSSH/releases/latest)،
 برای Linux (فایل‌های `.tar.gz` / `.deb` / `.AppImage`، معماری x86_64 و
 ARM64)، برای macOS (فایل `.dmg` مخصوص Apple Silicon) و برای Windows
 (نصب‌کنندهٔ سیستمی و کاربری به‌علاوهٔ نسخهٔ قابل‌حمل `.zip`، معماری
 x86_64 و ARM64). فایل‌های Windows دارای امضای Authenticode هستند.
 نسخهٔ قابل‌حمل `.zip` همه‌چیز (تنظیمات، صندوقچه‌ها، افزونه‌ها،
-گزارش‌ها) را در پوشهٔ `data` کنار `oryxis.exe` نگه می‌دارد و خودش آن
-را می‌سازد، مگر اینکه رایانه از پیش نمایه‌ای از Oryxis داشته باشد؛ در
-Linux و macOS برای همین کار یک پوشهٔ `oryxis-data` کنار فایل اجرایی، فایل
-`.AppImage` یا `Oryxis.app` بسازید.
+گزارش‌ها) را در پوشهٔ `data` کنار `obsidianssh.exe` نگه می‌دارد و خودش آن
+را می‌سازد، مگر اینکه رایانه از پیش نمایه‌ای از Obsidian SSH داشته باشد؛ در
+Linux و macOS برای همین کار یک پوشهٔ `obsidianssh-data` کنار فایل اجرایی، فایل
+`.AppImage` یا `ObsidianSSH.app` بسازید.
 
 ### شبکه‌های محدودشده
 
@@ -126,7 +126,7 @@ Linux و macOS برای همین کار یک پوشهٔ `oryxis-data` کنار �
   تشخیص داده می‌شود؛ یک خروجی CSV ویرایش‌شدهٔ میزبان‌ها به‌صورت
   به‌روزرسانی، حذف و پوشه برمی‌گردد.
 - **آفلاین، هر وقت خودتان بگویید**: یک گزینه، که در اولین اجرا و در
-  تنظیمات ارائه می‌شود، و Oryxis دیگر هیچ درخواستی از جانب خود
+  تنظیمات ارائه می‌شود، و Obsidian SSH دیگر هیچ درخواستی از جانب خود
   نمی‌فرستد: نه بررسی به‌روزرسانی، نه دانلود فونت یا افزونه. آنچه
   خودتان پیکربندی کرده‌اید همچنان رد و بدل می‌شود. برای دستگاهی که
   هرگز شبکه نداشته، کنار هر نسخه یک بستهٔ آفلاین عرضه می‌شود که
@@ -227,8 +227,8 @@ Linux و macOS برای همین کار یک پوشهٔ `oryxis-data` کنار �
 سرور MCP (تنظیمات > امنیت)، همگام‌سازی P2P بین دستگاه‌ها
 (تنظیمات > همگام‌سازی).
 
-پرسشی دارید؟ [پرسش‌های متداول](https://github.com/wilsonglasser/oryxis/discussions/66)
-را ببینید یا یک [گفت‌وگو](https://github.com/wilsonglasser/oryxis/discussions)
+پرسشی دارید؟ [پرسش‌های متداول](https://github.com/ObsidianNetwork/ObsidianSSH/discussions)
+را ببینید یا یک [گفت‌وگو](https://github.com/ObsidianNetwork/ObsidianSSH/discussions)
 آغاز کنید.
 
 ## امنیت
@@ -245,11 +245,11 @@ Linux و macOS برای همین کار یک پوشهٔ `oryxis-data` کنار �
 
 ## نقشهٔ راه
 
-Oryxis با ریتمی تقریباً هفتگی و در گام‌های کوچک منتشر می‌شود و هر
+Obsidian SSH با ریتمی تقریباً هفتگی و در گام‌های کوچک منتشر می‌شود و هر
 قابلیت به‌محض آماده شدن عرضه می‌گردد. آخرین نسخهٔ پایدار
 **v0.23.0** است؛ تاریخچهٔ کامل در [CHANGELOG.md](CHANGELOG.md) و
 نقشهٔ راه تعاملی در
-[گفت‌وگوی نقشهٔ راه](https://github.com/wilsonglasser/oryxis/discussions/67)
+[گفت‌وگوی نقشهٔ راه](https://github.com/ObsidianNetwork/ObsidianSSH/discussions)
 قرار دارد. عرضه‌شده از 0.15.0 به بعد: تقسیم پنجره و کنسول SFTP،
 حالت آفلاین همراه با بستهٔ آن، Alibaba Cloud و Tencent Cloud، پنل
 ابزارهای شبکه، استقرار یک‌کلیکی رله، کلید امنیتی بومی، چند پنجره
@@ -273,7 +273,7 @@ sudo از طریق افزونهٔ MCP با تأیید روی صفحه، حالت
 ## مجوز
 
 Copyright (C) 2026 Wilson Glasser. منتشرشده تحت مجوز
-[AGPL-3.0-or-later](LICENSE): هر کسی می‌تواند Oryxis را استفاده،
+[AGPL-3.0-or-later](LICENSE): هر کسی می‌تواند Obsidian SSH را استفاده،
 اصلاح و توزیع کند، اما هر نسخهٔ تغییریافته‌ای که از طریق شبکه در
 دسترس قرار گیرد باید کد منبع خود را با همین مجوز منتشر کند.
 جزئیات در [NOTICE](NOTICE).

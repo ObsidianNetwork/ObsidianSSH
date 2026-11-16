@@ -13,7 +13,7 @@ anything bulkier, this decision is the one to revisit.
 
 CONTRAST FLOOR: the two thresholds below are the SAME numbers the
 built-in palettes are held to, in
-`crates/oryxis-terminal/src/colors.rs` (`text_is_readable_in_every_builtin_palette`
+`crates/obsidianssh-terminal/src/colors.rs` (`text_is_readable_in_every_builtin_palette`
 and `the_cursor_is_visible_in_every_builtin_palette`). They are
 duplicated across a language boundary on purpose, since a Rust generator
 would need those test-only helpers made public for a script that runs
@@ -39,7 +39,7 @@ MIN_CURSOR_CONTRAST = 2.0
 
 HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
 
-# Windows Terminal names magenta "purple"; Oryxis reads the same keys.
+# Windows Terminal names magenta "purple"; Obsidian SSH reads the same keys.
 ANSI_KEYS = [
     "black", "red", "green", "yellow", "blue", "purple", "cyan", "white",
     "brightBlack", "brightRed", "brightGreen", "brightYellow",
@@ -47,9 +47,9 @@ ANSI_KEYS = [
 ]
 TERMINAL_KEYS = ["background", "foreground", "cursorColor"] + ANSI_KEYS
 
-# The 21 named colours of the Oryxis UI envelope, in export order. Must
+# The 21 named colours of the Obsidian SSH UI envelope, in export order. Must
 # stay in step with `UI_COLOR_KEYS` in
-# `crates/oryxis-app/src/theme_export.rs`, which is the file the app
+# `crates/obsidianssh-app/src/theme_export.rs`, which is the file the app
 # writes and reads.
 UI_KEYS = [
     "bg_primary", "bg_sidebar", "bg_surface", "bg_hover", "bg_selected",
@@ -135,8 +135,8 @@ def load_terminal(path: pathlib.Path) -> dict:
 
 def load_ui(path: pathlib.Path) -> dict:
     data = json.loads(path.read_text(encoding="utf-8"))
-    if data.get("oryxis_ui_theme") != 1:
-        raise ThemeError('oryxis_ui_theme: expected 1 (is this a terminal theme?)')
+    if data.get("obsidianssh_ui_theme") != 1:
+        raise ThemeError('obsidianssh_ui_theme: expected 1 (is this a terminal theme?)')
     entry = read_meta(data, path)
     raw = data.get("colors")
     if not isinstance(raw, dict):

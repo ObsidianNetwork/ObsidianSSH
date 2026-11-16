@@ -1,21 +1,21 @@
 name: Release GIF plugin
 
-# Triggered by tags of the form `gif-v0.1.0`. Builds the `oryxis-gif`
-# binary (a thin agg wrapper, see crates/oryxis-gif) for every
+# Triggered by tags of the form `gif-v0.1.0`. Builds the `obsidianssh-gif`
+# binary (a thin agg wrapper, see crates/obsidianssh-gif) for every
 # supported platform, signs each with the production Ed25519 key,
 # uploads everything to the GitHub Release, and publishes the
 # `gif.json` manifest alongside.
 #
 # Like MCP, this is a plugin from a distribution standpoint only:
 # there is no JSON-RPC protocol, the app spawns the binary with plain
-# CLI args (`oryxis-gif <in.cast> <out.gif>`). The manifest's
+# CLI args (`obsidianssh-gif <in.cast> <out.gif>`). The manifest's
 # `protocol_versions: [1]` only satisfies the host's non-empty
 # intersection filter.
 #
 # The crate lives OUTSIDE the workspace (its agg dependency tree is
 # the whole reason GIF export is a plugin), so every cargo invocation
 # here goes through --manifest-path and the target dir sits under
-# crates/oryxis-gif/target.
+# crates/obsidianssh-gif/target.
 #
 # The app reads `plugins/gif.json` from a fixed URL (this repo on
 # raw.githubusercontent.com, the download mirror as the second leg),
@@ -74,35 +74,35 @@ jobs:
           path: |
             ~/.cargo/registry/
             ~/.cargo/git/
-            crates/oryxis-gif/target/
-          key: gif-plugin-${{ matrix.label }}-${{ matrix.runner }}-${{ hashFiles('crates/oryxis-gif/Cargo.lock') }}
+            crates/obsidianssh-gif/target/
+          key: gif-plugin-${{ matrix.label }}-${{ matrix.runner }}-${{ hashFiles('crates/obsidianssh-gif/Cargo.lock') }}
 
       - name: Build plugin (release)
         # --locked makes the committed Cargo.lock authoritative: agg is
         # declared with a mutable `tag` in Cargo.toml but the lock pins its
         # exact commit, so a moved/retagged upstream can't silently change
         # what a signed plugin binary is built from.
-        run: cargo build --release --locked --manifest-path crates/oryxis-gif/Cargo.toml --target ${{ matrix.target }}
+        run: cargo build --release --locked --manifest-path crates/obsidianssh-gif/Cargo.toml --target ${{ matrix.target }}
 
       # No explicit strip step: the crate's release profile already
       # sets `strip = true` + LTO.
 
       - name: Build signer
-        run: cargo build --release -p oryxis-plugin-signer
+        run: cargo build --release -p obsidianssh-plugin-signer
 
       - name: Sign + hash
         shell: bash
         env:
-          ORYXIS_SIGNING_KEY: ${{ secrets.ORYXIS_SIGNING_KEY }}
+          OBSIDIANSSH_SIGNING_KEY: ${{ secrets.OBSIDIANSSH_SIGNING_KEY }}
         run: |
           set -euo pipefail
-          BIN="crates/oryxis-gif/target/${{ matrix.target }}/release/oryxis-gif${{ matrix.ext }}"
-          OUT="dist/oryxis-gif-${{ matrix.label }}${{ matrix.ext }}"
+          BIN="crates/obsidianssh-gif/target/${{ matrix.target }}/release/obsidianssh-gif${{ matrix.ext }}"
+          OUT="dist/obsidianssh-gif-${{ matrix.label }}${{ matrix.ext }}"
           mkdir -p dist
           cp "$BIN" "$OUT"
           # The signer prints `sha256 = …`, `signature_b64 = …`,
           # and `size = …` on three separate lines.
-          ./target/release/oryxis-plugin-signer sign "$BIN" > "$OUT.signinfo"
+          ./target/release/obsidianssh-plugin-signer sign "$BIN" > "$OUT.signinfo"
           grep '^sha256'        "$OUT.signinfo" | awk '{print $3}' > "$OUT.sha256"
           grep '^signature_b64' "$OUT.signinfo" | awk '{print $3}' > "$OUT.sig"
           grep '^size'          "$OUT.signinfo" | awk '{print $3}' > "$OUT.size"
@@ -116,10 +116,10 @@ jobs:
           # website's /releases/latest/ download links target the app release.
           make_latest: false
           files: |
-            dist/oryxis-gif-${{ matrix.label }}${{ matrix.ext }}
-            dist/oryxis-gif-${{ matrix.label }}${{ matrix.ext }}.sig
-            dist/oryxis-gif-${{ matrix.label }}${{ matrix.ext }}.sha256
-            dist/oryxis-gif-${{ matrix.label }}${{ matrix.ext }}.size
+            dist/obsidianssh-gif-${{ matrix.label }}${{ matrix.ext }}
+            dist/obsidianssh-gif-${{ matrix.label }}${{ matrix.ext }}.sig
+            dist/obsidianssh-gif-${{ matrix.label }}${{ matrix.ext }}.sha256
+            dist/obsidianssh-gif-${{ matrix.label }}${{ matrix.ext }}.size
 
   manifest:
     name: Publish manifest
@@ -145,9 +145,9 @@ jobs:
           mkdir -p assets
           gh release download "${{ steps.tag.outputs.tag }}" \
             --repo "${{ github.repository }}" \
-            --pattern 'oryxis-gif-*.sha256' \
-            --pattern 'oryxis-gif-*.sig' \
-            --pattern 'oryxis-gif-*.size' \
+            --pattern 'obsidianssh-gif-*.sha256' \
+            --pattern 'obsidianssh-gif-*.sig' \
+            --pattern 'obsidianssh-gif-*.size' \
             --dir assets
 
       - name: Build gif.json
@@ -163,14 +163,14 @@ jobs:
           # scalar's indent rules: a dedented `EOF` ends the YAML scalar
           # before bash sees it).
           binaries='[]'
-          for sha_file in assets/oryxis-gif-*.sha256; do
+          for sha_file in assets/obsidianssh-gif-*.sha256; do
             [ -f "$sha_file" ] || continue
             base="${sha_file%.sha256}"
             name=$(basename "$base")
             # Parse `os` + `arch` from the filename:
-            #   oryxis-gif-linux-x86_64
-            #   oryxis-gif-windows-aarch64.exe
-            stripped="${name#oryxis-gif-}"
+            #   obsidianssh-gif-linux-x86_64
+            #   obsidianssh-gif-windows-aarch64.exe
+            stripped="${name#obsidianssh-gif-}"
             stripped="${stripped%.exe}"
             os="${stripped%-*}"
             arch="${stripped##*-}"

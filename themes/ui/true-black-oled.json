@@ -1,8 +1,8 @@
 {
-  "oryxis_ui_theme": 1,
+  "obsidianssh_ui_theme": 1,
   "name": "True Black OLED",
   "author": "AC-Lover",
-  "source": "https://github.com/wilsonglasser/oryxis/discussions/68",
+  "source": "https://github.com/ObsidianNetwork/ObsidianSSH/discussions",
   "license": "Unspecified",
   "colors": {
     "bg_primary": "#000000",

@@ -1,6 +1,6 @@
 # Packaging
 
-Package manager manifests for distributing Oryxis. These are versioned here;
+Package manager manifests for distributing Obsidian SSH. These are versioned here;
 publishing to each registry is a separate manual step (see below).
 
 When cutting a new release, bump the version and `sha256`/`hash` fields in
@@ -8,7 +8,7 @@ each manifest to match the new release artifacts.
 
 ## AUR (Arch Linux) — `aur/`
 
-`oryxis-bin` installs the prebuilt `oryxis-linux-<arch>.tar.gz` release
+`obsidianssh-bin` installs the prebuilt `obsidianssh-linux-<arch>.tar.gz` release
 artifact. The AUR is its own git server (one repo per package), reached
 over SSH at `aur.archlinux.org`.
 
@@ -31,9 +31,9 @@ One-time setup for the automation:
 Manual fallback (run from a checkout of the AUR repo, not this repo):
 
 ```bash
-git clone ssh://aur@aur.archlinux.org/oryxis-bin.git
-cp /path/to/oryxis/packaging/aur/{PKGBUILD,.SRCINFO} oryxis-bin/
-cd oryxis-bin
+git clone ssh://aur@aur.archlinux.org/obsidianssh-bin.git
+cp /path/to/obsidianssh/packaging/aur/{PKGBUILD,.SRCINFO} obsidianssh-bin/
+cd obsidianssh-bin
 git add PKGBUILD .SRCINFO
 git commit -m "Update to X.Y.Z"
 git push
@@ -45,15 +45,15 @@ Arch machine `.SRCINFO` is regenerated with
 
 ## Scoop (Windows) — `scoop/`
 
-`oryxis.json` installs the `oryxis-windows-<arch>.zip` release artifact.
+`obsidianssh.json` installs the `obsidianssh-windows-<arch>.zip` release artifact.
 Two ways to ship it:
 
-- **Personal bucket (no review):** add an `oryxis.json` to any git repo with a
+- **Personal bucket (no review):** add an `obsidianssh.json` to any git repo with a
   `bucket/` folder. Users install with:
 
   ```
-  scoop bucket add oryxis https://github.com/wilsonglasser/oryxis
-  scoop install oryxis
+  scoop bucket add obsidianssh https://github.com/ObsidianNetwork/ObsidianSSH
+  scoop install obsidianssh
   ```
 
   (Requires the manifest to live under a `bucket/` directory in the bucket
@@ -61,13 +61,13 @@ Two ways to ship it:
   into a `bucket/` folder of whichever repo serves as the bucket.)
 
 - **Official `extras` bucket (discoverable):** open a PR to
-  `ScoopInstaller/Extras` adding `bucket/oryxis.json`. Users then install with
-  `scoop install extras/oryxis` without adding a custom bucket. This is the
+  `ScoopInstaller/Extras` adding `bucket/obsidianssh.json`. Users then install with
+  `scoop install extras/obsidianssh` without adding a custom bucket. This is the
   better path for discovery.
 
 ## Flathub (Linux) — `flatpak/`
 
-App ID `app.oryxis.Oryxis` (3-segment rDNS under the oryxis.app domain). The
+App ID `io.github.obsidiannetwork.ObsidianSSH` (3-segment rDNS under the obsidianssh.app domain). The
 manifest builds from a pinned post-v0.8.0 commit (the one that adds the
 metainfo, desktop file and Wayland app_id fix, all absent from the v0.8.0 tag);
 the desktop, metainfo and icons come from that checkout. Only two files ship to
@@ -84,12 +84,12 @@ python flatpak-cargo-generator.py Cargo.lock -o packaging/flatpak/cargo-sources.
 
 Publish:
 
-1. Fork `flathub/flathub`, branch `app.oryxis.Oryxis`.
-2. Copy `app.oryxis.Oryxis.yml` and `cargo-sources.json` to the repo root.
+1. Fork `flathub/flathub`, branch `io.github.obsidiannetwork.ObsidianSSH`.
+2. Copy `io.github.obsidiannetwork.ObsidianSSH.yml` and `cargo-sources.json` to the repo root.
 3. Open a PR against the `master` branch. The Flathub buildbot compiles the
    app in the sandbox; iterate until it goes green, then a reviewer merges and
-   `flathub/app.oryxis.Oryxis` is created.
-4. After publishing, claim the "Verified" badge from the oryxis.app domain
+   `flathub/io.github.obsidiannetwork.ObsidianSSH` is created.
+4. After publishing, claim the "Verified" badge from the obsidianssh.app domain
    (DNS TXT or `.well-known`).
 
 Local test (needs flatpak + flatpak-builder):
@@ -97,5 +97,5 @@ Local test (needs flatpak + flatpak-builder):
 ```bash
 flatpak install flathub org.freedesktop.Sdk//24.08 org.freedesktop.Platform//24.08 \
   org.freedesktop.Sdk.Extension.rust-stable//24.08
-flatpak-builder --user --install --force-clean build-dir packaging/flatpak/app.oryxis.Oryxis.yml
+flatpak-builder --user --install --force-clean build-dir packaging/flatpak/io.github.obsidiannetwork.ObsidianSSH.yml
 ```

@@ -1,14 +1,14 @@
 name: Release relay
 
 # Triggered by tags of the form `relay-v0.1.0`. Builds the
-# `oryxis-relay` Docker image for amd64 + arm64 and publishes to
+# `obsidianssh-relay` Docker image for amd64 + arm64 and publishes to
 # `ghcr.io/wilsonglasser/oryxis-relay:<version>` plus `:latest`, then
 # the standalone binaries.
 #
 # Users self-host with:
 #   docker run -d \
 #     -p 8080:8080 \
-#     -e ORYXIS_RELAY_TOKEN=<long-random-string> \
+#     -e OBSIDIANSSH_RELAY_TOKEN=<long-random-string> \
 #     ghcr.io/wilsonglasser/oryxis-relay:latest
 #
 # The two linux-musl binaries are additionally Ed25519-signed with the
@@ -80,10 +80,10 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: crates/oryxis-relay/Dockerfile
+          file: crates/obsidianssh-relay/Dockerfile
           platforms: ${{ matrix.platform }}
           push: true
-          outputs: type=image,name=ghcr.io/${{ github.repository_owner }}/oryxis-relay,push-by-digest=true,name-canonical=true,push=true
+          outputs: type=image,name=ghcr.io/${{ github.repository_owner }}/obsidianssh-relay,push-by-digest=true,name-canonical=true,push=true
 
       - name: Export digest
         run: |
@@ -128,7 +128,7 @@ jobs:
         working-directory: /tmp/digests
         run: |
           version="${{ needs.docker-build.outputs.version }}"
-          repo="ghcr.io/${{ github.repository_owner }}/oryxis-relay"
+          repo="ghcr.io/${{ github.repository_owner }}/obsidianssh-relay"
           docker buildx imagetools create \
             -t "${repo}:${version}" \
             -t "${repo}:latest" \
@@ -170,7 +170,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y musl-tools
       - name: Build
-        run: cargo build --release --target ${{ matrix.target }} -p oryxis-relay
+        run: cargo build --release --target ${{ matrix.target }} -p obsidianssh-relay
       # Asset names follow the plugin shape (`<prefix>-<os>-<arch>`),
       # without the tag: the manifest job below parses os + arch out of
       # the file name exactly the way `release-mcp.yml` does, and the
@@ -180,11 +180,11 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist
-          bin="target/${{ matrix.target }}/release/oryxis-relay${{ matrix.ext }}"
-          cp "${bin}" "dist/oryxis-relay-${{ matrix.label }}${{ matrix.ext }}"
+          bin="target/${{ matrix.target }}/release/obsidianssh-relay${{ matrix.ext }}"
+          cp "${bin}" "dist/obsidianssh-relay-${{ matrix.label }}${{ matrix.ext }}"
       - name: Build signer (Linux)
         if: contains(matrix.target, 'musl')
-        run: cargo build --release -p oryxis-plugin-signer
+        run: cargo build --release -p obsidianssh-plugin-signer
       # Only the musl binaries are signed: they are the ones the in-app
       # deploy installs on a Linux host. The signer prints `sha256 = …`,
       # `signature_b64 = …` and `size = …` on three separate lines.
@@ -192,11 +192,11 @@ jobs:
         if: contains(matrix.target, 'musl')
         shell: bash
         env:
-          ORYXIS_SIGNING_KEY: ${{ secrets.ORYXIS_SIGNING_KEY }}
+          OBSIDIANSSH_SIGNING_KEY: ${{ secrets.OBSIDIANSSH_SIGNING_KEY }}
         run: |
           set -euo pipefail
-          OUT="dist/oryxis-relay-${{ matrix.label }}"
-          ./target/release/oryxis-plugin-signer sign "$OUT" > "$OUT.signinfo"
+          OUT="dist/obsidianssh-relay-${{ matrix.label }}"
+          ./target/release/obsidianssh-plugin-signer sign "$OUT" > "$OUT.signinfo"
           grep '^sha256'        "$OUT.signinfo" | awk '{print $3}' > "$OUT.sha256"
           grep '^signature_b64' "$OUT.signinfo" | awk '{print $3}' > "$OUT.sig"
           grep '^size'          "$OUT.signinfo" | awk '{print $3}' > "$OUT.size"
@@ -235,9 +235,9 @@ jobs:
           mkdir -p assets
           gh release download "${{ steps.tag.outputs.tag }}" \
             --repo "${{ github.repository }}" \
-            --pattern 'oryxis-relay-*.sha256' \
-            --pattern 'oryxis-relay-*.sig' \
-            --pattern 'oryxis-relay-*.size' \
+            --pattern 'obsidianssh-relay-*.sha256' \
+            --pattern 'obsidianssh-relay-*.sig' \
+            --pattern 'obsidianssh-relay-*.size' \
             --dir assets
 
       - name: Build relay.json
@@ -251,12 +251,12 @@ jobs:
           # jq keeps the JSON escaping right and avoids heredocs, which
           # collide with the YAML block scalar's indent rules.
           binaries='[]'
-          for sha_file in assets/oryxis-relay-*.sha256; do
+          for sha_file in assets/obsidianssh-relay-*.sha256; do
             [ -f "$sha_file" ] || continue
             base="${sha_file%.sha256}"
             name=$(basename "$base")
-            # `oryxis-relay-linux-x86_64` -> os=linux arch=x86_64
-            stripped="${name#oryxis-relay-}"
+            # `obsidianssh-relay-linux-x86_64` -> os=linux arch=x86_64
+            stripped="${name#obsidianssh-relay-}"
             os="${stripped%-*}"
             arch="${stripped##*-}"
             sha=$(cat "$base.sha256")

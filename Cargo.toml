@@ -1,53 +1,53 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/oryxis-core",
-    "crates/oryxis-ssh",
-    "crates/oryxis-fido2",
-    "crates/oryxis-archive",
-    "crates/oryxis-telnet",
-    "crates/oryxis-serial",
-    "crates/oryxis-mosh",
-    "crates/oryxis-zmodem",
-    "crates/oryxis-terminal",
-    "crates/oryxis-vault",
-    "crates/oryxis-biometric",
-    "crates/oryxis-sync",
-    "crates/oryxis-relay",
-    "crates/oryxis-cloud",
-    "crates/oryxis-cloud-aws",
-    "crates/oryxis-cloud-aws-plugin",
-    "crates/oryxis-cloud-k8s",
-    "crates/oryxis-cloud-k8s-plugin",
-    "crates/oryxis-cloud-gcp",
-    "crates/oryxis-cloud-gcp-plugin",
-    "crates/oryxis-cloud-azure",
-    "crates/oryxis-cloud-azure-plugin",
-    "crates/oryxis-cloud-aliyun",
-    "crates/oryxis-cloud-aliyun-plugin",
-    "crates/oryxis-cloud-tencent",
-    "crates/oryxis-cloud-tencent-plugin",
-    "crates/oryxis-plugin-protocol",
-    "crates/oryxis-plugin-signer",
-    "crates/oryxis-app",
-    "crates/oryxis-mcp",
+    "crates/obsidianssh-core",
+    "crates/obsidianssh-ssh",
+    "crates/obsidianssh-fido2",
+    "crates/obsidianssh-archive",
+    "crates/obsidianssh-telnet",
+    "crates/obsidianssh-serial",
+    "crates/obsidianssh-mosh",
+    "crates/obsidianssh-zmodem",
+    "crates/obsidianssh-terminal",
+    "crates/obsidianssh-vault",
+    "crates/obsidianssh-biometric",
+    "crates/obsidianssh-sync",
+    "crates/obsidianssh-relay",
+    "crates/obsidianssh-cloud",
+    "crates/obsidianssh-cloud-aws",
+    "crates/obsidianssh-cloud-aws-plugin",
+    "crates/obsidianssh-cloud-k8s",
+    "crates/obsidianssh-cloud-k8s-plugin",
+    "crates/obsidianssh-cloud-gcp",
+    "crates/obsidianssh-cloud-gcp-plugin",
+    "crates/obsidianssh-cloud-azure",
+    "crates/obsidianssh-cloud-azure-plugin",
+    "crates/obsidianssh-cloud-aliyun",
+    "crates/obsidianssh-cloud-aliyun-plugin",
+    "crates/obsidianssh-cloud-tencent",
+    "crates/obsidianssh-cloud-tencent-plugin",
+    "crates/obsidianssh-plugin-protocol",
+    "crates/obsidianssh-plugin-signer",
+    "crates/obsidianssh-app",
+    "crates/obsidianssh-mcp",
 ]
 # The GIF plugin is deliberately OUTSIDE the workspace: it exists to
 # keep agg's render stack (gifski, resvg, fontdb) out of the app, and
 # a workspace membership would put that stack right back into every
 # `cargo check --workspace` and the shared Cargo.lock. It has its own
 # lockfile and is built by manifest path in release-gif.yml.
-exclude = ["crates/oryxis-gif"]
+exclude = ["crates/obsidianssh-gif"]
 
 
 [workspace.package]
 license = "AGPL-3.0-or-later"
 authors = ["Wilson Glasser <wilsonglasser@gmail.com>"]
-repository = "https://github.com/wilsonglasser/oryxis"
+repository = "https://github.com/ObsidianNetwork/ObsidianSSH"
 
 [workspace.dependencies]
 # UI
-# Tracking the wilsonglasser/iced fork's `oryxis` branch, which is
+# Tracking the wilsonglasser/iced fork's `obsidianssh` branch, which is
 # `text-selection + monitor-position` merged into one tree so the app
 # can use both upstream-bound features at once. Each underlying branch
 # stays clean for its own PR.
@@ -141,26 +141,26 @@ regex = "1"
 zeroize = "1"
 
 # Internal crates
-oryxis-core = { path = "crates/oryxis-core" }
-oryxis-ssh = { path = "crates/oryxis-ssh" }
-oryxis-fido2 = { path = "crates/oryxis-fido2" }
-oryxis-archive = { path = "crates/oryxis-archive" }
-oryxis-telnet = { path = "crates/oryxis-telnet" }
-oryxis-mosh = { path = "crates/oryxis-mosh" }
-oryxis-serial = { path = "crates/oryxis-serial" }
-oryxis-zmodem = { path = "crates/oryxis-zmodem" }
-oryxis-terminal = { path = "crates/oryxis-terminal" }
-oryxis-vault = { path = "crates/oryxis-vault" }
-oryxis-biometric = { path = "crates/oryxis-biometric" }
-oryxis-sync = { path = "crates/oryxis-sync" }
-oryxis-cloud = { path = "crates/oryxis-cloud" }
-oryxis-cloud-aws = { path = "crates/oryxis-cloud-aws" }
-oryxis-cloud-k8s = { path = "crates/oryxis-cloud-k8s" }
-oryxis-cloud-gcp = { path = "crates/oryxis-cloud-gcp" }
-oryxis-cloud-azure = { path = "crates/oryxis-cloud-azure" }
-oryxis-cloud-aliyun = { path = "crates/oryxis-cloud-aliyun" }
-oryxis-cloud-tencent = { path = "crates/oryxis-cloud-tencent" }
-oryxis-plugin-protocol = { path = "crates/oryxis-plugin-protocol" }
+obsidianssh-core = { path = "crates/obsidianssh-core" }
+obsidianssh-ssh = { path = "crates/obsidianssh-ssh" }
+obsidianssh-fido2 = { path = "crates/obsidianssh-fido2" }
+obsidianssh-archive = { path = "crates/obsidianssh-archive" }
+obsidianssh-telnet = { path = "crates/obsidianssh-telnet" }
+obsidianssh-mosh = { path = "crates/obsidianssh-mosh" }
+obsidianssh-serial = { path = "crates/obsidianssh-serial" }
+obsidianssh-zmodem = { path = "crates/obsidianssh-zmodem" }
+obsidianssh-terminal = { path = "crates/obsidianssh-terminal" }
+obsidianssh-vault = { path = "crates/obsidianssh-vault" }
+obsidianssh-biometric = { path = "crates/obsidianssh-biometric" }
+obsidianssh-sync = { path = "crates/obsidianssh-sync" }
+obsidianssh-cloud = { path = "crates/obsidianssh-cloud" }
+obsidianssh-cloud-aws = { path = "crates/obsidianssh-cloud-aws" }
+obsidianssh-cloud-k8s = { path = "crates/obsidianssh-cloud-k8s" }
+obsidianssh-cloud-gcp = { path = "crates/obsidianssh-cloud-gcp" }
+obsidianssh-cloud-azure = { path = "crates/obsidianssh-cloud-azure" }
+obsidianssh-cloud-aliyun = { path = "crates/obsidianssh-cloud-aliyun" }
+obsidianssh-cloud-tencent = { path = "crates/obsidianssh-cloud-tencent" }
+obsidianssh-plugin-protocol = { path = "crates/obsidianssh-plugin-protocol" }
 
 [profile.dev]
 # Line-tables-only debuginfo: keeps file:line in panic backtraces while
@@ -212,7 +212,7 @@ wgpu = { git = "https://github.com/wilsonglasser/wgpu", branch = "oryxis" }
 # nobody reads (a paused download behind a SOCKS forward) parks every other
 # channel and the keepalives of its connection. Our fork is the upstream
 # release plus per-channel flow control (branch `per-channel-flow-control`,
-# merged into `oryxis`): the window re-opens as the consumer drains, the
+# merged into `obsidianssh`): the window re-opens as the consumer drains, the
 # loop never waits on a channel, a backlog is delivered in full when the
 # session ends and is bounded by the window. Upstream declined the change
 # it grew out of (Eugeny/russh#730), so this stays a patch: rebase the

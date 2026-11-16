@@ -1,0 +1,576 @@
+//! Overlay menu builders for vault card / list kebab menus. Split out
+//! of `render_overlay_menu` in views/layout/menus.rs; each method returns
+//! the inner menu `items` Element that `render_overlay_menu` wraps in the
+//! shared popover container. Pure relocation, no behavior change.
+
+use super::*;
+use iced::widget::column;
+
+impl ObsidianSsh {
+    pub(crate) fn build_menu_session_log_actions(&self, idx: usize) -> Element<'_, Message> {
+        self.build_menu_session_log_actions_impl(idx, true)
+    }
+
+    /// The viewer-header `...` variant, shared by the static viewer
+    /// and the player header: both surfaces carry their own play
+    /// affordance, so the menu skips the Play row.
+    pub(crate) fn build_menu_session_log_viewer_actions(
+        &self,
+        idx: usize,
+    ) -> Element<'_, Message> {
+        self.build_menu_session_log_actions_impl(idx, false)
+    }
+
+    fn build_menu_session_log_actions_impl(
+        &self,
+        idx: usize,
+        include_play: bool,
+    ) -> Element<'_, Message> {
+        let log_id = self.vaults.cur().session_logs.get(idx).map(|e| e.id);
+        let mut col = iced::widget::Column::<iced::Element<'_, _>>::new().spacing(2);
+        if let Some(log_id) = log_id {
+            // Replay actions (in-app player, .cast export) pair with
+            // full-detail recording; with simple logs they are hidden
+            // (owner call 2026-07-04), not just degraded.
+            if self.vaults.cur().prefs.session_log_full {
+                if include_play {
+                    col = col.push(self.menu_item(
+                        iced_fonts::lucide::play(),
+                        crate::i18n::t("session_play"),
+                        Message::Player(PlayerMessage::Open(log_id)),
+                        ObsidianSshColors::t().success,
+                    ));
+                }
+                col = col.push(self.menu_item(
+                    iced_fonts::lucide::film(),
+                    crate::i18n::t("export_cast_tip"),
+                    Message::History(HistoryMessage::ExportSessionCast(log_id)),
+                    ObsidianSshColors::t().text_secondary,
+                ));
+                // Renders through the downloaded obsidianssh-gif plugin;
+                // the handler opens the install modal on first use.
+                col = col.push(self.menu_item(
+                    iced_fonts::lucide::image(),
+                    crate::i18n::t("export_gif_tip"),
+                    Message::History(HistoryMessage::ExportSessionGif(log_id)),
+                    ObsidianSshColors::t().text_secondary,
+                ));
+            }
+            col = col.push(self.menu_item(
+                iced_fonts::lucide::file_text(),
+                crate::i18n::t("export_transcript_tip"),
+                Message::History(HistoryMessage::ExportSessionTranscript(log_id)),
+                ObsidianSshColors::t().text_secondary,
+            ));
+            col = col.push(self.menu_item(
+                iced_fonts::lucide::keyboard(),
+                crate::i18n::t("export_commands_tip"),
+                Message::History(HistoryMessage::ExportSessionCommands(log_id)),
+                ObsidianSshColors::t().text_secondary,
+            ));
+        }
+        col = col.push(self.menu_item(
+            iced_fonts::lucide::trash(),
+            crate::i18n::t("delete"),
+            Message::History(HistoryMessage::RequestDeleteSessionLog(idx)),
+            ObsidianSshColors::t().error,
+        ));
+        // Honest-export caption: recordings carry the raw
+        // bytes, Privacy Mode masking is display-only.
+        col = col.push(
+            container(
+                text(crate::i18n::t("session_export_privacy_note"))
+                    .size(10)
+                    .color(ObsidianSshColors::t().text_muted),
+            )
+            .padding(Padding { top: 4.0, right: 12.0, bottom: 2.0, left: 12.0 })
+            .width(Length::Fill).boxed(),
+        );
+        col.boxed()
+    }
+
+    /// Kebab of a saved AI conversation row. Deliberately short: a saved
+    /// conversation is read or deleted, never resumed (the terminal it was
+    /// held against is gone), so there is no "continue" action to offer.
+    pub(crate) fn build_menu_chat_conversation_actions(
+        &self,
+        idx: usize,
+    ) -> Element<'_, Message> {
+        let mut col = iced::widget::Column::<iced::Element<'_, _>>::new().spacing(2);
+        if let Some(id) = self.vaults.cur().chat_ui.conversations.get(idx).map(|c| c.id) {
+            col = col.push(self.menu_item(
+                iced_fonts::lucide::bot(),
+                crate::i18n::t("chat_open"),
+                Message::History(HistoryMessage::OpenChatConversation(id)),
+                ObsidianSshColors::t().text_secondary,
+            ));
+        }
+        col = col.push(self.menu_item(
+            iced_fonts::lucide::trash(),
+            crate::i18n::t("delete"),
+            Message::History(HistoryMessage::RequestDeleteChatConversation(idx)),
+            ObsidianSshColors::t().error,
+        ));
+        col.boxed()
+    }
+
+    pub(crate) fn build_menu_host_actions(&self, id: uuid::Uuid) -> Element<'_, Message> {
+        self.build_menu_host_actions_inner(id, true)
+    }
+
+    /// The sidebar Hosts tree's reduced host menu (issue #102): the
+    /// same actions as the card menu minus Remove and the dashboard
+    /// filter entry.
+    pub(crate) fn build_menu_tree_host_actions(&self, id: uuid::Uuid) -> Element<'_, Message> {
+        self.build_menu_host_actions_inner(id, false)
+    }
+
+    /// `dashboard` gates the entries that only make sense on the
+    /// dashboard surface: Remove (the tree is navigate-and-connect,
+    /// destruction keeps its confirm over the card list) and
+    /// filter-by-cloud-profile (it drives the dashboard's own filter
+    /// chip).
+    /// Row count of `build_menu_host_actions_inner` for the SAME host +
+    /// surface, feeding `overlay_menu_height`. Kept next to the builder
+    /// so a new entry can't ship without its height: the old fixed
+    /// estimates clipped the menu whenever every conditional entry
+    /// applied at once (WoL + SSH URL on the tree = 7 rows, not 6).
+    pub(crate) fn host_actions_menu_rows(&self, id: uuid::Uuid, dashboard: bool) -> f32 {
+        use obsidianssh_core::models::connection::ConnectionProtocol;
+        // The collapsed selection menu the builder returns below: four
+        // items, whatever this host itself would have offered. Same
+        // predicate as the builder, or the menu is laid out for the wrong
+        // height.
+        if dashboard && self.card_menu_collapses_to_selection(id) {
+            return 4.0;
+        }
+        let conn = self.vaults.cur().connections.iter().find(|c| c.id == id);
+        let protocol = conn.map(|c| c.protocol).unwrap_or(ConnectionProtocol::Ssh);
+        let mut rows = 4.0; // Connect + Connect in new window + Edit + Duplicate
+        if protocol == ConnectionProtocol::Ssh {
+            rows += 1.0; // Share
+            if self.vaults.cur().sftp_enabled {
+                rows += 1.0; // Open SFTP tab
+                if conn.is_some_and(ObsidianSsh::host_can_console) {
+                    rows += 1.0; // Open SFTP console
+                }
+            }
+        }
+        if matches!(
+            protocol,
+            ConnectionProtocol::Ssh | ConnectionProtocol::Telnet | ConnectionProtocol::Raw
+        ) {
+            rows += 1.0; // Copy SSH URL
+        }
+        if conn.and_then(|c| c.mac_address.as_deref()).is_some_and(|m| !m.is_empty()) {
+            rows += 1.0; // Wake on LAN
+        }
+        if protocol == ConnectionProtocol::RemoteDesktop
+            && conn.is_some_and(|c| self.vaults.cur().remote_desktop_forwards.contains_key(&c.id))
+        {
+            rows += 1.0; // Stop remote desktop
+        }
+        if dashboard {
+            rows += 1.0; // Move to group
+            if conn.and_then(|c| c.cloud_ref.as_ref()).is_some() {
+                rows += 1.0; // Filter by cloud profile
+            }
+            rows += 1.0; // Remove / Forget
+        }
+        rows
+    }
+
+    /// Whether the card menu for `id` collapses to the selected hosts'
+    /// own actions: the card is part of a selection of two or more on the
+    /// dashboard. Read by the builder above AND by the row count, so the
+    /// two cannot disagree about what is on screen.
+    fn card_menu_collapses_to_selection(&self, id: uuid::Uuid) -> bool {
+        self.cur_nav().dash_selection.contains(id) && self.selected_hosts_in_view_order().len() > 1
+    }
+
+    fn build_menu_host_actions_inner(
+        &self,
+        id: uuid::Uuid,
+        dashboard: bool,
+    ) -> Element<'_, Message> {
+        // A multi-selection collapses this menu to what acts on the WHOLE
+        // selection - the sidebar Files menu's rule, applied to host
+        // cards - because a menu offering both would make "Remove" read
+        // as "remove them all" while it removed exactly one. Two or more
+        // hosts only: with one selected, the selection IS that host and
+        // the full menu is the honest one. The selection is read here at
+        // render time, right after `ShowCardMenu` decided to open, so it
+        // is in sync with the highlighted cards.
+        if dashboard && self.card_menu_collapses_to_selection(id) {
+            let ids = self.selected_hosts_in_view_order();
+            let n = ids.len();
+            let move_ids = ids.clone();
+            return column![
+                self.menu_item_owned(
+                    iced_fonts::lucide::play(),
+                    crate::i18n::t("connect_n_hosts").replace("{n}", &n.to_string()),
+                    Message::Tabs(TabsMessage::SelectionConnect),
+                    ObsidianSshColors::t().success,
+                ),
+                self.menu_item_owned(
+                    iced_fonts::lucide::external_link(),
+                    crate::i18n::t("connect_n_hosts_new_window").replace("{n}", &n.to_string()),
+                    Message::Tabs(TabsMessage::ConnectHostsInNewWindow(ids.clone())),
+                    ObsidianSshColors::t().text_secondary,
+                ),
+                self.menu_item_owned(
+                    iced_fonts::lucide::folder_input(),
+                    crate::i18n::t("move_n_to_group").replace("{n}", &n.to_string()),
+                    Message::Tabs(TabsMessage::MoveHostsPick(move_ids)),
+                    ObsidianSshColors::t().text_secondary,
+                ),
+                self.menu_item_owned(
+                    iced_fonts::lucide::trash(),
+                    crate::i18n::t("remove_n_hosts").replace("{n}", &n.to_string()),
+                    Message::Tabs(TabsMessage::SelectionDelete),
+                    ObsidianSshColors::t().error,
+                ),
+            ].boxed();
+        }
+        // The menu is anchored to the HOST, so the index every
+        // index-taking action still needs is resolved here, per render,
+        // against the list this frame draws. A re-sort under the open
+        // menu (an auto-saved rename, a sync apply) goes through
+        // update() -> view(), so the rebuilt items carry the host's new
+        // position rather than aiming at whoever took the old one. A
+        // host that vanished leaves the actions inert.
+        let idx = self.vaults.cur().connections.iter().position(|c| c.id == id);
+        let conn = idx.and_then(|i| self.vaults.cur().connections.get(i));
+        // Every index-taking action goes through this, so a vanished
+        // host cannot dispatch one against a stale position.
+        let by_idx = |msg: fn(usize) -> Message| idx.map_or(Message::NoOp, msg);
+        let cloud_profile_id = conn
+            .and_then(|c| c.cloud_ref.as_ref())
+            .map(|r| r.profile_id);
+        let is_orphan = conn
+            .and_then(|c| c.cloud_ref.as_ref())
+            .and_then(|r| r.orphaned_at)
+            .is_some();
+        // SSH-only actions (Share + SFTP mount both ride the SSH
+        // subsystem) and the URL scheme depend on the protocol.
+        use obsidianssh_core::models::connection::ConnectionProtocol;
+        let protocol = conn.map(|c| c.protocol).unwrap_or(ConnectionProtocol::Ssh);
+        let is_ssh_host = protocol == ConnectionProtocol::Ssh;
+        let is_rd_host = protocol == ConnectionProtocol::RemoteDesktop;
+        // Every protocol that names a network endpoint has a URL worth
+        // copying (`ssh://`, `telnet://`, `telnets://`, `raw://`).
+        // Serial and Local name none.
+        let has_url = matches!(
+            protocol,
+            ConnectionProtocol::Ssh | ConnectionProtocol::Telnet | ConnectionProtocol::Raw
+        );
+        let mut items = column![
+            self.menu_item(iced_fonts::lucide::play(), crate::i18n::t("connect"), by_idx(|i| Message::Ssh(SshMessage::ConnectSsh(i))), ObsidianSshColors::t().success),
+            self.menu_item(iced_fonts::lucide::external_link(), crate::i18n::t("connect_new_window"), Message::Tabs(TabsMessage::ConnectHostsInNewWindow(vec![id])), ObsidianSshColors::t().text_secondary),
+            self.menu_item(iced_fonts::lucide::pencil(), crate::i18n::t("edit"), Message::Editor(EditorMessage::EditConnection(id)), ObsidianSshColors::t().text_secondary),
+            self.menu_item(iced_fonts::lucide::copy(), crate::i18n::t("duplicate"), by_idx(|i| Message::Editor(EditorMessage::DuplicateConnection(i))), ObsidianSshColors::t().text_secondary),
+        ];
+        if is_ssh_host {
+            items = items
+                .push(self.menu_item(iced_fonts::lucide::share(), crate::i18n::t("share"), by_idx(|i| Message::Share(ShareMessage::ShareConnection(i))), ObsidianSshColors::t().text_secondary));
+            // SFTP is an optional feature: its entry hides with the
+            // toggle, like every other SFTP surface.
+            if self.vaults.cur().sftp_enabled {
+                items = items.push(self.menu_item(iced_fonts::lucide::folder_tree(), crate::i18n::t("open_sftp_tab"), by_idx(|i| Message::Sftp(SftpMessage::OpenSftpForConnection(i))), ObsidianSshColors::t().text_secondary));
+                // The console right beside the browser, because they are
+                // two answers to the same question and the whole point of
+                // issue #188 is that some people want the other one. From
+                // a card there is no shell to inherit a directory from,
+                // so it opens at the session's home.
+                // Not offered on a mosh host: the dial would hand the
+                // pane to the mosh handover instead (see
+                // `host_can_console`).
+                if conn.is_some_and(ObsidianSsh::host_can_console) {
+                    items = items.push(self.menu_item(iced_fonts::lucide::square_terminal(), crate::i18n::t("open_sftp_console"), Message::Sftp(SftpMessage::OpenSftpConsoleForHost(id)), ObsidianSshColors::t().text_secondary));
+                }
+            }
+        }
+        if has_url {
+            items = items.push(self.menu_item(iced_fonts::lucide::link(), crate::i18n::t("copy_ssh_url"), by_idx(|i| Message::History(HistoryMessage::CopyHostSshUrl(i))), ObsidianSshColors::t().text_secondary));
+        }
+        // Wake on LAN: only hosts with a stored MAC (editor > Network).
+        if conn.and_then(|c| c.mac_address.as_deref()).is_some_and(|m| !m.is_empty()) {
+            items = items.push(self.menu_item(iced_fonts::lucide::zap(), crate::i18n::t("wake_on_lan"), by_idx(|i| Message::History(HistoryMessage::WakeOnLan(i))), ObsidianSshColors::t().text_secondary));
+        }
+        // Remote-desktop host: Connect (above) already launches the
+        // desktop; add an explicit Stop while its tunnel is live.
+        if is_rd_host
+            && let Some(cid) = conn.map(|c| c.id)
+            && self.vaults.cur().remote_desktop_forwards.contains_key(&cid)
+        {
+            items = items.push(self.menu_item(
+                iced_fonts::lucide::monitor_x(),
+                crate::i18n::t("stop_remote_desktop"),
+                Message::RemoteDesktop(RemoteDesktopMessage::StopRemoteDesktop(cid)),
+                ObsidianSshColors::t().error,
+            ));
+        }
+        // Move to group (issue #230): the whole selection when this
+        // host is part of one, so the kebab of any selected card acts
+        // on all of them, the way file managers do; else this host.
+        if dashboard {
+            let ids: Vec<uuid::Uuid> = if self.cur_nav().dash_selection.contains(id) {
+                self.selected_hosts_in_view_order()
+            } else {
+                vec![id]
+            };
+            let ids = if ids.is_empty() { vec![id] } else { ids };
+            let label = if ids.len() > 1 {
+                crate::i18n::t("move_n_to_group").replace("{n}", &ids.len().to_string())
+            } else {
+                crate::i18n::t("move_to_group").to_string()
+            };
+            items = items.push(self.menu_item_owned(
+                iced_fonts::lucide::folder_input(),
+                label,
+                Message::Tabs(TabsMessage::MoveHostsPick(ids)),
+                ObsidianSshColors::t().text_secondary,
+            ));
+        }
+        if dashboard && let Some(pid) = cloud_profile_id {
+            items = items.push(self.menu_item(
+                iced_fonts::lucide::funnel(),
+                crate::i18n::t("host_filter_by_profile"),
+                Message::Navigation(NavigationMessage::HostFilterByCloudProfile(Some(pid))),
+                ObsidianSshColors::t().text_secondary,
+            ));
+        }
+        if !dashboard {
+            return items.boxed();
+        }
+        // Orphan hosts get a "Forget" label (semantically
+        // closer to "this resource is gone upstream, drop my
+        // local record") instead of the generic "Remove".
+        // Same `DeleteConnection` action under the hood.
+        let (remove_label, remove_icon) = if is_orphan {
+            (crate::i18n::t("host_orphan_forget"), iced_fonts::lucide::eraser())
+        } else {
+            (crate::i18n::t("remove"), iced_fonts::lucide::trash())
+        };
+        items
+            .push(self.menu_item(remove_icon, remove_label, by_idx(|i| Message::Editor(EditorMessage::RequestDeleteConnection(i))), ObsidianSshColors::t().error))
+            .boxed()
+    }
+
+    pub(crate) fn build_menu_session_group_actions(&self, idx: usize) -> Element<'_, Message> {
+        column![
+            self.menu_item(iced_fonts::lucide::play(), crate::i18n::t("open_session_group"), Message::SessionGroup(SessionGroupMessage::OpenSessionGroup(idx)), ObsidianSshColors::t().success),
+            self.menu_item(iced_fonts::lucide::pencil(), crate::i18n::t("edit"), Message::SessionGroup(SessionGroupMessage::EditSessionGroup(idx)), ObsidianSshColors::t().text_secondary),
+            self.menu_item(iced_fonts::lucide::copy(), crate::i18n::t("duplicate"), Message::SessionGroup(SessionGroupMessage::DuplicateSessionGroup(idx)), ObsidianSshColors::t().text_secondary),
+            self.menu_item(iced_fonts::lucide::trash(), crate::i18n::t("remove"), Message::SessionGroup(SessionGroupMessage::RequestDeleteSessionGroup(idx)), ObsidianSshColors::t().error),
+        ].boxed()
+    }
+
+    pub(crate) fn build_menu_key_actions(&self, idx: usize) -> Element<'_, Message> {
+        let mut items = column![
+            self.menu_item(iced_fonts::lucide::pencil(), crate::i18n::t("edit"), Message::Keys(KeysMessage::EditKey(idx)), ObsidianSshColors::t().text_secondary),
+        ];
+        // Expose-via-agent toggle: only offered while the agent server
+        // is running, so it stays out of the menu for users who never
+        // turned the feature on. A check glyph marks the current state.
+        // Security-key rows (B3) have no private half in the vault, so
+        // Obsidian SSH's own agent can never serve them; the toggle would be
+        // a lie there and is hidden.
+        if self.agent.enabled
+            && let Some(key) = self.vaults.cur().keys.get(idx)
+            && !key.algorithm.is_security_key()
+        {
+            let (glyph, label) = if key.expose_via_agent {
+                (iced_fonts::lucide::circle_check(), crate::i18n::t("agent_key_exposed"))
+            } else {
+                (iced_fonts::lucide::circle(), crate::i18n::t("agent_key_hidden"))
+            };
+            items = items.push(self.menu_item(
+                glyph,
+                label,
+                Message::Agent(AgentMessage::KeyExposeViaAgentToggled(key.id)),
+                ObsidianSshColors::t().text_secondary,
+            ));
+        }
+        // Certificate actions, only when the key carries one (B2).
+        if let Some(key) = self.vaults.cur().keys.get(idx)
+            && key.certificate.is_some()
+        {
+            items = items.push(self.menu_item(
+                iced_fonts::lucide::badge_check(),
+                crate::i18n::t("cert_view"),
+                Message::Keys(KeysMessage::ViewKeyCertificate(idx)),
+                ObsidianSshColors::t().text_secondary,
+            ));
+            items = items.push(self.menu_item(
+                iced_fonts::lucide::badge_x(),
+                crate::i18n::t("cert_remove"),
+                Message::Keys(KeysMessage::RequestRemoveKeyCertificate(idx)),
+                ObsidianSshColors::t().text_secondary,
+            ));
+        }
+        items = items.push(self.menu_item(iced_fonts::lucide::trash(), crate::i18n::t("remove"), Message::Keys(KeysMessage::RequestDeleteKey(idx)), ObsidianSshColors::t().error));
+        items.boxed()
+    }
+
+    pub(crate) fn build_menu_identity_actions(&self, idx: usize) -> Element<'_, Message> {
+        column![
+            self.menu_item(iced_fonts::lucide::pencil(), crate::i18n::t("edit"), Message::Keys(KeysMessage::EditIdentity(idx)), ObsidianSshColors::t().text_secondary),
+            self.menu_item(iced_fonts::lucide::trash(), crate::i18n::t("remove"), Message::Keys(KeysMessage::RequestDeleteIdentity(idx)), ObsidianSshColors::t().error),
+        ].boxed()
+    }
+
+    pub(crate) fn build_menu_snippet_actions(&self, idx: usize) -> Element<'_, Message> {
+        // The snippet bar row names the way it goes (issue #266). Counted
+        // in `overlay_menu_height` (three rows; a snippet gone under the
+        // menu draws two, and the menu closes with the reload anyway).
+        let bar_row = self.vaults.cur().snippets.get(idx).map(|snip| {
+            let (key, icon) = if snip.show_in_bar {
+                ("snippet_bar_remove", iced_fonts::lucide::panel_bottom_close())
+            } else {
+                ("snippet_bar_add", iced_fonts::lucide::panel_bottom_open())
+            };
+            self.menu_item(
+                icon,
+                crate::i18n::t(key),
+                Message::Snippet(SnippetMessage::SetSnippetShowInBar(snip.id, !snip.show_in_bar)),
+                ObsidianSshColors::t().text_secondary,
+            )
+        });
+        let mut items = column![
+            self.menu_item(iced_fonts::lucide::pencil(), crate::i18n::t("edit"), Message::Snippet(SnippetMessage::EditSnippet(idx)), ObsidianSshColors::t().text_secondary),
+        ];
+        if let Some(row) = bar_row {
+            items = items.push(row);
+        }
+        items
+            .push(self.menu_item(iced_fonts::lucide::trash(), crate::i18n::t("delete"), Message::Snippet(SnippetMessage::RequestDeleteSnippet(idx)), ObsidianSshColors::t().error))
+            .boxed()
+    }
+
+    /// Kebab menu on a port-forward rule card. Edit is here even though
+    /// clicking the card already edits: a menu whose only entry is Delete
+    /// reads like deletion is all this card can do.
+    pub(crate) fn build_menu_port_forward_actions(&self, idx: usize) -> Element<'_, Message> {
+        column![
+            self.menu_item(iced_fonts::lucide::pencil(), crate::i18n::t("edit"), Message::PortForward(PortForwardMessage::EditPortForwardRule(idx)), ObsidianSshColors::t().text_secondary),
+            self.menu_item(iced_fonts::lucide::trash(), crate::i18n::t("delete"), Message::PortForward(PortForwardMessage::RequestDeletePortForwardRule(idx)), ObsidianSshColors::t().error),
+        ].boxed()
+    }
+
+    pub(crate) fn build_menu_keychain_add(&self) -> Element<'_, Message> {
+        // The "+ ADD ▾" keychain menu: one row per entry of the shared
+        // add catalog (`views::add_actions`), which the empty keychain
+        // renders as buttons from the same list.
+        let mut items = iced::widget::Column::<iced::Element<'_, _>>::new();
+        for action in self.add_key_actions() {
+            items = items.push(self.menu_item(action.icon, action.label, action.msg, action.color));
+        }
+        items.boxed()
+    }
+
+    pub(crate) fn build_menu_folder_actions(&self, gid: uuid::Uuid) -> Element<'_, Message> {
+        // Folders that hold cloud-imported hosts used to hide
+        // their rename / delete actions to protect the
+        // import-by-label dedupe. The decoupling work in v0.7
+        // moved import targets to an explicit picker, so
+        // renaming or moving the auto folder no longer breaks
+        // anything (worst case the next Auto import creates a
+        // sibling). Surface the standard actions instead.
+        column![
+            self.menu_item(iced_fonts::lucide::pencil(), crate::i18n::t("edit"), Message::Tabs(TabsMessage::EditGroup(gid)), ObsidianSshColors::t().accent),
+            self.menu_item(iced_fonts::lucide::folder_plus(), crate::i18n::t("new_subgroup"), Message::Tabs(TabsMessage::NewSubgroup(gid)), ObsidianSshColors::t().text_secondary),
+            self.menu_item(iced_fonts::lucide::trash(), crate::i18n::t("delete"), Message::Tabs(TabsMessage::StartDeleteFolder(gid)), ObsidianSshColors::t().error),
+        ].boxed()
+    }
+
+    pub(crate) fn build_menu_dynamic_group_actions(&self, id: uuid::Uuid) -> Element<'_, Message> {
+        column![
+            self.menu_item(iced_fonts::lucide::pencil(), crate::i18n::t("edit"), Message::Cloud(CloudMessage::EditDynamicGroup(id)), ObsidianSshColors::t().accent),
+            // Rename = friendly display label only. The
+            // cloud_query (cluster/service/container) and the
+            // import-dedupe key never look at it, so renaming
+            // is safe and the subtitle keeps surfacing the
+            // original ECS path.
+            self.menu_item(iced_fonts::lucide::text_cursor_input(), crate::i18n::t("rename"), Message::Tabs(TabsMessage::StartRenameFolder(id)), ObsidianSshColors::t().text_secondary),
+            self.menu_item(iced_fonts::lucide::trash(), crate::i18n::t("delete"), Message::Cloud(CloudMessage::DeleteDynamicGroup(id)), ObsidianSshColors::t().error),
+        ].boxed()
+    }
+
+    pub(crate) fn build_menu_cloud_profile_actions(&self, id: uuid::Uuid) -> Element<'_, Message> {
+        column![
+            self.menu_item(iced_fonts::lucide::pencil(), crate::i18n::t("edit"), Message::Cloud(CloudMessage::ShowCloudForm(Some(id))), ObsidianSshColors::t().text_secondary),
+            self.menu_item(iced_fonts::lucide::refresh_cw(), crate::i18n::t("cloud_profile_sync"), Message::Cloud(CloudMessage::CloudProfileSync(id)), ObsidianSshColors::t().accent),
+            self.menu_item(iced_fonts::lucide::trash(), crate::i18n::t("delete"), Message::Cloud(CloudMessage::DeleteCloudProfile(id)), ObsidianSshColors::t().error),
+        ].boxed()
+    }
+
+    /// Plugin-row kebab: the secondary actions the compact row doesn't
+    /// carry inline. Installed rows get check-for-updates, the per-row
+    /// auto-update override (check glyph = on) and uninstall; a dev
+    /// build only offers removing the cached downloads it shadows.
+    pub(crate) fn build_menu_plugin_actions(&self, provider_id: &str) -> Element<'_, Message> {
+        use crate::state::PluginUiStatus;
+        let Some(entry) = self.plugins.iter().find(|p| p.provider_id == provider_id) else {
+            return iced::widget::Column::<iced::Element<'_, _>>::new().boxed();
+        };
+        let id = entry.provider_id.clone();
+        let mut items = iced::widget::Column::<iced::Element<'_, _>>::new();
+        match &entry.status {
+            PluginUiStatus::DevBuild if entry.cached_install => {
+                items = items.push(self.menu_item(
+                    iced_fonts::lucide::trash(),
+                    crate::i18n::t("plugin_action_remove_downloads"),
+                    Message::Plugin(PluginMessage::PluginUninstall(id)),
+                    ObsidianSshColors::t().error,
+                ));
+            }
+            PluginUiStatus::Installed(_) | PluginUiStatus::UpdateAvailable { .. } => {
+                items = items.push(self.menu_item(
+                    iced_fonts::lucide::refresh_cw(),
+                    crate::i18n::t("plugin_action_check_updates"),
+                    Message::Plugin(PluginMessage::PluginCheckUpdates(id.clone())),
+                    ObsidianSshColors::t().text_secondary,
+                ));
+                // Toggle row: stays open on click (mirrors the tag
+                // filter menus), the check glyph tracks the new state.
+                items = items.push(if entry.auto_update {
+                    self.menu_item(
+                        iced_fonts::lucide::check(),
+                        crate::i18n::t("plugins_auto_update"),
+                        Message::Plugin(PluginMessage::PluginToggleAutoUpdate(id.clone(), false)),
+                        ObsidianSshColors::t().accent,
+                    )
+                } else {
+                    self.menu_item(
+                        iced_fonts::lucide::circle(),
+                        crate::i18n::t("plugins_auto_update"),
+                        Message::Plugin(PluginMessage::PluginToggleAutoUpdate(id.clone(), true)),
+                        ObsidianSshColors::t().text_muted,
+                    )
+                });
+                items = items.push(self.menu_item(
+                    iced_fonts::lucide::trash(),
+                    crate::i18n::t("plugin_action_uninstall"),
+                    Message::Plugin(PluginMessage::PluginUninstall(id)),
+                    ObsidianSshColors::t().error,
+                ));
+            }
+            // The kebab only renders on the states above; an in-flight
+            // or not-installed row that somehow opens it gets nothing.
+            _ => {}
+        }
+        items.boxed()
+    }
+
+    pub(crate) fn build_menu_cloud_provider_picker(&self) -> Element<'_, Message> {
+        // The "+ Host ▾" add menu: one row per entry of the shared add
+        // catalog (`views::add_actions`), which the first-run empty
+        // state renders as buttons from the same list.
+        let mut items = iced::widget::Column::<iced::Element<'_, _>>::new();
+        for action in self.add_host_actions() {
+            items = items.push(self.menu_item(action.icon, action.label, action.msg, action.color));
+        }
+        items.boxed()
+    }
+}

@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="resources/logo_128.png" width="120" alt="Oryxis logo">
+  <img src="resources/logo_128.png" width="120" alt="Obsidian SSH logo">
 </p>
 
-<h1 align="center">Oryxis</h1>
+<h1 align="center">Obsidian SSH</h1>
 
 <p align="center">
   完全使用 Rust 构建的现代 SSH 客户端。快速、加密、原生。
@@ -13,26 +13,26 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/wilsonglasser/oryxis/releases/latest"><img src="https://img.shields.io/github/v/release/wilsonglasser/oryxis?color=green" alt="Release"></a>
+  <a href="https://github.com/ObsidianNetwork/ObsidianSSH/releases/latest"><img src="https://img.shields.io/github/v/release/ObsidianNetwork/ObsidianSSH?color=green" alt="Release"></a>
   <img src="https://img.shields.io/badge/platforms-linux%20%7C%20macos%20%7C%20windows-blue" alt="Platforms">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue" alt="License"></a>
-  <a href="https://oryxis.app"><img src="https://img.shields.io/badge/website-oryxis.app-3CBBB1" alt="Website"></a>
+  <a href="https://github.com/ObsidianNetwork/ObsidianSSH"><img src="https://img.shields.io/badge/website-obsidianssh.app-3CBBB1" alt="Website"></a>
 </p>
 
 <p align="center">
-  <img src="resources/screen_1.gif" width="720" alt="Oryxis 演示：连接主机、运行代码片段、浏览 SFTP">
+  <img src="resources/screen_1.gif" width="720" alt="Obsidian SSH 演示：连接主机、运行代码片段、浏览 SFTP">
 </p>
 
 > 本文档基于 v0.23.0 之后的英文 README 翻译（2026-10-29 同步）。
 > 详细文档（[功能一览](docs/FEATURES.md)、[架构说明](docs/ARCHITECTURE.md)）为英文。
 
-## Oryxis 是什么？
+## Obsidian SSH 是什么？
 
-Oryxis 是 [Termius](https://termius.com/) 的开源替代品：一款桌面 SSH
+Obsidian SSH 是 [Termius](https://termius.com/) 的开源替代品：一款桌面 SSH
 客户端，拥有现代化界面和本地加密保险库来保存凭据，全程没有任何云账号。
 没有 Electron、没有 webview、没有厂商服务器，只有一个原生二进制文件。
 
-|  | Oryxis | Termius | PuTTY | Tabby |
+|  | Obsidian SSH | Termius | PuTTY | Tabby |
 |--|--------|---------|-------|-------|
 | 界面技术栈 | 原生 Rust（iced + wgpu） | Electron | 原生 | Electron |
 | 许可证 | AGPL-3.0，开源 | 专有 | MIT | MIT |
@@ -50,27 +50,27 @@ Oryxis 是 [Termius](https://termius.com/) 的开源替代品：一款桌面 SSH
 或使用终端：
 
 ```powershell
-winget install WilsonGlasser.Oryxis
+winget install ObsidianNetwork.ObsidianSSH
 ```
 
 **Arch Linux (AUR)**
 
 ```bash
-yay -S oryxis-bin
+yay -S obsidianssh-bin
 ```
 
-**直接下载**：前往[最新版本页](https://github.com/wilsonglasser/oryxis/releases/latest)，
+**直接下载**：前往[最新版本页](https://github.com/ObsidianNetwork/ObsidianSSH/releases/latest)，
 提供 Linux（`.tar.gz` / `.deb` / `.AppImage`，x86_64 与 ARM64）、
 macOS（Apple Silicon `.dmg`）和 Windows（系统级与用户级安装器、便携版
 `.zip`，x86_64 与 ARM64）。Windows 二进制已进行 Authenticode 签名。
 便携版 `.zip` 会把全部内容（设置、保险库、插件、日志）保存在它于
-`oryxis.exe` 旁创建的 `data` 文件夹中，除非这台电脑已有 Oryxis 配置文件；
-Linux 与 macOS 上，在二进制文件、`.AppImage` 文件或 `Oryxis.app` 旁创建
-`oryxis-data` 文件夹即可。
+`obsidianssh.exe` 旁创建的 `data` 文件夹中，除非这台电脑已有 Obsidian SSH 配置文件；
+Linux 与 macOS 上，在二进制文件、`.AppImage` 文件或 `ObsidianSSH.app` 旁创建
+`obsidianssh-data` 文件夹即可。
 
 ### 中国大陆网络说明
 
-在无法顺畅访问 GitHub 的网络环境下，Oryxis 内置了下载镜像支持：
+在无法顺畅访问 GitHub 的网络环境下，Obsidian SSH 内置了下载镜像支持：
 
 - **自动模式（默认）**：中日韩字体、插件和应用更新会先尝试 GitHub，
   无法访问时自动回退到项目镜像 `dl-cn.oryxis.app`（腾讯 EdgeOne
@@ -108,7 +108,7 @@ Big5 编码。
   FinalShell、Termius 或任意 CSV。选择文件（或会话文件夹），格式会
   自动识别，编辑后的主机 CSV 导出文件会作为更新、删除和文件夹导回。
 - **离线模式，由你决定**：一个开关，首次启动和设置中都提供，打开后
-  Oryxis 不会自行发起任何请求：不检查更新，不下载字体或插件。你自己
+  Obsidian SSH 不会自行发起任何请求：不检查更新，不下载字体或插件。你自己
   配置的内容照常工作。对于从未联网的机器，每个版本旁都附带一个离线包，
   插件与字体包已内置，开关也已预先打开。
 - **不止 SSH**：Telnet 与串口控制台、面向控制台服务器的裸 TCP 连接、
@@ -177,9 +177,9 @@ Big5 编码。
 4. **可选扩展**：AI 聊天（设置 > AI）、MCP 服务器（设置 > 安全）、
    设备间 P2P 同步（设置 > 同步）。
 
-有问题？看看 [FAQ](https://github.com/wilsonglasser/oryxis/discussions/66)
+有问题？看看 [FAQ](https://github.com/ObsidianNetwork/ObsidianSSH/discussions)
 （含中文板块），或发起
-[讨论](https://github.com/wilsonglasser/oryxis/discussions)。
+[讨论](https://github.com/ObsidianNetwork/ObsidianSSH/discussions)。
 
 ## 安全
 
@@ -192,9 +192,9 @@ Big5 编码。
 
 ## 路线图
 
-Oryxis 以大约每周一次的节奏持续发布，功能就绪即上线。最新稳定版为
+Obsidian SSH 以大约每周一次的节奏持续发布，功能就绪即上线。最新稳定版为
 **v0.23.0**；完整历史见 [CHANGELOG.md](CHANGELOG.md)，交互式路线图见
-[路线图讨论](https://github.com/wilsonglasser/oryxis/discussions/67)。
+[路线图讨论](https://github.com/ObsidianNetwork/ObsidianSSH/discussions)。
 自 0.15.0 以来已发布：分屏与 SFTP 控制台、离线模式及其离线包、阿里云
 与腾讯云、网络工具面板、一键部署中继、原生安全密钥、同一进程内的
 多个窗口、能运行一系列动作的代码片段、来自其他终端的快捷键预设、
@@ -213,7 +213,7 @@ Oryxis 以大约每周一次的节奏持续发布，功能就绪即上线。最�
 
 Copyright (C) 2026 Wilson Glasser。基于
 [AGPL-3.0-or-later](LICENSE) 许可发布：任何人都可以使用、修改和分发
-Oryxis，但通过网络提供的修改版本必须以相同许可证公开其源代码。详见
+Obsidian SSH，但通过网络提供的修改版本必须以相同许可证公开其源代码。详见
 [NOTICE](NOTICE)。
 
 ---

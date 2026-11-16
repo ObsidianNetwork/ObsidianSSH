@@ -1,6 +1,6 @@
 name: Nightly
 
-# Rolling per-commit build of just the main `oryxis` app (no plugins,
+# Rolling per-commit build of just the main `obsidianssh` app (no plugins,
 # and no Windows or Linux installers; macOS gets a .dmg because the
 # bundle is what gives the app its code identity, see the job below).
 # Each successful run replaces the `nightly-latest`
@@ -42,14 +42,14 @@ env:
   # Same signaling endpoint the release builds bake in, so a nightly
   # is exercised against the same server the user-facing tagged
   # builds use.
-  ORYXIS_SIGNALING_URL: ${{ secrets.ORYXIS_SIGNALING_URL }}
-  ORYXIS_SIGNALING_TOKEN: ${{ secrets.ORYXIS_SIGNALING_TOKEN }}
+  OBSIDIANSSH_SIGNALING_URL: ${{ secrets.OBSIDIANSSH_SIGNALING_URL }}
+  OBSIDIANSSH_SIGNALING_TOKEN: ${{ secrets.OBSIDIANSSH_SIGNALING_TOKEN }}
   # Stamp the binary as a nightly build at the exact commit. `build.rs`
-  # bakes these into ORYXIS_CHANNEL / ORYXIS_GIT_SHA so the in-app
+  # bakes these into OBSIDIANSSH_CHANNEL / OBSIDIANSSH_GIT_SHA so the in-app
   # nightly updater can tell what it's running and compare against the
   # rolling release's target commit.
-  ORYXIS_BUILD_CHANNEL: nightly
-  ORYXIS_GIT_SHA: ${{ github.sha }}
+  OBSIDIANSSH_BUILD_CHANNEL: nightly
+  OBSIDIANSSH_GIT_SHA: ${{ github.sha }}
 
 jobs:
   build-linux-x86:
@@ -70,7 +70,7 @@ jobs:
             ~/.cargo/git/
             target/
           key: linux-x86-nightly-ubuntu-22.04-${{ hashFiles('**/Cargo.lock') }}
-      - run: cargo build --locked --profile release-with-symbols -p oryxis-app
+      - run: cargo build --locked --profile release-with-symbols -p obsidianssh-app
       # Split debuginfo out of the binary, then strip it. What ships
       # carries no more symbols than `strip = true` left it, plus one
       # added `.gnu_debuglink` section naming its symbol file; what is
@@ -83,27 +83,27 @@ jobs:
       - name: Split debug symbols
         run: |
           set -euo pipefail
-          BIN=target/release-with-symbols/oryxis
-          objcopy --only-keep-debug "$BIN" oryxis.debug
-          objcopy --strip-all --add-gnu-debuglink=oryxis.debug "$BIN" oryxis-stripped
+          BIN=target/release-with-symbols/obsidianssh
+          objcopy --only-keep-debug "$BIN" obsidianssh.debug
+          objcopy --strip-all --add-gnu-debuglink=obsidianssh.debug "$BIN" obsidianssh-stripped
           # -T0: xz defaults to one thread, and a release DWARF blob
           # is big enough for that to cost minutes of nightly time.
-          XZ_OPT=-T0 tar cJf oryxis-nightly-linux-x86_64-debug.tar.xz oryxis.debug
+          XZ_OPT=-T0 tar cJf obsidianssh-nightly-linux-x86_64-debug.tar.xz obsidianssh.debug
       - name: Package tarball + bare binary
         run: |
           mkdir -p dist
-          cp oryxis-stripped dist/oryxis
-          cp README.md resources/logo_64.png resources/oryxis.desktop dist/
-          cd dist && tar czf ../oryxis-nightly-linux-x86_64.tar.gz *
+          cp obsidianssh-stripped dist/obsidianssh
+          cp README.md resources/logo_64.png resources/obsidianssh.desktop dist/
+          cd dist && tar czf ../obsidianssh-nightly-linux-x86_64.tar.gz *
           # Bare binary asset for in-app self-update (no installer for nightly).
-          cd .. && cp oryxis-stripped oryxis-nightly-linux-x86_64.bin
+          cd .. && cp obsidianssh-stripped obsidianssh-nightly-linux-x86_64.bin
       - uses: actions/upload-artifact@v7
         with:
-          name: oryxis-nightly-linux-x86_64
+          name: obsidianssh-nightly-linux-x86_64
           path: |
-            oryxis-nightly-linux-x86_64.tar.gz
-            oryxis-nightly-linux-x86_64.bin
-            oryxis-nightly-linux-x86_64-debug.tar.xz
+            obsidianssh-nightly-linux-x86_64.tar.gz
+            obsidianssh-nightly-linux-x86_64.bin
+            obsidianssh-nightly-linux-x86_64-debug.tar.xz
 
   build-linux-arm:
     name: Linux ARM64
@@ -123,31 +123,31 @@ jobs:
             ~/.cargo/git/
             target/
           key: linux-arm-nightly-ubuntu-22.04-${{ hashFiles('**/Cargo.lock') }}
-      - run: cargo build --locked --profile release-with-symbols -p oryxis-app
+      - run: cargo build --locked --profile release-with-symbols -p obsidianssh-app
       # Same split as the x86_64 job above; see the comment there.
       - name: Split debug symbols
         run: |
           set -euo pipefail
-          BIN=target/release-with-symbols/oryxis
-          objcopy --only-keep-debug "$BIN" oryxis.debug
-          objcopy --strip-all --add-gnu-debuglink=oryxis.debug "$BIN" oryxis-stripped
+          BIN=target/release-with-symbols/obsidianssh
+          objcopy --only-keep-debug "$BIN" obsidianssh.debug
+          objcopy --strip-all --add-gnu-debuglink=obsidianssh.debug "$BIN" obsidianssh-stripped
           # -T0: xz defaults to one thread, and a release DWARF blob
           # is big enough for that to cost minutes of nightly time.
-          XZ_OPT=-T0 tar cJf oryxis-nightly-linux-aarch64-debug.tar.xz oryxis.debug
+          XZ_OPT=-T0 tar cJf obsidianssh-nightly-linux-aarch64-debug.tar.xz obsidianssh.debug
       - name: Package tarball + bare binary
         run: |
           mkdir -p dist
-          cp oryxis-stripped dist/oryxis
-          cp README.md resources/logo_64.png resources/oryxis.desktop dist/
-          cd dist && tar czf ../oryxis-nightly-linux-aarch64.tar.gz *
-          cd .. && cp oryxis-stripped oryxis-nightly-linux-aarch64.bin
+          cp obsidianssh-stripped dist/obsidianssh
+          cp README.md resources/logo_64.png resources/obsidianssh.desktop dist/
+          cd dist && tar czf ../obsidianssh-nightly-linux-aarch64.tar.gz *
+          cd .. && cp obsidianssh-stripped obsidianssh-nightly-linux-aarch64.bin
       - uses: actions/upload-artifact@v7
         with:
-          name: oryxis-nightly-linux-aarch64
+          name: obsidianssh-nightly-linux-aarch64
           path: |
-            oryxis-nightly-linux-aarch64.tar.gz
-            oryxis-nightly-linux-aarch64.bin
-            oryxis-nightly-linux-aarch64-debug.tar.xz
+            obsidianssh-nightly-linux-aarch64.tar.gz
+            obsidianssh-nightly-linux-aarch64.bin
+            obsidianssh-nightly-linux-aarch64-debug.tar.xz
 
   build-macos-arm:
     name: macOS Apple Silicon
@@ -162,16 +162,16 @@ jobs:
             ~/.cargo/git/
             target/
           key: macos-arm-nightly-${{ hashFiles('**/Cargo.lock') }}
-      - run: cargo build --locked --release -p oryxis-app
+      - run: cargo build --locked --release -p obsidianssh-app
       - name: Package tarball + bare binary
         run: |
           mkdir -p dist
-          cp target/release/oryxis dist/
+          cp target/release/obsidianssh dist/
           cp README.md resources/logo_64.png dist/
           # Gatekeeper steps, including what the bare .bin below is for.
           cp resources/INSTALL-macOS.md dist/
-          cd dist && tar czf ../oryxis-nightly-macos-aarch64.tar.gz *
-          cd .. && cp target/release/oryxis oryxis-nightly-macos-aarch64.bin
+          cd dist && tar czf ../obsidianssh-nightly-macos-aarch64.tar.gz *
+          cd .. && cp target/release/obsidianssh obsidianssh-nightly-macos-aarch64.bin
       # The nightly ships a .dmg even though it ships no other installer,
       # because on macOS the bundle is not packaging, it is the program.
       # A bare binary runs as a CLI process with a different CODE
@@ -185,11 +185,11 @@ jobs:
           # The crate version, not a tag: a nightly has no tag, and
           # CFBundleShortVersionString must stay a plain x.y.z. The
           # commit it was built from is in the release notes.
-          VERSION=$(grep -m1 '^version' crates/oryxis-app/Cargo.toml | cut -d'"' -f2)
-          APP="Oryxis.app"
+          VERSION=$(grep -m1 '^version' crates/obsidianssh-app/Cargo.toml | cut -d'"' -f2)
+          APP="ObsidianSSH.app"
           mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-          cp target/release/oryxis "$APP/Contents/MacOS/oryxis"
-          cp resources/Oryxis.icns "$APP/Contents/Resources/Oryxis.icns"
+          cp target/release/obsidianssh "$APP/Contents/MacOS/obsidianssh"
+          cp resources/ObsidianSSH.icns "$APP/Contents/Resources/ObsidianSSH.icns"
           sed "s/__VERSION__/${VERSION}/g" resources/Info.plist > "$APP/Contents/Info.plist"
           # Ad-hoc only, never the Developer ID path the release job
           # takes: notarization is a round trip to Apple per submission,
@@ -200,7 +200,7 @@ jobs:
           set -euo pipefail
           STAGING="$RUNNER_TEMP/dmg"
           mkdir -p "$STAGING"
-          mv Oryxis.app "$STAGING/"
+          mv ObsidianSSH.app "$STAGING/"
           ln -s /Applications "$STAGING/Applications"
           cp resources/INSTALL-macOS.md "$STAGING/"
           # Sized from the measured content plus headroom, never left to
@@ -213,15 +213,15 @@ jobs:
           df -h /
           SIZE_MB=$(( $(du -sm "$STAGING" | cut -f1) + 300 ))
           echo "staging is $(du -sh "$STAGING" | cut -f1), image sized ${SIZE_MB}m"
-          hdiutil create -volname "Oryxis Nightly" -srcfolder "$STAGING" \
-            -size "${SIZE_MB}m" -ov -format UDZO oryxis-nightly-macos-aarch64.dmg
+          hdiutil create -volname "Obsidian SSH Nightly" -srcfolder "$STAGING" \
+            -size "${SIZE_MB}m" -ov -format UDZO obsidianssh-nightly-macos-aarch64.dmg
       - uses: actions/upload-artifact@v7
         with:
-          name: oryxis-nightly-macos-aarch64
+          name: obsidianssh-nightly-macos-aarch64
           path: |
-            oryxis-nightly-macos-aarch64.tar.gz
-            oryxis-nightly-macos-aarch64.bin
-            oryxis-nightly-macos-aarch64.dmg
+            obsidianssh-nightly-macos-aarch64.tar.gz
+            obsidianssh-nightly-macos-aarch64.bin
+            obsidianssh-nightly-macos-aarch64.dmg
 
   build-windows-x86:
     name: Windows x86_64
@@ -236,27 +236,27 @@ jobs:
             ~/.cargo/git/
             target/
           key: windows-x86-nightly-${{ hashFiles('**/Cargo.lock') }}
-      - run: cargo build --locked --profile release-with-split-debuginfo-packed -p oryxis-app
+      - run: cargo build --locked --profile release-with-split-debuginfo-packed -p obsidianssh-app
       - name: Package zip & pdb's + bare exe
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist
-          Copy-Item target\release-with-split-debuginfo-packed\oryxis.exe dist\
+          Copy-Item target\release-with-split-debuginfo-packed\obsidianssh.exe dist\
           Copy-Item README.md dist\
           Copy-Item resources\logo_64.png dist\
-          Compress-Archive -Path dist\* -DestinationPath oryxis-nightly-windows-x86_64.zip
+          Compress-Archive -Path dist\* -DestinationPath obsidianssh-nightly-windows-x86_64.zip
           New-Item -ItemType Directory -Force -Path pdb
           Copy-Item -Path target\release-with-split-debuginfo-packed\*.pdb pdb\
-          Compress-Archive -Path pdb\* -DestinationPath oryxis-nightly-windows-x86_64-pdb.zip
+          Compress-Archive -Path pdb\* -DestinationPath obsidianssh-nightly-windows-x86_64-pdb.zip
           # Bare exe asset for in-app self-update (no installer for nightly).
-          Copy-Item target\release-with-split-debuginfo-packed\oryxis.exe oryxis-nightly-windows-x86_64.exe
+          Copy-Item target\release-with-split-debuginfo-packed\obsidianssh.exe obsidianssh-nightly-windows-x86_64.exe
       - uses: actions/upload-artifact@v7
         with:
-          name: oryxis-nightly-windows-x86_64
+          name: obsidianssh-nightly-windows-x86_64
           path: |
-            oryxis-nightly-windows-x86_64.zip
-            oryxis-nightly-windows-x86_64-pdb.zip
-            oryxis-nightly-windows-x86_64.exe
+            obsidianssh-nightly-windows-x86_64.zip
+            obsidianssh-nightly-windows-x86_64-pdb.zip
+            obsidianssh-nightly-windows-x86_64.exe
 
   build-windows-arm:
     name: Windows ARM64
@@ -273,23 +273,23 @@ jobs:
             ~/.cargo/git/
             target/
           key: windows-arm-nightly-${{ hashFiles('**/Cargo.lock') }}
-      - run: cargo build --locked --release --target aarch64-pc-windows-msvc -p oryxis-app
+      - run: cargo build --locked --release --target aarch64-pc-windows-msvc -p obsidianssh-app
       - name: Package portable zip + bare exe
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist
-          Copy-Item target\aarch64-pc-windows-msvc\release\oryxis.exe dist\
+          Copy-Item target\aarch64-pc-windows-msvc\release\obsidianssh.exe dist\
           Copy-Item README.md dist\
           Copy-Item resources\logo_64.png dist\
-          Compress-Archive -Path dist\* -DestinationPath oryxis-nightly-windows-aarch64.zip
+          Compress-Archive -Path dist\* -DestinationPath obsidianssh-nightly-windows-aarch64.zip
           # Bare exe asset for in-app self-update (no installer for nightly).
-          Copy-Item target\aarch64-pc-windows-msvc\release\oryxis.exe oryxis-nightly-windows-aarch64.exe
+          Copy-Item target\aarch64-pc-windows-msvc\release\obsidianssh.exe obsidianssh-nightly-windows-aarch64.exe
       - uses: actions/upload-artifact@v7
         with:
-          name: oryxis-nightly-windows-aarch64
+          name: obsidianssh-nightly-windows-aarch64
           path: |
-            oryxis-nightly-windows-aarch64.zip
-            oryxis-nightly-windows-aarch64.exe
+            obsidianssh-nightly-windows-aarch64.zip
+            obsidianssh-nightly-windows-aarch64.exe
 
   publish:
     name: Publish nightly release
@@ -325,13 +325,13 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: Sign nightly assets
         env:
-          ORYXIS_SIGNING_KEY: ${{ secrets.ORYXIS_SIGNING_KEY }}
+          OBSIDIANSSH_SIGNING_KEY: ${{ secrets.OBSIDIANSSH_SIGNING_KEY }}
         run: |
           set -euo pipefail
-          cargo build --locked --release -p oryxis-plugin-signer
+          cargo build --locked --release -p obsidianssh-plugin-signer
           for f in dist/*; do
             case "$f" in *.sig) continue ;; esac
-            ./target/release/oryxis-plugin-signer sign "$f" > "$f.signinfo"
+            ./target/release/obsidianssh-plugin-signer sign "$f" > "$f.signinfo"
             grep '^signature_b64' "$f.signinfo" | awk '{print $3}' > "$f.sig"
             rm "$f.signinfo"
           done
@@ -347,7 +347,7 @@ jobs:
           gh release delete nightly-latest --yes --cleanup-tag 2>/dev/null || true
 
           NOTES=$(cat <<NOTE
-          Automated nightly build of the \`oryxis\` app, no plugins or installers.
+          Automated nightly build of the \`obsidianssh\` app, no plugins or installers.
 
           - **Commit:** \`${{ github.sha }}\` (\`${{ steps.meta.outputs.sha_short }}\`)
           - **Built:** ${{ steps.meta.outputs.stamp }}

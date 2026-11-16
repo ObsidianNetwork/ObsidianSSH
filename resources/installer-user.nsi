@@ -1,4 +1,4 @@
-; Per-user installer — installs to %LOCALAPPDATA%\Programs\Oryxis for
+; Per-user installer — installs to %LOCALAPPDATA%\Programs\Obsidian SSH for
 ; the current user only. Runs without UAC (RequestExecutionLevel user)
 ; so the auto-updater can apply updates silently. Registry entries go
 ; under HKCU; the system variant (installer.nsi) writes HKLM.
@@ -18,18 +18,18 @@
     !define BINPATH "..\target\release"
 !endif
 
-Name "Oryxis"
-OutFile "..\oryxis-user-setup-${ARCH}.exe"
-InstallDir "$LOCALAPPDATA\Programs\Oryxis"
-InstallDirRegKey HKCU "Software\Oryxis" "InstallDir"
+Name "Obsidian SSH"
+OutFile "..\obsidianssh-user-setup-${ARCH}.exe"
+InstallDir "$LOCALAPPDATA\Programs\Obsidian SSH"
+InstallDirRegKey HKCU "Software\Obsidian SSH" "InstallDir"
 RequestExecutionLevel user
 
 VIProductVersion "${VERSION}.0"
-VIAddVersionKey "ProductName" "Oryxis"
+VIAddVersionKey "ProductName" "Obsidian SSH"
 VIAddVersionKey "ProductVersion" "${VERSION}"
 VIAddVersionKey "FileVersion" "${VERSION}"
 VIAddVersionKey "CompanyName" "Wilson Glasser"
-VIAddVersionKey "FileDescription" "Oryxis SSH client installer (per-user)"
+VIAddVersionKey "FileDescription" "Obsidian SSH SSH client installer (per-user)"
 VIAddVersionKey "LegalCopyright" "AGPL-3.0-or-later"
 
 !define MUI_ICON "..\resources\logo.ico"
@@ -43,9 +43,9 @@ VIAddVersionKey "LegalCopyright" "AGPL-3.0-or-later"
 ; The auto-updater exits the running app before handing off to this
 ; installer, so without this the app never comes back after an update.
 ; This variant runs without elevation (RequestExecutionLevel user), so
-; launching oryxis.exe directly already gives the right token.
-!define MUI_FINISHPAGE_RUN "$INSTDIR\oryxis.exe"
-!define MUI_FINISHPAGE_RUN_TEXT "Launch Oryxis"
+; launching obsidianssh.exe directly already gives the right token.
+!define MUI_FINISHPAGE_RUN "$INSTDIR\obsidianssh.exe"
+!define MUI_FINISHPAGE_RUN_TEXT "Launch Obsidian SSH"
 !insertmacro MUI_PAGE_FINISH
 
 !insertmacro MUI_UNPAGE_CONFIRM
@@ -53,16 +53,16 @@ VIAddVersionKey "LegalCopyright" "AGPL-3.0-or-later"
 
 !insertmacro MUI_LANGUAGE "English"
 
-; Kill any running Oryxis app + MCP instances so Windows file locks
+; Kill any running Obsidian SSH app + MCP instances so Windows file locks
 ; don't block the upgrade. AI clients (Claude Desktop / Code) keep
-; oryxis-mcp.exe alive as a child process across Oryxis app sessions,
+; obsidianssh-mcp.exe alive as a child process across Obsidian SSH app sessions,
 ; so the auto-updater would otherwise fail to overwrite the MCP
 ; binary even after the main app exits. taskkill ships with Windows;
 ; no extra plugin needed. Missing-process exit codes are ignored.
-!macro KillRunningOryxis
-    nsExec::Exec '"taskkill" /F /T /IM oryxis-mcp.exe'
+!macro KillRunningObsidianSsh
+    nsExec::Exec '"taskkill" /F /T /IM obsidianssh-mcp.exe'
     Pop $0
-    nsExec::Exec '"taskkill" /F /T /IM oryxis.exe'
+    nsExec::Exec '"taskkill" /F /T /IM obsidianssh.exe'
     Pop $0
     ; Brief pause so the OS releases handles before the first File
     ; write; without it taskkill + immediate overwrite can still race
@@ -75,17 +75,17 @@ VIAddVersionKey "LegalCopyright" "AGPL-3.0-or-later"
 ; want both. Suggest manual uninstall, never silently remove the system
 ; copy — that would need elevation we explicitly don't have.
 Function .onInit
-    !insertmacro KillRunningOryxis
-    IfFileExists "$PROGRAMFILES64\Oryxis\uninstall.exe" 0 done
+    !insertmacro KillRunningObsidianSsh
+    IfFileExists "$PROGRAMFILES64\Obsidian SSH\uninstall.exe" 0 done
         MessageBox MB_OKCANCEL|MB_ICONEXCLAMATION \
-            "Oryxis is already installed for all users at $PROGRAMFILES64\Oryxis.$\r$\n$\r$\nInstalling the per-user version side-by-side is supported but not recommended. Uninstall the system version first via Settings > Apps, then run this installer again.$\r$\n$\r$\nClick OK to continue anyway, or Cancel to abort." \
+            "Obsidian SSH is already installed for all users at $PROGRAMFILES64\Obsidian SSH.$\r$\n$\r$\nInstalling the per-user version side-by-side is supported but not recommended. Uninstall the system version first via Settings > Apps, then run this installer again.$\r$\n$\r$\nClick OK to continue anyway, or Cancel to abort." \
             IDOK done
         Abort
     done:
 FunctionEnd
 
 Function un.onInit
-    !insertmacro KillRunningOryxis
+    !insertmacro KillRunningObsidianSsh
 FunctionEnd
 
 Section "Install"
@@ -93,18 +93,18 @@ Section "Install"
 
     ; Upgrading from a pre-v0.7 install: remove the bundled MCP binary
     ; if it's still there. The app now downloads MCP into
-    ; `%USERPROFILE%\.oryxis\bin\` on demand. Missing-file is silent.
-    Delete "$INSTDIR\oryxis-mcp.exe"
+    ; `%USERPROFILE%\.obsidianssh\bin\` on demand. Missing-file is silent.
+    Delete "$INSTDIR\obsidianssh-mcp.exe"
 
-    File "${BINPATH}\oryxis.exe"
+    File "${BINPATH}\obsidianssh.exe"
     File "..\resources\logo.ico"
     File "..\README.md"
 
-    CreateDirectory "$SMPROGRAMS\Oryxis"
-    CreateShortCut "$SMPROGRAMS\Oryxis\Oryxis.lnk" "$INSTDIR\oryxis.exe" "" "$INSTDIR\logo.ico"
-    CreateShortCut "$SMPROGRAMS\Oryxis\Uninstall.lnk" "$INSTDIR\uninstall.exe"
+    CreateDirectory "$SMPROGRAMS\Obsidian SSH"
+    CreateShortCut "$SMPROGRAMS\Obsidian SSH\Obsidian SSH.lnk" "$INSTDIR\obsidianssh.exe" "" "$INSTDIR\logo.ico"
+    CreateShortCut "$SMPROGRAMS\Obsidian SSH\Uninstall.lnk" "$INSTDIR\uninstall.exe"
 
-    CreateShortCut "$DESKTOP\Oryxis.lnk" "$INSTDIR\oryxis.exe" "" "$INSTDIR\logo.ico"
+    CreateShortCut "$DESKTOP\Obsidian SSH.lnk" "$INSTDIR\obsidianssh.exe" "" "$INSTDIR\logo.ico"
 
     ; AppUserModelID on .lnk: see installer.nsi for the same TODO.
     ; The runtime fallback ships the JumpList anyway, just one
@@ -122,37 +122,37 @@ Section "Install"
     ; surfaced in Settings > Apps under "Installed for the current
     ; user only", same as VSCode's user installer. DisplayVersion
     ; matters for winget too, even on per-user installs.
-    WriteRegStr HKCU "Software\Oryxis" "InstallDir" "$INSTDIR"
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Oryxis" "DisplayName" "Oryxis (User)"
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Oryxis" "UninstallString" "$INSTDIR\uninstall.exe"
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Oryxis" "QuietUninstallString" '"$INSTDIR\uninstall.exe" /S'
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Oryxis" "DisplayIcon" "$INSTDIR\logo.ico"
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Oryxis" "Publisher" "Wilson Glasser"
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Oryxis" "DisplayVersion" "${VERSION}"
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Oryxis" "InstallLocation" "$INSTDIR"
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Oryxis" "URLInfoAbout" "https://oryxis.app/"
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Oryxis" "HelpLink" "https://github.com/wilsonglasser/oryxis"
-    WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Oryxis" "NoModify" 1
-    WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Oryxis" "NoRepair" 1
+    WriteRegStr HKCU "Software\Obsidian SSH" "InstallDir" "$INSTDIR"
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Obsidian SSH" "DisplayName" "Obsidian SSH (User)"
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Obsidian SSH" "UninstallString" "$INSTDIR\uninstall.exe"
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Obsidian SSH" "QuietUninstallString" '"$INSTDIR\uninstall.exe" /S'
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Obsidian SSH" "DisplayIcon" "$INSTDIR\logo.ico"
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Obsidian SSH" "Publisher" "Wilson Glasser"
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Obsidian SSH" "DisplayVersion" "${VERSION}"
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Obsidian SSH" "InstallLocation" "$INSTDIR"
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Obsidian SSH" "URLInfoAbout" "https://github.com/ObsidianNetwork/ObsidianSSH"
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Obsidian SSH" "HelpLink" "https://github.com/ObsidianNetwork/ObsidianSSH"
+    WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Obsidian SSH" "NoModify" 1
+    WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Obsidian SSH" "NoRepair" 1
 
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\App Paths\oryxis.exe" "" "$INSTDIR\oryxis.exe"
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\App Paths\oryxis.exe" "Path" "$INSTDIR"
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\App Paths\obsidianssh.exe" "" "$INSTDIR\obsidianssh.exe"
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\App Paths\obsidianssh.exe" "Path" "$INSTDIR"
 
-    ; oryxis:// URL scheme (deep links: sync pairing, theme install).
+    ; obsidianssh:// URL scheme (deep links: sync pairing, theme install).
     ; Per-user classes shadow HKLM's, so this install wins the scheme
     ; for this user even next to a system install.
-    WriteRegStr HKCU "Software\Classes\oryxis" "" "URL:Oryxis deep link"
-    WriteRegStr HKCU "Software\Classes\oryxis" "URL Protocol" ""
-    WriteRegStr HKCU "Software\Classes\oryxis\DefaultIcon" "" '"$INSTDIR\oryxis.exe",0'
-    WriteRegStr HKCU "Software\Classes\oryxis\shell\open\command" "" '"$INSTDIR\oryxis.exe" "%1"'
+    WriteRegStr HKCU "Software\Classes\obsidianssh" "" "URL:Obsidian SSH deep link"
+    WriteRegStr HKCU "Software\Classes\obsidianssh" "URL Protocol" ""
+    WriteRegStr HKCU "Software\Classes\obsidianssh\DefaultIcon" "" '"$INSTDIR\obsidianssh.exe",0'
+    WriteRegStr HKCU "Software\Classes\obsidianssh\shell\open\command" "" '"$INSTDIR\obsidianssh.exe" "%1"'
 
     ; ssh:// URL scheme. Same argv delivery, different route: a clicked
     ; link only PREFILLS the ad-hoc host editor (a web page chooses the
-    ; payload), while `oryxis user@host` on the command line dials.
+    ; payload), while `obsidianssh user@host` on the command line dials.
     WriteRegStr HKCU "Software\Classes\ssh" "" "URL:Secure Shell"
     WriteRegStr HKCU "Software\Classes\ssh" "URL Protocol" ""
-    WriteRegStr HKCU "Software\Classes\ssh\DefaultIcon" "" '"$INSTDIR\oryxis.exe",0'
-    WriteRegStr HKCU "Software\Classes\ssh\shell\open\command" "" '"$INSTDIR\oryxis.exe" "%1"'
+    WriteRegStr HKCU "Software\Classes\ssh\DefaultIcon" "" '"$INSTDIR\obsidianssh.exe",0'
+    WriteRegStr HKCU "Software\Classes\ssh\shell\open\command" "" '"$INSTDIR\obsidianssh.exe" "%1"'
 SectionEnd
 
 Section "Uninstall"
@@ -160,26 +160,26 @@ Section "Uninstall"
     EnVar::DeleteValue "Path" "$INSTDIR"
     Pop $0
 
-    Delete "$INSTDIR\oryxis.exe"
+    Delete "$INSTDIR\obsidianssh.exe"
     ; Sweep the pre-v0.7 bundled MCP binary, if upgrading from an old
     ; install that still has it. New installs never lay this file down.
-    Delete "$INSTDIR\oryxis-mcp.exe"
+    Delete "$INSTDIR\obsidianssh-mcp.exe"
     Delete "$INSTDIR\logo.ico"
     Delete "$INSTDIR\README.md"
     Delete "$INSTDIR\uninstall.exe"
     RMDir "$INSTDIR"
 
-    Delete "$SMPROGRAMS\Oryxis\Oryxis.lnk"
-    Delete "$SMPROGRAMS\Oryxis\Uninstall.lnk"
-    RMDir "$SMPROGRAMS\Oryxis"
-    Delete "$DESKTOP\Oryxis.lnk"
+    Delete "$SMPROGRAMS\Obsidian SSH\Obsidian SSH.lnk"
+    Delete "$SMPROGRAMS\Obsidian SSH\Uninstall.lnk"
+    RMDir "$SMPROGRAMS\Obsidian SSH"
+    Delete "$DESKTOP\Obsidian SSH.lnk"
 
-    DeleteRegKey HKCU "Software\Oryxis"
-    DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Oryxis"
-    DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\App Paths\oryxis.exe"
-    DeleteRegKey HKCU "Software\Classes\oryxis"
+    DeleteRegKey HKCU "Software\Obsidian SSH"
+    DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Obsidian SSH"
+    DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\App Paths\obsidianssh.exe"
+    DeleteRegKey HKCU "Software\Classes\obsidianssh"
     DeleteRegKey HKCU "Software\Classes\ssh"
     ; Toast identity the app self-registers at runtime (util.rs::
     ; register_toast_aumid).
-    DeleteRegKey HKCU "Software\Classes\AppUserModelId\io.oryxis.Oryxis"
+    DeleteRegKey HKCU "Software\Classes\AppUserModelId\io.obsidianssh.Obsidian SSH"
 SectionEnd

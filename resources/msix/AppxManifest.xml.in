@@ -6,7 +6,7 @@
   nowhere in this tree; docs/MSIX.md explains where each value comes from.
 
   The `windows.protocol` extension mirrors the NSIS installers'
-  `Software\Classes\oryxis` registration: the shell launches the app
+  `Software\Classes\obsidianssh` registration: the shell launches the app
   with the full URL as argv[1], which is exactly the CLI contract
   `deep_link.rs` handles (forward to a running window or boot with it).
 -->
@@ -25,7 +25,7 @@
     ProcessorArchitecture="@ARCH@" />
 
   <Properties>
-    <DisplayName>Oryxis</DisplayName>
+    <DisplayName>Obsidian SSH</DisplayName>
     <PublisherDisplayName>@PUBLISHER_DISPLAY_NAME@</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
@@ -71,28 +71,28 @@
   </Resources>
 
   <Applications>
-    <Application Id="Oryxis" Executable="oryxis.exe" EntryPoint="Windows.FullTrustApplication">
+    <Application Id="Obsidian SSH" Executable="obsidianssh.exe" EntryPoint="Windows.FullTrustApplication">
       <uap:VisualElements
-        DisplayName="Oryxis"
+        DisplayName="Obsidian SSH"
         Description="Rust-native SSH client with an encrypted local vault."
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png">
-        <uap:DefaultTile ShortName="Oryxis" />
+        <uap:DefaultTile ShortName="Obsidian SSH" />
       </uap:VisualElements>
       <Extensions>
         <!-- Replaces the NSIS installers' PATH entry: MSIX cannot edit
              PATH, the execution alias is the supported equivalent, so
-             `oryxis` stays callable from a shell. -->
-        <uap3:Extension Category="windows.appExecutionAlias" Executable="oryxis.exe" EntryPoint="Windows.FullTrustApplication">
+             `obsidianssh` stays callable from a shell. -->
+        <uap3:Extension Category="windows.appExecutionAlias" Executable="obsidianssh.exe" EntryPoint="Windows.FullTrustApplication">
           <uap3:AppExecutionAlias>
-            <desktop:ExecutionAlias Alias="oryxis.exe" />
+            <desktop:ExecutionAlias Alias="obsidianssh.exe" />
           </uap3:AppExecutionAlias>
         </uap3:Extension>
-        <!-- oryxis:// deep links (sync pairing, theme install). -->
+        <!-- obsidianssh:// deep links (sync pairing, theme install). -->
         <uap:Extension Category="windows.protocol">
-          <uap:Protocol Name="oryxis">
-            <uap:DisplayName>Oryxis deep link</uap:DisplayName>
+          <uap:Protocol Name="obsidianssh">
+            <uap:DisplayName>Obsidian SSH deep link</uap:DisplayName>
           </uap:Protocol>
         </uap:Extension>
       </Extensions>

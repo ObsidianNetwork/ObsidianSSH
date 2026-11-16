@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="resources/logo_128.png" width="120" alt="Oryxis logo">
+  <img src="resources/logo_128.png" width="120" alt="Obsidian SSH logo">
 </p>
 
-<h1 align="center">Oryxis</h1>
+<h1 align="center">Obsidian SSH</h1>
 
 <p align="center">
   Rust だけで作られたモダンな SSH クライアント。高速、暗号化、ネイティブ。
@@ -13,28 +13,28 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/wilsonglasser/oryxis/releases/latest"><img src="https://img.shields.io/github/v/release/wilsonglasser/oryxis?color=green" alt="Release"></a>
+  <a href="https://github.com/ObsidianNetwork/ObsidianSSH/releases/latest"><img src="https://img.shields.io/github/v/release/ObsidianNetwork/ObsidianSSH?color=green" alt="Release"></a>
   <img src="https://img.shields.io/badge/platforms-linux%20%7C%20macos%20%7C%20windows-blue" alt="Platforms">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue" alt="License"></a>
-  <a href="https://oryxis.app"><img src="https://img.shields.io/badge/website-oryxis.app-3CBBB1" alt="Website"></a>
+  <a href="https://github.com/ObsidianNetwork/ObsidianSSH"><img src="https://img.shields.io/badge/website-obsidianssh.app-3CBBB1" alt="Website"></a>
 </p>
 
 <p align="center">
-  <img src="resources/screen_1.gif" width="720" alt="Oryxis の動作例：ホストへの接続、スニペットの実行、SFTP ブラウズ">
+  <img src="resources/screen_1.gif" width="720" alt="Obsidian SSH の動作例：ホストへの接続、スニペットの実行、SFTP ブラウズ">
 </p>
 
 > このドキュメントは v0.23.0 以降の英語版 README の翻訳です（2026-10-29 同期）。
 > 詳細ドキュメント（[機能ツアー](docs/FEATURES.md)、[アーキテクチャ](docs/ARCHITECTURE.md)）は英語です。
 
-## Oryxis とは？
+## Obsidian SSH とは？
 
-Oryxis は [Termius](https://termius.com/) のオープンソース代替です。
+Obsidian SSH は [Termius](https://termius.com/) のオープンソース代替です。
 モダンな UI、認証情報を保存するローカル暗号化ボールトを備えたデスク
 トップ SSH クライアントで、クラウドアカウントは一切登場しません。
 Electron なし、webview なし、ベンダーサーバーなし。単一のネイティブ
 バイナリだけです。
 
-|  | Oryxis | Termius | PuTTY | Tabby |
+|  | Obsidian SSH | Termius | PuTTY | Tabby |
 |--|--------|---------|-------|-------|
 | UI スタック | ネイティブ Rust（iced + wgpu） | Electron | ネイティブ | Electron |
 | ライセンス | AGPL-3.0、オープンソース | プロプライエタリ | MIT | MIT |
@@ -52,24 +52,24 @@ Electron なし、webview なし、ベンダーサーバーなし。単一のネ
 またはターミナルから:
 
 ```powershell
-winget install WilsonGlasser.Oryxis
+winget install ObsidianNetwork.ObsidianSSH
 ```
 
 **Arch Linux (AUR)**
 
 ```bash
-yay -S oryxis-bin
+yay -S obsidianssh-bin
 ```
 
-**直接ダウンロード**：[最新リリース](https://github.com/wilsonglasser/oryxis/releases/latest)から、
+**直接ダウンロード**：[最新リリース](https://github.com/ObsidianNetwork/ObsidianSSH/releases/latest)から、
 Linux（`.tar.gz` / `.deb` / `.AppImage`、x86_64 と ARM64）、
 macOS（Apple Silicon `.dmg`）、Windows（システム / ユーザー単位の
 インストーラーとポータブル `.zip`、x86_64 と ARM64）を提供しています。
 Windows バイナリは Authenticode 署名済みです。ポータブル `.zip` は、
-コンピューターに Oryxis のプロファイルが既にある場合を除き、すべて
-（設定、ボールト、プラグイン、ログ）を `oryxis.exe` の隣に作成する
+コンピューターに Obsidian SSH のプロファイルが既にある場合を除き、すべて
+（設定、ボールト、プラグイン、ログ）を `obsidianssh.exe` の隣に作成する
 `data` フォルダーに保存します。Linux と macOS では、同じ目的でバイナリ、
-`.AppImage` ファイル、または `Oryxis.app` の隣に `oryxis-data` フォルダーを
+`.AppImage` ファイル、または `ObsidianSSH.app` の隣に `obsidianssh-data` フォルダーを
 作成してください。
 
 ### フォントとエンコーディング
@@ -113,7 +113,7 @@ UI 言語を日本語に切り替えると、Noto Sans JP フォントが自動�
   判別されます。編集したホスト CSV のエクスポートは、更新、削除、
   フォルダーとして取り込まれます。
 - **オフラインはあなたの指示で。** 初回起動時と設定で提供される
-  スイッチ一つで、Oryxis は自らリクエストを送らなくなります：更新の
+  スイッチ一つで、Obsidian SSH は自らリクエストを送らなくなります：更新の
   確認も、フォントやプラグインのダウンロードもしません。自分で設定
   したものはそのまま動きます。一度もネットワークにつながったことの
   ないマシン向けには、プラグインとフォントパックを同梱しスイッチを
@@ -202,8 +202,8 @@ tmux をお使いですか？**[tmux でのログとコマンド履歴](docs/TMU
 4. **オプション：** AI チャット（設定 > AI）、MCP サーバー
    （設定 > セキュリティ）、デバイス間 P2P 同期（設定 > 同期）。
 
-質問があれば [FAQ](https://github.com/wilsonglasser/oryxis/discussions/66)
-を見るか、[Discussion](https://github.com/wilsonglasser/oryxis/discussions)
+質問があれば [FAQ](https://github.com/ObsidianNetwork/ObsidianSSH/discussions)
+を見るか、[Discussion](https://github.com/ObsidianNetwork/ObsidianSSH/discussions)
 を立ててください。
 
 ## セキュリティ
@@ -219,10 +219,10 @@ tmux をお使いですか？**[tmux でのログとコマンド履歴](docs/TMU
 
 ## ロードマップ
 
-Oryxis はおよそ週次で小さくリリースし、機能は準備ができ次第出荷
+Obsidian SSH はおよそ週次で小さくリリースし、機能は準備ができ次第出荷
 されます。最新の安定版は **v0.23.0**。履歴は
 [CHANGELOG.md](CHANGELOG.md)、インタラクティブなロードマップは
-[ロードマップ Discussion](https://github.com/wilsonglasser/oryxis/discussions/67)
+[ロードマップ Discussion](https://github.com/ObsidianNetwork/ObsidianSSH/discussions)
 にあります。0.15.0 以降に出荷されたもの：分割ペインと SFTP コンソー
 ル、オフラインモードとそのバンドル、Alibaba Cloud と Tencent Cloud、
 ネットワークツールパネル、ワンクリックのリレーデプロイ、ネイティブ
@@ -246,7 +246,7 @@ Oryxis はおよそ週次で小さくリリースし、機能は準備ができ�
 
 Copyright (C) 2026 Wilson Glasser。
 [AGPL-3.0-or-later](LICENSE) でライセンスされています。誰でも
-Oryxis を使用、改変、再配布できますが、改変版をネットワーク越しに
+Obsidian SSH を使用、改変、再配布できますが、改変版をネットワーク越しに
 提供する場合は、同じライセンスでソースコードを公開する必要があり
 ます。詳細は [NOTICE](NOTICE) を参照してください。
 

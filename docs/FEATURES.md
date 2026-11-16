@@ -1,6 +1,6 @@
 # Feature tour
 
-The complete inventory of what Oryxis does today. For the short version,
+The complete inventory of what Obsidian SSH does today. For the short version,
 see the [Highlights](../README.md#highlights) in the README; for what's
 coming next, see the [Roadmap](../README.md#roadmap).
 
@@ -18,7 +18,7 @@ coming next, see the [Roadmap](../README.md#roadmap).
 - **Security keys, natively.** A YubiKey or any FIDO2 token signs in
   with no `ssh-agent` in between: import the `id_ed25519_sk` or
   `id_ecdsa_sk` file `ssh-keygen` produced (or point the host at it in
-  `~/.ssh`) and Oryxis asks the token itself: a touch prompt in a
+  `~/.ssh`) and Obsidian SSH asks the token itself: a touch prompt in a
   terminal tab, the PIN when the token asks for one (SFTP tabs and the
   SFTP backup take the touch only). The **Security Key** auth method
   offers that token and nothing else. Windows signs through Windows
@@ -171,7 +171,7 @@ coming next, see the [Roadmap](../README.md#roadmap).
   carries an honest note that the protocol is cleartext by design.
 - **Serial consoles.** Local COM / `/dev/tty*` lines with configurable
   baud, framing, flow control, line endings and local echo.
-- **ZMODEM transfers.** Run `sz` / `rz` on the remote and Oryxis
+- **ZMODEM transfers.** Run `sz` / `rz` on the remote and Obsidian SSH
   auto-detects the transfer, takes over the byte stream and moves the file
   with a progress strip beside the terminal (the foot of the sidebar or the
   status bar), never over it. Works over SSH, Telnet and serial alike; a
@@ -187,13 +187,13 @@ coming next, see the [Roadmap](../README.md#roadmap).
   editing the temporary host without writing to the vault.
 - Quick connections behave like real tabs (splits, SFTP, port forwards);
   typed credentials are swept on vault lock.
-- **From your shell.** `oryxis user@host[:port]` connects, landing a tab
+- **From your shell.** `obsidianssh user@host[:port]` connects, landing a tab
   in the window you already have open when one is running.
-- **From a link.** Oryxis registers as the `ssh://` handler, and a
+- **From a link.** Obsidian SSH registers as the `ssh://` handler, and a
   clicked link opens the ad-hoc host editor with the target filled in.
   It deliberately stops there rather than dialing: a web page chooses
   that payload, so the connection stays your click. (macOS is the
-  exception for now, along with `oryxis://`: LaunchServices delivers
+  exception for now, along with `obsidianssh://`: LaunchServices delivers
   URLs as Apple Events rather than arguments.)
 
 ## Remote desktop (RDP / VNC)
@@ -299,7 +299,7 @@ coming next, see the [Roadmap](../README.md#roadmap).
   (`aws sso login`, `gcloud auth login`, anything doing OAuth) listens on
   its OWN `127.0.0.1:<port>` and prints an authorize URL that redirects
   back there. Opening that link locally would send the browser to this
-  machine's port instead, and the login would die at its last step. Oryxis
+  machine's port instead, and the login would die at its last step. Obsidian SSH
   binds the same port here and forwards it down the pane's existing SSH
   connection first, so the redirect completes; the tunnel closes itself
   once the callback lands (or if none ever does). Both behaviours are
@@ -320,7 +320,7 @@ coming next, see the [Roadmap](../README.md#roadmap).
   per host: Auto (a legacy CJK encoding on the host means wide),
   Narrow or Wide. The same pick sits in the terminal sidebar's Host
   config tab, where it applies to new output without reconnecting. Width
-  is a two-party contract: this only lets Oryxis match what the remote's
+  is a two-party contract: this only lets Obsidian SSH match what the remote's
   `wcwidth` already does, so pair it with a CJK locale on the server or
   `set ambiwidth=double` in vim.
 - **Paste done right.** X11-style middle-click paste, configurable
@@ -386,7 +386,7 @@ coming next, see the [Roadmap](../README.md#roadmap).
 - **Kill the process on a port.** Right-click a port row for a graceful
   stop or a forced kill, behind a confirmation naming the port, process,
   PID and signal. The signal goes out on an exec channel, never into
-  your shell, and Oryxis re-asks the host who owns the port first, so a
+  your shell, and Obsidian SSH re-asks the host who owns the port first, so a
   service that restarted while the dialog was open is reported instead
   of signalled by mistake. Sockets whose PID the login user cannot see
   (the usual case for root-owned services) escalate through sudo, using
@@ -593,19 +593,19 @@ panel turns it on, next to the other optional ones). Switching it back off close
 - **Disabled by default.** Enable in Settings > Security.
 - **Several vaults.** The server serves every vault it can open: one
   without a master password, or one whose password comes in
-  `ORYXIS_VAULT_PASSWORD_<SLUG>` (and its token in
-  `ORYXIS_MCP_TOKEN_<SLUG>`, the slug upper-cased with `-` as `_`). The
-  first vault keeps the plain `ORYXIS_VAULT_PASSWORD` and
-  `ORYXIS_MCP_TOKEN`. `oryxis-mcp --vault <slug>` serves just one. Each
+  `OBSIDIANSSH_VAULT_PASSWORD_<SLUG>` (and its token in
+  `OBSIDIANSSH_MCP_TOKEN_<SLUG>`, the slug upper-cased with `-` as `_`). The
+  first vault keeps the plain `OBSIDIANSSH_VAULT_PASSWORD` and
+  `OBSIDIANSSH_MCP_TOKEN`. `obsidianssh-mcp --vault <slug>` serves just one. Each
   vault's own MCP switch is read per call, every answer names its
   `vault`, every tool takes an optional `vault` parameter, and
   `list_vaults` lists them. The setup panel writes each vault's variables
-  into the same `oryxis` entry, keeping the other vaults' variables.
+  into the same `obsidianssh` entry, keeping the other vaults' variables.
 - **Distributed as a plugin.** Downloaded on demand, with a stable launcher
   path for external clients.
 - **One-click setup for your AI client.** Settings > MCP Server detects
   which clients are installed (Claude Code, Claude Desktop, Codex, Cursor,
-  Gemini CLI, GitHub Copilot, Windsurf) and writes the `oryxis` entry into
+  Gemini CLI, GitHub Copilot, Windsurf) and writes the `obsidianssh` entry into
   the client's own config, in its own shape (JSON `mcpServers`, or Codex's
   TOML), merged into whatever is already there. On Windows the same panel
   targets a client running inside WSL.
@@ -615,10 +615,10 @@ Setup by hand, for Claude Code (`~/.claude.json`):
 ```json
 {
   "mcpServers": {
-    "oryxis": {
-      "command": "oryxis-mcp",
+    "obsidianssh": {
+      "command": "obsidianssh-mcp",
       "env": {
-        "ORYXIS_VAULT_PASSWORD": "your-vault-password"
+        "OBSIDIANSSH_VAULT_PASSWORD": "your-vault-password"
       }
     }
   }
@@ -641,8 +641,8 @@ If your vault has no password, omit the `env` field.
   become Kubernetes accounts the same way.
 - **Alibaba Cloud.** ECS discovery and ACK clusters via the `aliyun` CLI
   you already configured (optional profile + region). ACK hands the
-  kubeconfig back instead of writing `~/.kube/config`, so Oryxis stores it
-  in a file of its own under `~/.oryxis/kubeconfig/` and points the
+  kubeconfig back instead of writing `~/.kube/config`, so Obsidian SSH stores it
+  in a file of its own under `~/.obsidianssh/kubeconfig/` and points the
   Kubernetes account at that file; the same button refreshes the
   credential when it expires.
 - **Tencent Cloud.** CVM discovery and TKE clusters via `tccli`, the same
@@ -706,7 +706,7 @@ If your vault has no password, omit the `env` field.
   to each vault, or from the command palette; its tabs keep running
   while you look at another. Settings > Vaults creates, renames, locks,
   removes and deletes vaults, opens a vault file from anywhere (a USB
-  key), and can ask which vault to open at start; an `.oryxis` export
+  key), and can ask which vault to open at start; an `.obsidianssh` export
   can be imported as a new vault. Settings rows that apply to the whole
   device carry a badge; the rest are the vault's own.
 - **TOTP 2FA autofill.** Store a per-host TOTP secret (bare base32 or an
@@ -807,7 +807,7 @@ vulnerability disclosure policy.
 ## Export / import
 
 - **Single encrypted file.** Export your whole vault as a
-  password-protected `.oryxis` file.
+  password-protected `.obsidianssh` file.
 - **Selective export.** Include SSH private keys or only host configs.
 - **Smart merge.** Import merges by UUID, keeping the newer record (LWW).
 - **Round-trips proxy data** so a fresh device gets working proxy auth.
@@ -820,10 +820,10 @@ Five transports, one at a time, all carrying the same encrypted payload.
   no cloud dependency and no account.
 - **LAN discovery.** Automatic peer discovery via mDNS with one-click pair.
 - **Cross-network discovery.** Self-hostable signaling (Cloudflare Worker
-  or `oryxis-relay`) plus STUN for NAT traversal. See
+  or `obsidianssh-relay`) plus STUN for NAT traversal. See
   [SELF_HOSTING.md](../SELF_HOSTING.md).
 - **Pairing.** 6-digit code then Ed25519 challenge/response;
-  `oryxis://pair/...` link and QR code.
+  `obsidianssh://pair/...` link and QR code.
 - **E2E encrypted.** Payloads sealed with X25519 + XChaCha20-Poly1305
   (192-bit nonces).
 - **Tombstone-driven deletes** with a 30-day TTL gated by active-peer
@@ -838,7 +838,7 @@ Five transports, one at a time, all carrying the same encrypted payload.
 - **Folder.** The same snapshot in a directory the machine already
   mounts, which covers every cloud client's folder (OneDrive, Google
   Drive, Dropbox, iCloud), a network share, Syncthing or an external
-  disk without Oryxis talking to any provider. Installed with an atomic
+  disk without Obsidian SSH talking to any provider. Installed with an atomic
   rename, so a reader never sees half of one.
 - **Git.** The snapshot committed to any remote `git clone` accepts, and
   the only transport that keeps HISTORY, so a vault wrecked by a bad
@@ -867,7 +867,7 @@ Five transports, one at a time, all carrying the same encrypted payload.
   mode instead of an update result, the Plugins panel carries a banner,
   a font that cannot be fetched toasts once. Nothing is removed; turning
   the switch off restores everything immediately.
-- **Offline bundle.** `oryxis-offline-<platform>-<arch>` ships next to
+- **Offline bundle.** `obsidianssh-offline-<platform>-<arch>` ships next to
   every release with the plugins and font packs inside and the switch on
   at first run. Plugins seed the ordinary cache through the same
   signature gate a download passes; fonts are read from the bundle.
@@ -890,7 +890,7 @@ Five transports, one at a time, all carrying the same encrypted payload.
   primary/child IPC.
 - **Windows JumpList.** Recent hosts on the taskbar icon; right-click,
   pick, connected.
-- **Portable mode.** The Windows zip keeps its whole data tree (device settings, the vault list, vaults, plugins, logs) in a `data` folder next to `oryxis.exe`, made on the first start unless the computer already holds an Oryxis profile or Scoop installed it, so the app and its configuration travel together on a USB key; a vault on another volume (a VeraCrypt drive) is opened from where it lives, and vaults, folders and cluster credentials on the key itself are remembered relative to it, so another drive letter does not break them. On Linux (`.tar.gz`, AppImage) and macOS, an `oryxis-data` folder created next to the binary, the `.AppImage` file or `Oryxis.app` does the same (a plain `data` folder there counts only once it holds an Oryxis tree, since that folder is usually shared); on every platform, a program kept straight in the home folder never uses one (`~/data` is the user's own); on macOS, move the app with Finder first, since a quarantined app runs from a temporary location that cannot see the folder. With a portable tree the SSH agent socket goes to the user's runtime folder (`$XDG_RUNTIME_DIR`, `$TMPDIR`), because a FAT or exFAT key cannot hold one. Nothing is migrated in silence, a settings file that cannot be read is reported at start and never written over, a portable copy runs as its own instance beside an installed one, and the MCP client entries it writes point the server at the same folder.
+- **Portable mode.** The Windows zip keeps its whole data tree (device settings, the vault list, vaults, plugins, logs) in a `data` folder next to `obsidianssh.exe`, made on the first start unless the computer already holds an Obsidian SSH profile or Scoop installed it, so the app and its configuration travel together on a USB key; a vault on another volume (a VeraCrypt drive) is opened from where it lives, and vaults, folders and cluster credentials on the key itself are remembered relative to it, so another drive letter does not break them. On Linux (`.tar.gz`, AppImage) and macOS, an `obsidianssh-data` folder created next to the binary, the `.AppImage` file or `ObsidianSSH.app` does the same (a plain `data` folder there counts only once it holds an Obsidian SSH tree, since that folder is usually shared); on every platform, a program kept straight in the home folder never uses one (`~/data` is the user's own); on macOS, move the app with Finder first, since a quarantined app runs from a temporary location that cannot see the folder. With a portable tree the SSH agent socket goes to the user's runtime folder (`$XDG_RUNTIME_DIR`, `$TMPDIR`), because a FAT or exFAT key cannot hold one. Nothing is migrated in silence, a settings file that cannot be read is reported at start and never written over, a portable copy runs as its own instance beside an installed one, and the MCP client entries it writes point the server at the same folder.
 - **Window memory.** Size, position, monitor, maximized and fullscreen
   state restored across launches.
 - **Truthful rendering.** A boot probe detects software rasterizers
