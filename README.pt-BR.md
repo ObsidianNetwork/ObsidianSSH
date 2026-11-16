@@ -251,7 +251,7 @@ e as convenções do projeto estão em [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Licença
 
-Copyright (C) 2026 Wilson Glasser. Licenciado sob
+Copyright (C) 2026 Wilson Glasser (Oryxis); Copyright (C) 2026 ObsidianNetwork. Licenciado sob
 [AGPL-3.0-or-later](LICENSE): qualquer pessoa pode usar, modificar e
 distribuir o Obsidian SSH, mas qualquer versão modificada disponibilizada
 pela rede precisa publicar seu código-fonte sob a mesma licença.

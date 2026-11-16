@@ -231,7 +231,7 @@ sudo, `data` 폴더를 쓰는 포터블 모드, 볼트를 관리하는 호스트
 
 ## 라이선스
 
-Copyright (C) 2026 Wilson Glasser.
+Copyright (C) 2026 Wilson Glasser (Oryxis); Copyright (C) 2026 ObsidianNetwork.
 [AGPL-3.0-or-later](LICENSE) 라이선스로 배포됩니다. 누구나
 Obsidian SSH를 사용, 수정, 배포할 수 있지만, 수정한 버전을 네트워크로
 제공하는 경우 동일한 라이선스로 소스 코드를 공개해야 합니다.

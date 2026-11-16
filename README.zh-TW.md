@@ -210,7 +210,7 @@ Ctrl+Tab、在輸入時提供建議的指令歷史、片段列、游標形狀與
 
 ## 授權條款
 
-Copyright (C) 2026 Wilson Glasser。依
+Copyright (C) 2026 Wilson Glasser (Oryxis); Copyright (C) 2026 ObsidianNetwork。依
 [AGPL-3.0-or-later](LICENSE) 授權發布：任何人都可以使用、修改與散布
 Obsidian SSH，但透過網路提供的修改版本必須以相同授權公開其原始碼。詳見
 [NOTICE](NOTICE)。

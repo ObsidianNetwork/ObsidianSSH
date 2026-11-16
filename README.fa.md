@@ -271,7 +271,7 @@ sudo از طریق افزونهٔ MCP با تأیید روی صفحه، حالت
 
 ## مجوز
 
-Copyright (C) 2026 Wilson Glasser. منتشرشده تحت مجوز
+Copyright (C) 2026 Wilson Glasser (Oryxis); Copyright (C) 2026 ObsidianNetwork. منتشرشده تحت مجوز
 [AGPL-3.0-or-later](LICENSE): هر کسی می‌تواند Obsidian SSH را استفاده،
 اصلاح و توزیع کند، اما هر نسخهٔ تغییریافته‌ای که از طریق شبکه در
 دسترس قرار گیرد باید کد منبع خود را با همین مجوز منتشر کند.

@@ -243,7 +243,7 @@ Obsidian SSH はおよそ週次で小さくリリースし、機能は準備が�
 
 ## ライセンス
 
-Copyright (C) 2026 Wilson Glasser。
+Copyright (C) 2026 Wilson Glasser (Oryxis); Copyright (C) 2026 ObsidianNetwork。
 [AGPL-3.0-or-later](LICENSE) でライセンスされています。誰でも
 Obsidian SSH を使用、改変、再配布できますが、改変版をネットワーク越しに
 提供する場合は、同じライセンスでソースコードを公開する必要があり

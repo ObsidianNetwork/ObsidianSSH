@@ -41,7 +41,7 @@ exclude = ["crates/obsidianssh-gif"]
 
 [workspace.package]
 license = "AGPL-3.0-or-later"
-authors = ["ObsidianNetwork", "Wilson Glasser <wilsonglasser@gmail.com>"]
+authors = ["ObsidianNetwork <admin@obsidiannetwork.au>", "Wilson Glasser"]
 repository = "https://github.com/ObsidianNetwork/ObsidianSSH"
 
 [workspace.dependencies]

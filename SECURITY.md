@@ -10,6 +10,7 @@ Please do **not** open a public issue for security problems.
 - **Preferred:** report privately via
   [GitHub Security Advisories](https://github.com/ObsidianNetwork/ObsidianSSH/security/advisories/new)
   ("Report a vulnerability" on the Security tab).
+- **Email:** `admin@obsidiannetwork.au`.
 
 You can expect an acknowledgment within 72 hours. Fixes for confirmed
 vulnerabilities are released as fast as severity demands, and reporters are

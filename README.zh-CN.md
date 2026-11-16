@@ -208,7 +208,7 @@ Obsidian SSH 以大约每周一次的节奏持续发布，功能就绪即上线�
 
 ## 许可证
 
-Copyright (C) 2026 Wilson Glasser。基于
+Copyright (C) 2026 Wilson Glasser (Oryxis); Copyright (C) 2026 ObsidianNetwork。基于
 [AGPL-3.0-or-later](LICENSE) 许可发布：任何人都可以使用、修改和分发
 Obsidian SSH，但通过网络提供的修改版本必须以相同许可证公开其源代码。详见
 [NOTICE](NOTICE)。

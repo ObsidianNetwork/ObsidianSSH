@@ -15,8 +15,8 @@ path = "src/main.rs"
 # `target/debian/`. Depends only on the GUI runtime libs winit needs.
 [package.metadata.deb]
 name = "obsidianssh"
-maintainer = "ObsidianNetwork"
-copyright = "2026, Wilson Glasser <wilsonglasser@gmail.com>; 2026, ObsidianNetwork"
+maintainer = "ObsidianNetwork <admin@obsidiannetwork.au>"
+copyright = "2026, Wilson Glasser <wilsonglasser@gmail.com>; 2026, ObsidianNetwork <admin@obsidiannetwork.au>"
 license-file = ["../../LICENSE", "0"]
 extended-description = """Obsidian SSH is a Rust-native SSH client. It bundles a terminal, an
 SFTP browser, and host management with a focus on keyboard-driven flow."""
