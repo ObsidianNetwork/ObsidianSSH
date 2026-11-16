@@ -69,12 +69,6 @@ impl ObsidianSsh {
             };
         let mut vault_state = VaultState::Loading;
         let mut vault_has_user_password = false;
-        // Biometric-unlock state, hydrated pre-unlock (like theme /
-        // language) so the lock screen can offer the affordance without
-        // waiting for the master password. `load_data_from_vault` no
-        // longer re-probes availability (it is stable per session).
-        let mut biometric_unlock_enabled = false;
-        let mut biometric_available = false;
         // Window geometry persisted by `persist_window_geometry`. main()
         // already applied these to the OS window before iced booted; the
         // state fields must agree so the custom chrome renders the right
@@ -143,14 +137,6 @@ impl ObsidianSsh {
                 use crate::i18n::LayoutDirection;
                 LayoutDirection::set_active(LayoutDirection::from_code(&code));
             }
-            // Biometric unlock: read the opt-in and probe platform support
-            // now, so the lock screen can show the affordance before the
-            // vault is unlocked. Availability is a provider-level check
-            // (no vault account needed) and stable for the session.
-            if let Ok(Some(flag)) = v.get_setting("biometric_unlock_enabled") {
-                biometric_unlock_enabled = flag == "true";
-            }
-            biometric_available = obsidianssh_biometric::default_provider().is_available();
             if let Ok(Some(flag)) = v.get_setting("auto_check_updates") {
                 auto_check_updates = flag == "true";
             }
@@ -291,19 +277,12 @@ impl ObsidianSsh {
             Self {
                 vaults: crate::vault_slots::VaultSlots::single({
                     let mut first = crate::vault_slots::OpenVault::new(boot_vault_id, vault);
-                    // Hydrated before the unlock (the lock screen runs
-                    // while the vault can still be locked), so it comes
-                    // from the read above rather than the factory default.
-                    first.prefs.biometric_unlock_enabled = biometric_unlock_enabled;
                     first.vault_ui = crate::state::VaultUi {
                         state: vault_state,
                         open_error: vault_open_error,
                         open_read_only: vault_open_read_only,
                         open_corrupt: vault_open_corrupt,
                         has_user_password: vault_has_user_password,
-                        // Pre-check the onboarding form's biometric opt-in
-                        // whenever the platform can service it.
-                        setup_enable_biometric: biometric_available,
                         ..Default::default()
                     };
                     // Keep the inherited password in memory only when the
@@ -412,14 +391,6 @@ impl ObsidianSsh {
                 hybrid_sftp_owner: None,
                 nav: crate::window_ctx::WindowNav::default(),
                 parked_views: crate::window_ctx::ParkedViews::new(),
-                vault_dialog: None,
-                vault_presence: std::collections::HashMap::new(),
-                vault_chords: Vec::new(),
-                editing_vault_hotkey: None,
-                start_picker: false,
-                vault_chip_bounds: crate::widgets::new_bounds_cell(),
-                vault_tab_bounds: crate::widgets::new_bounds_cell(),
-                vault_badge_bounds: crate::widgets::new_bounds_cell(),
                 tab_order: Vec::new(),
                 extra_windows: std::collections::BTreeMap::new(),
                 window_ctx: None,
@@ -540,8 +511,8 @@ impl ObsidianSsh {
                 sidebar_snippet_group: None,
                 pending_perf_mode_toast: false,
                 download_mirror,
-                agent: crate::state::AgentState::default(),
                 mcp_sudo: crate::state::McpSudoState::default(),
+                ssh_agents: Vec::new(),
                 tray_menu_signature: 0,
                 jumplist_signature: 0,
                 jumplist_window_tagged: false,
@@ -559,7 +530,6 @@ impl ObsidianSsh {
                 // Mirror `Connection::new` / `ConnectionForm::default`, which
                 // expose new hosts via MCP by default.
                 last_unlock: None,
-                biometric_available,
                 pending_update: None,
                 update_downloading: false,
                 update_progress: 0.0,
@@ -600,13 +570,8 @@ impl ObsidianSsh {
             Task::none(),
         );
 
-        // If auto-unlocked (no user password), load data immediately;
-        // unless the start asks which vault to open (Settings > Vaults,
-        // several vaults): then nothing of this one loads, runs or lands
-        // until it is the one picked (`pick_start_vault`).
-        app.refresh_vault_presence();
-        app.start_picker = app.start_picker_wanted();
-        let open_now = !app.start_picker && app.vaults.cur().vault_ui.state == VaultState::Unlocked;
+        // If auto-unlocked (no user password), load data immediately.
+        let open_now = app.vaults.cur().vault_ui.state == VaultState::Unlocked;
         if open_now {
             app.load_data_from_vault();
         }
@@ -900,6 +865,7 @@ impl ObsidianSsh {
                 "vault-unlock-password",
             )));
         }
+        tasks.push(crate::ssh_agents::refresh());
         let boot_task = Task::batch(tasks);
         (app, boot_task)
     }

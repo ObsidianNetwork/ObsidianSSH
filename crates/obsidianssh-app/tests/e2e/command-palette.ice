@@ -10,7 +10,7 @@ mode: Zen
 # with a running PTY.
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 expect "Create host"
 # Open the palette and confirm its identity pill.
 type ctrl+shift+p

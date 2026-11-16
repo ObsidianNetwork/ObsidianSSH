@@ -10,7 +10,7 @@ mode: Zen
 # was exercised live: dead-endpoint dial -> Failed card -> detail
 # panel Retry, and real vitals against a local sshd).
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle
 absent "Monitoring"
 # Through the burger so the flow doesn't depend on the gear's pixel

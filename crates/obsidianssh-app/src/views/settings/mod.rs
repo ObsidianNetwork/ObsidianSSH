@@ -9,7 +9,7 @@ use iced::Widget as _;
 pub(crate) use iced::widget::button::Status as BtnStatus;
 pub(crate) use iced::{Background, Border, Color, Element, Length, Padding};
 
-pub(crate) use crate::app::{SettingsMessage, McpMessage, NavigationMessage, CommandHistoryMessage, UpdateMessage, ProxyIdentityMessage, AgentMessage, ZmodemMessage, Message, ObsidianSsh, VaultMessage, AiMessage, ShareMessage, SyncMessage, NAV_RAIL_WIDTH_EXPANDED};
+pub(crate) use crate::app::{SettingsMessage, McpMessage, NavigationMessage, CommandHistoryMessage, UpdateMessage, ProxyIdentityMessage, ZmodemMessage, Message, ObsidianSsh, AiMessage, ShareMessage, SyncMessage, NAV_RAIL_WIDTH_EXPANDED};
 pub(crate) use crate::i18n::t;
 pub(crate) use crate::state::SettingsSection;
 pub(crate) use crate::theme::ObsidianSshColors;
@@ -21,7 +21,6 @@ pub(crate) use crate::widgets::{
 // Per-section view methods, split into sibling files.
 mod about;
 mod advanced;
-mod agent;
 mod ai;
 mod connection;
 mod highlight_rule_modal;
@@ -40,7 +39,6 @@ mod sftp;
 mod shortcuts;
 mod sync;
 mod terminal;
-mod vaults;
 
 // `host_badge` is shared with the section submodules through the
 // `use super::*` glob (the Sync section renders it in its host picker
@@ -267,11 +265,9 @@ impl ObsidianSsh {
             SettingsSection::Shortcuts => self.view_settings_shortcuts(),
 
             SettingsSection::Security => self.view_settings_security(),
-            SettingsSection::Vaults => self.view_settings_vaults(),
 
             SettingsSection::Sync => self.view_settings_sync(),
 
-            SettingsSection::Agent => self.view_settings_agent(),
 
             SettingsSection::Advanced => self.view_settings_advanced(),
             SettingsSection::About => self.view_settings_about(),

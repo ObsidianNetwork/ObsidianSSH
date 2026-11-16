@@ -11,7 +11,7 @@ mode: Zen
 # The root hub must NOT carry the line: an import from the root lands
 # at the root, exactly as before.
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle 250
 click "Import"
 settle 250

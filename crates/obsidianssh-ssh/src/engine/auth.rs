@@ -1192,7 +1192,8 @@ impl SshEngine {
             super::agent::unix_agent_sock_candidates(std::env::var("SSH_AUTH_SOCK").ok());
         if candidates.is_empty() {
             return Err(SshError::Key(
-                "ssh-agent not available: SSH_AUTH_SOCK is not set".into(),
+                "ssh-agent not available: SSH_AUTH_SOCK is not set and no Bitwarden agent socket exists"
+                    .into(),
             ));
         }
         self.agent_auth_sweep(

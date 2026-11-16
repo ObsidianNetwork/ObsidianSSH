@@ -447,12 +447,6 @@ pub enum SecretField {
     SharePassword,
     /// AI assistant API key (Settings > AI).
     AiApiKey,
-    /// New master password (Settings > Security).
-    VaultNewPassword,
-    /// Confirm new master password (Settings > Security).
-    VaultConfirmPassword,
-    /// Current master password in the change-password form (Settings > Security).
-    VaultCurrentPassword,
     /// Portable export password (Settings > Security).
     ExportPassword,
     /// Portable import password (Settings > Security).
@@ -769,18 +763,7 @@ pub(crate) enum SettingsSection {
     Mcp,
     Shortcuts,
     Security,
-    /// Every vault this device knows: state, file, rename / lock /
-    /// remove / delete, "New vault" and "Open existing vault", and the
-    /// switcher's visibility. Device-level as a whole (the registry is
-    /// `device.json`).
-    Vaults,
     Sync,
-    /// SSH agent server configuration: per-signature confirm, external
-    /// key adds, the OpenSSH pipe alias (Windows) and the socket path +
-    /// setup snippets. The enable toggle stays on the Features screen
-    /// (like AI / SFTP / Sync); this section only appears while the
-    /// agent is enabled.
-    Agent,
     /// Cloud Sync preferences (auto-refresh interval, orphan
     /// auto-archive). The cloud *account* CRUD moved to the top-level
     /// `View::Cloud` surface; this section keeps only the sync knobs.
@@ -813,9 +796,7 @@ impl SettingsSection {
             SettingsSection::Mcp => "settings-mcp-scroll",
             SettingsSection::Shortcuts => "settings-shortcuts-scroll",
             SettingsSection::Security => "settings-security-scroll",
-            SettingsSection::Vaults => "settings-vaults-scroll",
             SettingsSection::Sync => "settings-sync-scroll",
-            SettingsSection::Agent => "settings-agent-scroll",
             SettingsSection::Cloud => "settings-cloud-scroll",
             SettingsSection::Plugins => "settings-plugins-scroll",
             SettingsSection::Advanced => "settings-advanced-scroll",

@@ -153,7 +153,7 @@ impl ObsidianSsh {
             Space::new().width(1).height(TAB_HEIGHT).boxed(),
         ];
         if side {
-            leading.push(self.home_area_tab(solid_fill, false));
+            leading.push(self.home_area_tab(solid_fill));
         }
         // The middle Fill slot: the pinned-tab strip (which keeps the
         // window-drag / double-click contract on its empty area) or the
@@ -724,7 +724,7 @@ impl ObsidianSsh {
         // scrollable connection strip (see `home_area_tab` for the
         // selection family and why Settings stays out), so Home stays
         // reachable no matter how far the strip overflows.
-        leading.push(self.home_area_tab(solid_fill, false));
+        leading.push(self.home_area_tab(solid_fill));
         leading.push(Space::new().width(TAB_SPACING).height(TAB_HEIGHT).boxed());
         leading.push(tab_strip);
         if let Some(plus) = docked_plus {

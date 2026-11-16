@@ -9,7 +9,7 @@ mode: Zen
 # ones).
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 expect "Create host"
 # First run has no toolbar: Continue on the empty first-run screen is
 # the "+ Host" path and opens the same editor.

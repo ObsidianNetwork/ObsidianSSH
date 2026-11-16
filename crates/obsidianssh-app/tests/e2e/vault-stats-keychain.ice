@@ -10,7 +10,7 @@ mode: Zen
 # drops one of the two lists again.
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 expect "Create host"
 click "Keychain"
 expect "Generate key"

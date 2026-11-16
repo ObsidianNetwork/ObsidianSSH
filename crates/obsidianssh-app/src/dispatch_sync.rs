@@ -216,17 +216,6 @@ impl ObsidianSsh {
         match message {
             // ── Sync ──
             SyncMessage::ToggleEnabled => {
-                // Turning on a target another vault already syncs with is
-                // refused here, before anything runs (`sync_targets`).
-                if !self.vaults.cur().sync.enabled
-                    && let Some(other) = self.sync_target_taken_by()
-                {
-                    // Said where the toggle is (Features & Plugins, the
-                    // onboarding) as well as in the Sync section.
-                    let text = Self::sync_target_taken_text(&other);
-                    self.vaults.cur_mut().sync.status = Some(text.clone());
-                    return self.show_toast(text);
-                }
                 self.vaults.cur_mut().sync.enabled = !self.vaults.cur_mut().sync.enabled;
                 if let Some(vault) = &self.vaults.cur().store {
                     let _ = vault.set_setting("sync_enabled", if self.vaults.cur().sync.enabled { "true" } else { "false" });

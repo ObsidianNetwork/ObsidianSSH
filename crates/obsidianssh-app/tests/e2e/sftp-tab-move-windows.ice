@@ -13,9 +13,9 @@ mode: Zen
 # listing in the extra window, and again after the move back, is what
 # shows the same state being drawn from wherever it sits.
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle
-click (161, 20)
+click (87, 20)
 expect "Local Shell"
 timeout 800
 click "Local Shell"

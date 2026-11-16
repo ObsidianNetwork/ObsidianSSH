@@ -12,7 +12,7 @@ mode: Zen
 # the parsers are covered by unit tests (importers::*), and the
 # detection routing by importers::detect::tests.
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle
 expect "Import"
 click "Import"

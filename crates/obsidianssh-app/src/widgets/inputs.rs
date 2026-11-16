@@ -184,37 +184,6 @@ pub fn rounded_editor_style(_theme: &Theme, status: text_editor::Status) -> text
     }
 }
 
-/// Password text-input with a Lucide eye toggle overlaid inside the rounded
-/// border. The input reserves trailing padding for the icon (right under LTR,
-/// left under RTL); the button lives in a `Stack` above the input,
-/// leading-edge-anchored on the trailing side. Hit-testing is constrained to
-/// the button's bounding box, so clicks on the rest of the field still focus
-/// the input. `inner_padding` controls vertical and leading-edge inset (12
-/// for the vault hero field, 10 for inline form rows).
-pub(crate) fn password_input_with_eye<'a, F>(
-    placeholder: &'a str,
-    value: &'a str,
-    on_input: F,
-    on_submit: Option<Message>,
-    visible: bool,
-    on_toggle: Message,
-    inner_padding: f32,
-) -> Element<'a, Message>
-where
-    F: Fn(String) -> Message + 'a,
-{
-    password_input_with_eye_id(
-        placeholder,
-        value,
-        on_input,
-        on_submit,
-        visible,
-        on_toggle,
-        inner_padding,
-        None,
-    )
-}
-
 /// `password_input_with_eye` with a focus id on the inner input, so
 /// the keyboard router's input rows (Enter-to-focus) can target the
 /// field. Kept as a sibling instead of a new parameter so the many

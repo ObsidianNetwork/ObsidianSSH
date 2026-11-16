@@ -6,7 +6,7 @@ mode: Zen
 # saves and lands the card in the list.
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 expect "Create host"
 click "Proxies"
 expect "New Proxy"

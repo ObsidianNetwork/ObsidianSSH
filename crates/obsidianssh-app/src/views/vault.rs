@@ -9,7 +9,7 @@ use crate::app::{VaultMessage, Message, ObsidianSsh};
 use crate::i18n::t;
 use crate::theme::{mix, ObsidianSshColors};
 use crate::views::chrome::window_chrome_bar;
-use crate::widgets::{accent_gradient, styled_button, styled_icon_button};
+use crate::widgets::{accent_gradient, styled_button};
 
 /// Wrap a vault screen body with the top window chrome so the user can still
 /// drag / minimize / maximize / close before unlocking the vault. Also adds
@@ -63,101 +63,30 @@ impl ObsidianSsh {
     // (`views/onboarding.rs`), rendered off `VaultState::NeedSetup`.
 
     pub(crate) fn view_vault_unlock(&self) -> Element<'_, Message> {
-        // Biometric-first layout when enrolled (market convention:
-        // 1Password / Bitwarden lock screens): the presence check is the
-        // primary action, the typed password an explicit fallback revealed
-        // by `VaultShowPasswordFallback`. A failed / cancelled OS prompt
-        // flips to the fallback automatically (see `BiometricUnlockResult`)
-        // so the user is never stuck without an input.
-        let bio_first =
-            self.biometric_unlock_offered() && !self.vaults.cur().vault_ui.password_fallback;
-
         let logo = svg(self.logo_handle.clone())
             .width(64)
             .height(64);
-        // With several vaults the lock screen names the one it opens.
-        let several = self.vault_count() > 1;
-        let title = text(if several { self.vault_name(self.vaults.cur().id) } else { "Obsidian SSH".to_string() })
+        let title = text("Obsidian SSH")
             .size(28)
             .color(ObsidianSshColors::t().accent);
-        let subtitle = text(crate::i18n::t(if bio_first {
-            "biometric_unlock_subtitle"
-        } else {
-            "enter_password"
-        }))
+        let subtitle = text(crate::i18n::t("enter_password"))
         .size(14)
         .color(ObsidianSshColors::t().text_secondary);
 
-        let unlock_area: Element<'_, Message> = if bio_first {
-            let bio_btn = styled_icon_button(
-                crate::biometric::bio_icon()
-                    .size(14)
-                    .color(ObsidianSshColors::t().button_text)
-                    .boxed(),
-                crate::biometric::bio_unlock_label(),
-                Message::Vault(VaultMessage::BiometricUnlockRequested),
-                ObsidianSshColors::t().accent,
-            );
-            // Muted text link to the typed-password form; background tint
-            // on hover so it still reads as clickable.
-            let fallback_link = button(
-                text(crate::i18n::t("use_master_password"))
-                    .size(12)
-                    .color(ObsidianSshColors::t().text_muted),
-            )
-            .on_press(Message::Vault(VaultMessage::VaultShowPasswordFallback))
-            .padding(Padding { top: 6.0, right: 12.0, bottom: 6.0, left: 12.0 })
-            .style(|_, status| {
-                let bg = match status {
-                    button::Status::Hovered | button::Status::Pressed => {
-                        ObsidianSshColors::t().bg_hover
-                    }
-                    _ => Color::TRANSPARENT,
-                };
-                button::Style {
-                    background: Some(Background::Color(bg)),
-                    border: Border { radius: Radius::from(6.0), ..Default::default() },
-                    ..Default::default()
-                }
-            });
-            column![bio_btn, Space::new().height(10), fallback_link]
-                .align_x(iced::Alignment::Center)
-                .boxed()
-        } else {
-            let input = self.vault_master_password_field(
-                crate::i18n::t("master_password_placeholder"),
-                Message::Vault(VaultMessage::VaultUnlock),
-            );
-            let btn = styled_button(
-                crate::i18n::t("unlock"),
-                Message::Vault(VaultMessage::VaultUnlock),
-                ObsidianSshColors::t().accent,
-            );
-            // On the fallback layout biometrics stay one click away as the
-            // secondary affordance (it raises the OS presence prompt
-            // off-thread, see `BiometricUnlockRequested`).
-            let biometric_btn: Element<'_, Message> = if self.biometric_unlock_offered() {
-                column![
-                    Space::new().height(8),
-                    styled_icon_button(
-                        crate::biometric::bio_icon()
-                            .size(14)
-                            .color(crate::theme::contrast_text_for(ObsidianSshColors::t().bg_hover))
-                            .boxed(),
-                        crate::biometric::bio_unlock_label(),
-                        Message::Vault(VaultMessage::BiometricUnlockRequested),
-                        ObsidianSshColors::t().bg_hover,
-                    ),
-                ]
-                .align_x(iced::Alignment::Center)
-                .boxed()
-            } else {
-                Space::new().boxed()
-            };
-            column![input, Space::new().height(12), btn, biometric_btn]
-                .align_x(iced::Alignment::Center)
-                .boxed()
-        };
+        // Only a vault file that already carries a master password lands
+        // here: new vaults are created without one.
+        let input = self.vault_master_password_field(
+            crate::i18n::t("master_password_placeholder"),
+            Message::Vault(VaultMessage::VaultUnlock),
+        );
+        let btn = styled_button(
+            crate::i18n::t("unlock"),
+            Message::Vault(VaultMessage::VaultUnlock),
+            ObsidianSshColors::t().accent,
+        );
+        let unlock_area: Element<'_, Message> = column![input, Space::new().height(12), btn]
+            .align_x(iced::Alignment::Center)
+            .boxed();
 
         let error = if let Some(err) = &self.vaults.cur().vault_ui.error {
             text(err.clone()).size(13).color(ObsidianSshColors::t().error).boxed()
@@ -186,13 +115,9 @@ impl ObsidianSsh {
         // language (see `views/onboarding.rs`): same card chrome (radius 18,
         // 1px border, soft drop shadow) and the same two-layer diagonal
         // accent gradient (`widgets::accent_gradient`).
-        let mut card_inner = column![logo, Space::new().height(16), title, Space::new().height(8), subtitle, Space::new().height(24), unlock_area, Space::new().height(8), error, Space::new().height(16), destroy_section]
+        let card_inner = column![logo, Space::new().height(16), title, Space::new().height(8), subtitle, Space::new().height(24), unlock_area, Space::new().height(8), error, Space::new().height(16), destroy_section]
             .width(Length::Fill)
             .align_x(iced::Alignment::Center);
-        // A locked vault is no dead end: the window can move to another.
-        if several {
-            card_inner = card_inner.push(Space::new().height(12).boxed()).push(self.other_vault_links());
-        }
 
         let card = container(card_inner)
             .padding(Padding { top: 48.0, right: 48.0, bottom: 40.0, left: 48.0 })

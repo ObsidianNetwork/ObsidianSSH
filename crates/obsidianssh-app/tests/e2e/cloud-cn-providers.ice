@@ -13,7 +13,7 @@ mode: Zen
 # scrollable, so a plain `expect` would miss a row that is there.
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle
 click (19, 20)
 settle

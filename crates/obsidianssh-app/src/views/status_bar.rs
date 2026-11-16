@@ -111,6 +111,11 @@ impl ObsidianSsh {
             items.push(Space::new().width(Length::Fill).boxed());
         }
 
+        // The ssh-agent hosts sign in through (Bitwarden first), so a
+        // locked or missing agent shows before a connect fails on it.
+        items.push(agent_segment(crate::ssh_agents::summary(&self.ssh_agents)));
+        items.push(Space::new().width(12).boxed());
+
         // Terminal-status segments read from the focused pane: latency
         // (the SSH RTT probe), grid size and cwd. Each is off by default
         // and individually toggleable, so the bar only carries what the
@@ -566,6 +571,36 @@ fn mosh_link_segment(state: obsidianssh_mosh::LinkState) -> Option<Element<'stat
         segment,
         crate::i18n::t("net_mosh_quiet_tip").to_string(),
     ))
+}
+
+/// The agent state in one muted segment: which agent, how many keys,
+/// and a warning colour when it holds none (Bitwarden locked or logged
+/// out) or does not answer.
+fn agent_segment(summary: crate::ssh_agents::AgentSummary) -> Element<'static, Message> {
+    use crate::i18n::{t, t_fill};
+    use crate::ssh_agents::AgentSummary;
+    let c = ObsidianSshColors::t();
+    let (label, color) = match summary {
+        AgentSummary::None => (t("agent_status_none").to_string(), c.text_muted),
+        AgentSummary::Agent { bitwarden, keys } => {
+            let name = if bitwarden { "Bitwarden".to_string() } else { t("agent_name_generic").to_string() };
+            match keys {
+                Some(0) => (t_fill("agent_status_empty", &[("agent", &name)]), c.warning),
+                Some(n) => (
+                    t_fill("agent_status_keys", &[("agent", &name), ("count", &n.to_string())]),
+                    c.text_muted,
+                ),
+                None => (t_fill("agent_status_unreachable", &[("agent", &name)]), c.warning),
+            }
+        }
+    };
+    crate::widgets::dir_row(vec![
+        iced_fonts::lucide::key_round().size(11).color(color).boxed(),
+        Space::new().width(4).boxed(),
+        text(label).size(11).color(color).boxed(),
+    ])
+    .align_y(iced::Alignment::Center)
+    .boxed()
 }
 
 fn vital(label: &str, value: String, color: Color) -> Element<'static, Message> {

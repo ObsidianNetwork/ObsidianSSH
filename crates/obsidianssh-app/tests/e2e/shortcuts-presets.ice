@@ -11,7 +11,7 @@ mode: Zen
 # hotkeys/presets.rs; this pins the door.
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle 250
 # Toolbar gear (icon only, no text selector).
 click (1175, 64)

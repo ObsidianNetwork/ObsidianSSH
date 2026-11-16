@@ -6,17 +6,23 @@ mode: Zen
 # `expect`, so the assertions ride on the clipboard: a copy out of a
 # masked field yields the bullets that are on screen, and the same copy
 # after revealing yields the real value. That also pins the insertion
-# point, since a caret sent back to zero would spell "Zhunter2".
+# point, since a caret sent back to zero would spell "Zhunter2". The
+# field is the New Identity form's password (the shared masked input).
 expect "Welcome to Obsidian SSH"
 click "Skip"
-expect "Protect your vault"
-click (550, 453)
+click "Get started"
+settle 250
+click "Keychain"
+settle 250
+click "New Identity"
+settle 250
+click (990, 304)
 type "hunter2"
 settle 300
 screenshot password-mask-masked
-click (730, 453)
+click (1165, 303)
 settle 300
-click (730, 453)
+click (1165, 303)
 settle 300
 type "Z"
 settle 300
@@ -26,7 +32,7 @@ type ctrl+c
 settle 300
 clipboard is "••••••••"
 screenshot password-mask-after-toggle
-click (730, 453)
+click (1165, 303)
 settle 300
 type ctrl+a
 type ctrl+c

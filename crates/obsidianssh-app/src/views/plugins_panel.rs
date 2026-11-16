@@ -13,7 +13,7 @@ use iced::widget::button::Status as BtnStatus;
 use iced::widget::{button, column, container, scrollable, text, Space};
 use iced::{Background, Border, Color, Element, Length, Padding};
 
-use crate::app::{SettingsMessage, PluginMessage, AgentMessage, AiMessage, SyncMessage, Message, ObsidianSsh};
+use crate::app::{SettingsMessage, PluginMessage, AiMessage, SyncMessage, Message, ObsidianSsh};
 use crate::state::{PluginUiEntry, PluginUiStatus};
 use crate::theme::ObsidianSshColors;
 use crate::widgets::{dir_align_x, dir_row, panel_section, toggle_row_desc};
@@ -131,11 +131,6 @@ impl ObsidianSsh {
                         Message::Settings(SettingsMessage::SettingToggleNetworkTools),
                     ),
                 ),
-                Space::new().height(12),
-                // Features holds only the enable toggle; the confirm +
-                // socket rows live in the Settings sidebar's SSH Agent
-                // section, which appears while the agent is enabled.
-                self.agent_server_toggle(),
             ]),
             Space::new().height(18).boxed(),
             // Offline mode: the catalog and the binaries are not fetched,
@@ -467,38 +462,6 @@ impl ObsidianSsh {
 
         // Bare card; `widgets::modal_overlay` (the caller) centers + scrims.
         dialog.boxed()
-    }
-
-    /// The ssh-agent ENABLE toggle, shown in the Features section. Any
-    /// runtime error is surfaced inline under it. Off unix (pre-Phase-3
-    /// Windows) with no listener, the whole row is hidden. The confirm +
-    /// socket rows live in the sidebar's SSH Agent section
-    /// (`view_settings_agent`), visible only while the agent is on.
-    fn agent_server_toggle(&self) -> Element<'_, Message> {
-        // No socket path means no listener on this platform: hide it.
-        if crate::agent_server::listener_socket_display().is_none() {
-            return Space::new().boxed();
-        }
-
-        let toggle = self.settings_nav_slot_labeled(
-            crate::i18n::t("agent_server"),
-            crate::keynav::RowAction::activate(Message::Agent(AgentMessage::AgentServerToggled(!self.agent.enabled))),
-            8.0,
-            crate::widgets::toggle_row_desc_with(crate::widgets::setting_label(crate::i18n::t("agent_server"), 13.0, ObsidianSshColors::t().text_primary),
-                crate::i18n::t("agent_server_desc"),
-                self.agent.enabled,
-                Message::Agent(AgentMessage::AgentServerToggled(!self.agent.enabled)),
-            ),
-        );
-
-        if let Some(err) = &self.agent.error {
-            return column![
-                toggle,
-                Space::new().height(6),
-                text(err.clone()).size(11).color(ObsidianSshColors::t().error),
-            ].boxed();
-        }
-        toggle
     }
 
 }

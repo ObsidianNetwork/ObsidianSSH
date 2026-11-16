@@ -96,15 +96,9 @@ pub(crate) enum Modal {
     /// "do nothing", neither reopen nor discard.
     SftpEditReopen,
     SftpPicker,
-    /// The ssh-agent per-signature confirm prompt (`agent.pending_confirm`,
-    /// B1). A blocking security prompt like `HostKey`: it MUST block input
-    /// (Enter must never fall through to the PTY behind it) and Esc denies
-    /// the signature (the safe default). In `ESC_ORDER` next to `HostKey`
-    /// so the Esc router and the modal-keynav router both reach it.
-    AgentConfirm,
     /// "Let sudo use the password stored for this host?" asked by
     /// `obsidianssh-mcp` (`mcp_sudo.pending`, `obsidianssh_vault::mcp_consent`).
-    /// A security prompt of the `AgentConfirm` class: what it allows is
+    /// A security prompt like `HostKey`: what it allows is
     /// root on a remote machine for an AI client, so it blocks input,
     /// Deny is the default row, and Esc (or a click outside) refuses.
     McpSudoConfirm,
@@ -125,7 +119,7 @@ pub(crate) enum Modal {
     /// working copy since a rule reaches its list on Save.
     HighlightRuleEditor,
     /// "A highlight rule wants to run a snippet on this session" (C6).
-    /// A security prompt like `AgentConfirm`: what asked for it is
+    /// A security prompt like `HostKey`: what asked for it is
     /// REMOTE output, so it must block input (Enter must never fall
     /// through to the PTY behind it) and Esc refuses, which is also
     /// remembered for the session.
@@ -141,11 +135,6 @@ pub(crate) enum Modal {
     /// (Enter answers the dialog, never the shell) and Esc drops the
     /// parked text.
     TerminalSaveOutput,
-    /// Manual-lock confirmation (`vault_ui.lock_confirm`). Lock Vault
-    /// tears down every live SSH session and tab, so the button asks
-    /// first; Esc / backdrop / the Cancel button all decline (the safe
-    /// default), and only the Lock button commits.
-    LockVaultConfirm,
     /// The update offer (`pending_update`): skip / later / update now,
     /// then the download's progress, then the ready state's ask to
     /// restart. It renders at the ROOT, above every in-view modal, so
@@ -168,11 +157,6 @@ pub(crate) enum Modal {
     /// two never coexist). A search field plus rows, so it blocks
     /// input; Esc closes whichever is up.
     SyncHostPicker,
-    /// The vault dialog (`vault_dialog`): create (a name and the vault
-    /// whose settings it starts with), rename, or delete (the name typed
-    /// back and the master password). A form with text fields, so it
-    /// blocks input; Esc cancels, which changes nothing.
-    VaultDialog,
 }
 
 impl Modal {
@@ -213,7 +197,6 @@ impl Modal {
         Modal::SftpEditPrompt,
         Modal::SftpEditReopen,
         Modal::SftpPicker,
-        Modal::AgentConfirm,
         Modal::McpSudoConfirm,
         Modal::CertificateViewer,
         Modal::MonitorKill,
@@ -221,11 +204,9 @@ impl Modal {
         Modal::TriggerConfirm,
         Modal::TerminalLinkConfirm,
         Modal::TerminalSaveOutput,
-        Modal::LockVaultConfirm,
         Modal::UpdateOffer,
         Modal::RelayDeployConfirm,
         Modal::SyncHostPicker,
-        Modal::VaultDialog,
     ];
 
     /// Modals Esc dismisses, in topmost-first priority order (the order
@@ -249,18 +230,14 @@ impl Modal {
         Modal::CarefulPaste,
         Modal::SnippetVars,
         // Esc = create nothing.
-        Modal::VaultDialog,
         // A security prompt: Esc rejects the host key (safe default).
         Modal::HostKey,
         // Sibling security prompt: Esc refuses to run the command proxy
         // (safe default), and the refusal must reach the parked dial.
         Modal::ProxyCommand,
-        // Sibling security prompt: Esc denies the signature (safe default).
-        Modal::AgentConfirm,
         // Same class: Esc refuses to hand the stored password to sudo
         // for an AI client (safe default), and the refusal reaches the
-        // waiting server as an answer. Drawn right under the agent's in
-        // the `main_layout` chain.
+        // waiting server as an answer.
         Modal::McpSudoConfirm,
         // Same class: Esc refuses to let remote output type into the
         // session, and the refusal sticks for the session.
@@ -279,14 +256,8 @@ impl Modal {
         // Esc = don't signal anything (the safe default for a remote,
         // irreversible action); same lightweight-confirm group.
         Modal::MonitorKill,
-        // Esc = don't lock (the safe default for a teardown that severs
-        // every live connection). After MonitorKill to mirror the
-        // `main_layout` chain, where every dialog above renders on top
-        // of this one: Esc must answer the dialog the user can see.
-        Modal::LockVaultConfirm,
         // Esc = don't run anything on the host (the safe default for a
-        // script that runs as root elsewhere). Rendered in the same
-        // `main_layout` chain right after LockVaultConfirm.
+        // script that runs as root elsewhere).
         Modal::RelayDeployConfirm,
         // Esc = keep the current selection. Drawn inside the Settings
         // page, under every root-level dialog above.
@@ -360,7 +331,6 @@ impl Modal {
             | Modal::SftpEditPrompt
             | Modal::SftpEditReopen
             | Modal::SftpPicker
-            | Modal::AgentConfirm
             | Modal::McpSudoConfirm
             | Modal::CertificateViewer
             | Modal::MonitorKill
@@ -368,11 +338,9 @@ impl Modal {
             | Modal::TriggerConfirm
             | Modal::TerminalLinkConfirm
             | Modal::TerminalSaveOutput
-            | Modal::LockVaultConfirm
             | Modal::UpdateOffer
             | Modal::RelayDeployConfirm
-            | Modal::SyncHostPicker
-            | Modal::VaultDialog => true,
+            | Modal::SyncHostPicker => true,
         }
     }
 }
@@ -421,22 +389,19 @@ mod tests {
                 | Modal::SftpEditPrompt
                 | Modal::SftpEditReopen
                 | Modal::SftpPicker
-                | Modal::AgentConfirm
-                | Modal::McpSudoConfirm
+                    | Modal::McpSudoConfirm
                 | Modal::CertificateViewer
                 | Modal::MonitorKill
                 | Modal::HighlightRuleEditor
                 | Modal::TriggerConfirm
                 | Modal::TerminalLinkConfirm
                 | Modal::TerminalSaveOutput
-                | Modal::LockVaultConfirm
-                | Modal::UpdateOffer
+                    | Modal::UpdateOffer
                 | Modal::RelayDeployConfirm
-                | Modal::SyncHostPicker
-                | Modal::VaultDialog => {}
+                | Modal::SyncHostPicker => {}
             }
         }
-        assert_eq!(Modal::ALL.len(), 47, "add the new variant to Modal::ALL");
+        assert_eq!(Modal::ALL.len(), 44, "add the new variant to Modal::ALL");
         // Every Esc-closeable modal must also be a known modal.
         for m in Modal::ESC_ORDER {
             assert!(Modal::ALL.contains(m));

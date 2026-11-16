@@ -17,8 +17,6 @@ impl ObsidianSsh {
         // a loop stuck inside the view says so (#273).
         let _view_guard = crate::stall_watchdog::view_guard();
         let base = match self.vaults.cur().vault_ui.state {
-            // The start picker comes before any vault's own screen.
-            _ if self.start_picker_here() => self.view_start_picker(),
             VaultState::Loading => self.view_vault_open_failed(),
             // First-run welcome / onboarding carousel, full page.
             VaultState::NeedSetup => crate::views::vault::with_chrome(

@@ -11,7 +11,7 @@ mode: Zen
 # a side-panel scrollable with the wheel.
 settle 250
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle 250
 expect "Create host"
 click "Type IP or Hostname"

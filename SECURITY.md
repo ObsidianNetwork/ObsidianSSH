@@ -10,8 +10,6 @@ Please do **not** open a public issue for security problems.
 - **Preferred:** report privately via
   [GitHub Security Advisories](https://github.com/ObsidianNetwork/ObsidianSSH/security/advisories/new)
   ("Report a vulnerability" on the Security tab).
-- **Alternative:** email `wilsonglasser@gmail.com` with `[SECURITY]` in the
-  subject.
 
 You can expect an acknowledgment within 72 hours. Fixes for confirmed
 vulnerabilities are released as fast as severity demands, and reporters are
@@ -32,9 +30,8 @@ What Obsidian SSH does to protect your credentials:
   column with ChaCha20-Poly1305, per-field salt and nonce, under a master
   key derived with Argon2id. Structural tests enforce that credentials
   never land in plaintext columns.
-- **Locking.** Optional master password, biometric unlock (Windows Hello /
-  Touch ID / Linux keyring), and an idle auto-lock that zeroizes the master
-  key in memory.
+- **SSH keys in your agent.** Keys can stay in Bitwarden's (or any) SSH
+  agent: the app asks the agent to sign and never sees the private key.
 - **Host verification.** TOFU host key pinning, verified on every
   connection.
 - **Sync.** P2P payloads are end-to-end encrypted with X25519 +

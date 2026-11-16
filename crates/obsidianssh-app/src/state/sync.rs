@@ -217,7 +217,7 @@ impl RelayWizardForm {
         let domain = if domain.is_empty() { "relay.example.com" } else { domain };
         match self.format {
             RelayWizardFormat::Compose => format!(
-                "# docker-compose.yml\nservices:\n  obsidianssh-relay:\n    image: ghcr.io/wilsonglasser/oryxis-relay:latest\n    restart: unless-stopped\n    ports:\n      - \"127.0.0.1:8080:8080\"\n    environment:\n      OBSIDIANSSH_RELAY_TOKEN: \"{token}\"\n",
+                "# docker-compose.yml\nservices:\n  obsidianssh-relay:\n    image: ghcr.io/obsidiannetwork/obsidianssh-relay:latest\n    restart: unless-stopped\n    ports:\n      - \"127.0.0.1:8080:8080\"\n    environment:\n      OBSIDIANSSH_RELAY_TOKEN: \"{token}\"\n",
                 token = self.token
             ),
             // The unit body is the deploy's renderer with the token

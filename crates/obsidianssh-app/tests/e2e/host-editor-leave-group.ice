@@ -14,7 +14,7 @@ mode: Zen
 # card on the dashboard carries the same text, so a text click would
 # be ambiguous.
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle 250
 click "Type IP or Hostname"
 type "web01"

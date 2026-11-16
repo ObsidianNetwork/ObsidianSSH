@@ -55,10 +55,6 @@ mod proxy_identity;
 pub use proxy_identity::ProxyIdentityMessage;
 mod plugin;
 pub use plugin::PluginMessage;
-mod agent;
-pub use agent::AgentMessage;
-mod multi_vault;
-pub use multi_vault::MultiVaultMessage;
 mod zmodem;
 pub use zmodem::ZmodemMessage;
 mod known_host;
@@ -115,6 +111,10 @@ pub enum Message {
     // Absorb-click sink, used by modal bodies to stop clicks from falling
     // through to the backdrop underneath. Handler is a no-op.
     NoOp,
+    /// Re-read the ssh-agent roster (timer, the editor's key picker).
+    RefreshAgentRoster,
+    /// A fresh ssh-agent roster (`crate::ssh_agents`).
+    AgentRoster(Vec<obsidianssh_ssh::AgentEndpoint>),
 
     // Icon picker (custom host icon/color)
     // Per-host terminal theme picker (modal opened from the host
@@ -329,10 +329,6 @@ pub enum Message {
     // Keys (handle_keys)
     Keys(KeysMessage),
 
-    // ── SSH-agent server (B1) ──
-    // Agent (handle_agent)
-    Agent(AgentMessage),
-    MultiVault(MultiVaultMessage),
     // (filename, content, auto-probed `<file>.pub` and `<file>-cert.pub`
     // if present and parseable)
 

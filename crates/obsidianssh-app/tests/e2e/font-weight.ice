@@ -20,7 +20,7 @@ mode: Zen
 # heavier, would legitimately have nothing to warn about and this line
 # would fail. CI runners ship no such font.
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle
 click (19, 20)
 settle

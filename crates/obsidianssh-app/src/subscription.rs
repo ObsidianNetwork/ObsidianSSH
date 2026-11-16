@@ -338,6 +338,12 @@ impl ObsidianSsh {
             );
         }
 
+        // The ssh-agent roster behind the status bar's agent segment and
+        // the editor's key picker. LIST never prompts, so polling cannot
+        // nag; slow, because an agent appearing or a vault unlocking is
+        // rare and the picker refreshes itself when it opens.
+        subs.push(iced::time::every(std::time::Duration::from_secs(30)).map(|_| Message::RefreshAgentRoster));
+
         // 30-second poll for silent auto-reconnect of disconnected SSH
         // tabs. Unmounted while every vault is locked (soft auto-lock
         // keeps sessions alive): a reconnect needs credentials from the
@@ -730,19 +736,6 @@ impl ObsidianSsh {
             subs.push(
                 iced::time::every(std::time::Duration::from_millis(33))
                     .map(|_| Message::Player(PlayerMessage::ClockTick)),
-            );
-        }
-
-        // Vault auto-lock idle check. Only mounts while some open vault
-        // is unlocked with a non-zero threshold configured (each vault
-        // has its own), so the common case (feature off) costs nothing.
-        // The 30 s cadence bounds the overshoot past the configured idle
-        // threshold; the handler compares each vault against the input
-        // in its own windows (`OpenVault::auto_lock_due`).
-        if self.vaults.all().any(|v| v.auto_lock_armed()) {
-            subs.push(
-                iced::time::every(std::time::Duration::from_secs(30))
-                    .map(|_| Message::Settings(SettingsMessage::AutoLockTick)),
             );
         }
 

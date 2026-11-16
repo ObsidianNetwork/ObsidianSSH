@@ -53,10 +53,6 @@ impl ObsidianSsh {
         if self.editing_hotkey.is_some() {
             return None;
         }
-        // The start picker is the whole window until a vault is picked.
-        if self.start_picker_here() {
-            return Some((ModalSurface::VaultStartPicker, SurfaceFamily::Confirm));
-        }
         // No vault could be opened: the error screen is the whole window,
         // and nothing else can be on it.
         if self.vaults.cur().store.is_none() && self.vaults.cur().vault_ui.state == crate::state::VaultState::Loading {
@@ -125,8 +121,6 @@ impl ObsidianSsh {
                     // identically to the standalone cards.
                     | Modal::HostKey
                     | Modal::ProxyCommand
-                    // Security prompt: Deny is the default-ringed action.
-                    | Modal::AgentConfirm
                     // Same class (`obsidianssh-mcp` asking for sudo with the
                     // stored password): Deny is the default-ringed action.
                     | Modal::McpSudoConfirm
@@ -143,10 +137,6 @@ impl ObsidianSsh {
                     // the default-ringed action, so a stray Enter can
                     // never take a remote service down.
                     | Modal::MonitorKill
-                    // Manual-lock confirm: Cancel is the default-ringed
-                    // action too, so a stray Enter can never sever every
-                    // live connection.
-                    | Modal::LockVaultConfirm
                     // "Let this rule run a snippet" (C6): Don't send is
                     // the default-ringed action, so a stray Enter can
                     // never hand the session to remote output.
@@ -172,9 +162,6 @@ impl ObsidianSsh {
                     // shared builder, Enter picks the ringed host, and
                     // the search field keeps the caret (`has_input`).
                     | Modal::SyncHostPicker
-                    // The "New vault" form: its name field, the settings
-                    // picker, Create (the default row) and Cancel.
-                    | Modal::VaultDialog
                     // The host editor's terminal theme picker: its filter,
                     // tone chips, cards and Close are recorded in display
                     // order, Enter picks the ringed card, and the filter
@@ -241,8 +228,6 @@ impl ObsidianSsh {
                     | Modal::SyncHostPicker
                     // The theme picker's filter field.
                     | Modal::ThemePicker
-                    // The vault's name field.
-                    | Modal::VaultDialog
             )
         )
     }

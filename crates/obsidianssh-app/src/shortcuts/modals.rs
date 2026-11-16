@@ -39,7 +39,6 @@ impl ObsidianSsh {
             // render site: the flag alone decides, the connect-progress
             // screen is what decides where it is drawn.
             Modal::ProxyCommand => self.pending_proxy_command.is_some(),
-            Modal::AgentConfirm => self.agent.pending_confirm.is_some(),
             Modal::McpSudoConfirm => self.mcp_sudo.pending.is_some(),
             Modal::TriggerConfirm => self.trigger_confirm.is_some(),
             Modal::TerminalLinkConfirm => self.link_confirm.is_some(),
@@ -71,7 +70,6 @@ impl ObsidianSsh {
             // predicate the render site uses, so the flag can never say
             // "open" over a screen that isn't showing it.
             Modal::HighlightRuleEditor => self.highlight_rule_editor_open(),
-            Modal::LockVaultConfirm => self.vaults.cur().vault_ui.lock_confirm,
             // The render site's own predicate, so the keyboard layer
             // and the overlay can never disagree about whether it is up.
             Modal::UpdateOffer => self.update_modal_shown(),
@@ -80,7 +78,6 @@ impl ObsidianSsh {
             Modal::SyncHostPicker => {
                 self.vaults.cur().sync.sftp.picker_open || self.vaults.cur().sync.relay_deploy.picker_open
             }
-            Modal::VaultDialog => self.vault_dialog.is_some(),
         }
     }
 
@@ -148,15 +145,6 @@ impl ObsidianSsh {
                 self.pending_proxy_command = None;
                 if let Some(tx) = self.active_proxy_command_tx.take() {
                     let _ = tx.try_send(false);
-                }
-            }
-            // Esc denies the signature (safe default), firing the
-            // responder so the waiting sign task gets its answer. The
-            // caller then promotes any queued prompt via
-            // `advance_confirm_queue`.
-            Modal::AgentConfirm => {
-                if let Some(card) = self.agent.pending_confirm.take() {
-                    card.respond(false);
                 }
             }
             // Esc refuses, and the refusal is written for the waiting
@@ -238,8 +226,6 @@ impl ObsidianSsh {
             // reported as a toast instead (`KillFinished`). Nothing is
             // re-sent, so there is no window where Esc doubles a signal.
             Modal::MonitorKill => self.monitor.kill = None,
-            // Esc mirrors CancelLockVaultConfirm: don't lock.
-            Modal::LockVaultConfirm => self.vaults.cur_mut().vault_ui.lock_confirm = false,
             // Esc is "Later": the offer goes down and a downloaded
             // artifact stays where it is. Not while the download runs:
             // with the modal down a completion under live sessions
@@ -260,8 +246,6 @@ impl ObsidianSsh {
                 self.vaults.cur_mut().sync.relay_deploy.picker_open = false;
                 self.vaults.cur_mut().sync.relay_deploy.picker_search.clear();
             }
-            // Mirrors CancelVaultDialog: nothing was made.
-            Modal::VaultDialog => self.vault_dialog = None,
         }
     }
 
@@ -374,9 +358,7 @@ impl ObsidianSsh {
                     )));
                 }
                 self.close_modal(m);
-                // Closing an agent-confirm prompt promotes the next
-                // queued one (no-op for every other modal).
-                return Some(self.advance_confirm_queue());
+                return Some(iced::Task::none());
             }
         }
         // Burger menu last; it's a dropdown rather than a modal but

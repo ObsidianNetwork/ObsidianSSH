@@ -9,7 +9,7 @@
 use iced::keyboard;
 use iced::Task;
 
-use crate::app::{TabsMessage, TerminalMessage, NavigationMessage, VaultMessage, Message, ObsidianSsh};
+use crate::app::{TabsMessage, TerminalMessage, NavigationMessage, Message, ObsidianSsh};
 
 impl ObsidianSsh {
     /// Handle the `KeyboardEvent` chord resolver + PTY key routing.
@@ -114,23 +114,6 @@ impl ObsidianSsh {
                         return Ok(Task::none());
                     }
                 }
-                // Lock screen, biometric-first layout: there is no
-                // password input on screen, so Enter raises the OS
-                // presence prompt (the primary action). The fallback
-                // layout keeps Enter on the focused input's on_submit.
-                if self.vaults.cur().vault_ui.state == crate::state::VaultState::Locked
-                    && self.biometric_unlock_offered()
-                    && !self.vaults.cur().vault_ui.password_fallback
-                    && matches!(
-                        &event,
-                        keyboard::Event::KeyPressed {
-                            key: keyboard::Key::Named(keyboard::key::Named::Enter),
-                            ..
-                        }
-                    )
-                {
-                    return Ok(Task::done(Message::Vault(VaultMessage::BiometricUnlockRequested)));
-                }
                 // Lock / setup / onboarding screens own the keyboard
                 // exclusively: their inputs receive keys through the
                 // widget tree, and every consumer below (keynav routers,
@@ -143,28 +126,11 @@ impl ObsidianSsh {
                 // exception: an app-level modal rendered over the lock
                 // screen (update / plugin install / KBI / host key) keeps
                 // its keyboard layer, so its Enter / Esc / arrows work.
-                // The start picker likewise: nothing of the vault behind
-                // it is loaded, so its row keys are the only ones.
-                if self.start_picker {
-                    if let Some(task) = self.handle_modal_nav_key(&event) {
-                        return Ok(task);
-                    }
-                    return Ok(Task::none());
-                }
                 if self.vaults.cur().vault_ui.state != crate::state::VaultState::Unlocked {
                     if self.any_modal_blocks_input()
                         && let Some(task) = self.handle_modal_nav_key(&event)
                     {
                         return Ok(task);
-                    }
-                    // A vault's chord still moves the window: the way out
-                    // of a lock screen to another vault, with no unlock.
-                    if !self.any_modal_blocks_input()
-                        && let iced::keyboard::Event::KeyPressed { key, modifiers, .. } = &event
-                        && let Some(vault) = self.vault_chord_hit(key, modifiers)
-                        && vault != self.vaults.window_id()
-                    {
-                        return Ok(self.switch_this_window_to_vault(vault));
                     }
                     return Ok(Task::none());
                 }

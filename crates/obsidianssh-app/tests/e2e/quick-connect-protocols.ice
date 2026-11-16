@@ -15,7 +15,7 @@ mode: Zen
 # and CI.
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 expect "Create host"
 # One saved host, so the dashboard leaves its empty state and the
 # search box (which doubles as the quick-connect entry) exists.
@@ -37,12 +37,14 @@ settle 250
 expect "lab-host"
 
 # 1. No scheme: the protocol is undecided, so the card offers badges
-#    and dials SSH until one is picked.
+#    and dials SSH until one is picked. The port adds the Raw chip,
+#    which step 2 uses as its tell.
 click #search-dashboard
-type "root@web01"
-expect "Quick connect: root@web01"
+type "root@web01:2222"
+expect "Quick connect: root@web01:2222"
 expect "SSH"
 expect "Telnet"
+expect "Raw"
 
 # 2. A typed scheme decides it, and seeds the conventional port. The
 #    badges are gone: the text already answered the question, and a
@@ -51,9 +53,10 @@ click #search-dashboard
 type ctrl+a
 type "telnet://root@sw02"
 expect "Quick connect (Telnet): root@sw02:23"
-# The badges are gone (their SSH chip is the tell; matching on "Telnet"
-# would hit the card title, which the assertions read by substring).
-absent "SSH"
+# The badges are gone. Their Raw chip is the tell: "Telnet" is in the
+# card title and "SSH" in the status bar's agent segment, and `absent`
+# matches by substring.
+absent "Raw"
 
 # 3. A device path is Serial without any scheme at all: `/dev/tty*` is
 #    a host under no protocol, so there is nothing to choose between.

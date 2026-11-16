@@ -13,7 +13,7 @@ mode: Zen
 # strip, (1176, 20) the window's close button.
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle 250
 click "Type IP or Hostname"
 type "web01"
@@ -25,7 +25,7 @@ click "Save"
 settle 250
 expect "web01"
 # A tab in the FIRST window, so the two strips can be told apart.
-click (161, 20)
+click (87, 20)
 expect "Local Shell"
 timeout 800
 click "Local Shell"
@@ -48,7 +48,7 @@ settle 700
 expect "web01"
 absent "first"
 # A tab of its own, then Home in THIS window.
-click (161, 20)
+click (87, 20)
 expect "Local Shell"
 click "Local Shell"
 settle 900

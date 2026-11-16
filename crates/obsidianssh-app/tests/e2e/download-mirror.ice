@@ -14,10 +14,11 @@ mode: Zen
 # mirror mode means recalibrating this file in the same change. So
 # does a row ABOVE the picker: the offline-mode toggle now leads the
 # card and moved the whole block down by 72 px (picker 103 -> 175,
-# Custom 267 -> 339, URL field 187 -> 259).
+# URL field 187 -> 259). With the project mirror gone the picker is
+# GitHub only / Custom mirror, so Custom is the second row (y=257).
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 expect "Create host"
 click (1175, 64)
 expect "Advanced"
@@ -25,7 +26,7 @@ click "Advanced"
 expect "Download mirror"
 click (1048, 175)
 settle 300
-click (1048, 339)
+click (1048, 257)
 settle 300
 click (410, 259)
 type "http://not-safe.example"

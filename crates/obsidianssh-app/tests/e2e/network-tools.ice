@@ -7,7 +7,7 @@ mode: Zen
 # stay out of CI; the port test below is a loopback connect, so it
 # answers the same offline.
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle
 # Off by default means no door at all, not a disabled row. Checked with
 # the burger open over the vault surface, which is the only screen where

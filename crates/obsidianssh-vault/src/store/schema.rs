@@ -514,6 +514,11 @@ impl VaultStore {
         // host carries a legacy CJK encoding.
         let _ = self.db.execute_batch("ALTER TABLE connections ADD COLUMN ambiguous_width TEXT;");
 
+        // The ssh-agent key a host prefers (an OpenSSH public line, for
+        // keys that live only in an agent such as Bitwarden). Plaintext:
+        // a public key is not a credential.
+        let _ = self.db.execute_batch("ALTER TABLE connections ADD COLUMN agent_key TEXT;");
+
         // Populate new timestamp columns with sensible defaults
         let _ = self.db.execute_batch("UPDATE keys SET updated_at = created_at WHERE updated_at IS NULL;");
         let _ = self.db.execute_batch("UPDATE groups SET created_at = datetime('now'), updated_at = datetime('now') WHERE created_at IS NULL;");

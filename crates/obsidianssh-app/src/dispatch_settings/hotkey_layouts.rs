@@ -74,13 +74,11 @@ impl ObsidianSsh {
             .map(|p| Some(*p))
     }
 
-    /// The chords snippets and vaults hold (a vault's from Settings >
-    /// Vaults): a set never takes them.
+    /// The chords snippets hold: a set never takes them.
     fn reserved_chords(&self) -> Vec<HotkeyBinding> {
         self.vaults.cur().snippets
             .iter()
             .filter_map(|sn| sn.hotkey.as_deref().and_then(HotkeyBinding::parse))
-            .chain(self.vault_chords.iter().map(|(_, chord)| *chord))
             .collect()
     }
 
@@ -255,11 +253,7 @@ impl ObsidianSsh {
     fn skipped_line(&self, s: &Skipped) -> String {
         match s {
             Skipped::Snippet { action, chord } => {
-                let key = match self.vault_holding_chord(chord, None) {
-                    Some(_) => "hotkey_layout_vault_kept",
-                    None => "hotkey_layout_snippet_kept",
-                };
-                crate::i18n::t(key)
+                crate::i18n::t("hotkey_layout_snippet_kept")
                     .replace("{action}", crate::i18n::t(action.label_key()))
                     .replace("{chord}", &chord.badges().join("+"))
             }

@@ -115,6 +115,10 @@ impl ObsidianSsh {
                 self.reset_editor_key_combo();
                 // Which `~/.ssh` files the scan may pick follows the method.
                 self.editor_refresh_disk_key();
+                // Agent lists the agents' keys: read them fresh.
+                if self.vaults.cur().editor_form.auth_method == AuthMethod::Agent {
+                    return crate::ssh_agents::refresh();
+                }
             }
             EditorMessage::EditorGroupChanged(v) => self.vaults.cur_mut().editor_form.group_name = v,
             EditorMessage::EditorKeyChanged(v) => {
@@ -127,8 +131,10 @@ impl ObsidianSsh {
                 // open, and ONLY when there is one: an unconditional
                 // rebuild re-filters the menu down to the current pick
                 // (see `refresh_combo`).
-                let options = self.editor_key_options();
-                Self::refresh_combo(&mut self.vaults.cur_mut().editor_key_combo, options);
+                self.sync_editor_key_combo();
+                // And re-read the agents, so a Bitwarden vault unlocked
+                // since the last poll lists its keys while the menu is up.
+                return crate::ssh_agents::refresh();
             }
             EditorMessage::EditorIdentityChanged(v) => {
                 self.vaults.cur_mut().editor_form.username_focused = false;

@@ -24,7 +24,7 @@ mode: Zen
 # strip changed are what the restart reads.
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 expect "Create host"
 click (1168, 55)
 expect "Terminal Settings"
@@ -41,7 +41,7 @@ expect "Open on the tab that was active"
 click (1140, 187)
 settle 400
 screenshot restore-tabs-connect-landing-on
-click (402, 20)
+click (328, 20)
 expect "Local Shell"
 timeout 800
 click "Local Shell"

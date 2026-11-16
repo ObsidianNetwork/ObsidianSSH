@@ -107,10 +107,6 @@ pub(crate) struct PfAgentWatch {
     /// running (the always-on Windows OpenSSH service), which moves no
     /// endpoint at all.
     agents: Vec<String>,
-    /// `AgentRuntime::external_add_generation()`, 0 when our agent
-    /// server is off. Covers the mirror case: a tool pushing a key into
-    /// US, where there is no external roster to poll.
-    added_keys: u64,
 }
 
 /// Whether the agent picture moved since the last reading. The FIRST
@@ -893,34 +889,6 @@ impl ObsidianSsh {
             .collect()
     }
 
-    /// Stop every port forward of the acting vault: its manual lock (an
-    /// explicit "I'm done" that severs its sessions, a forward is one)
-    /// and its removal. Live forwards are cancelled (a `-R` releases its
-    /// server-side listener), a connect in flight is refused when it
-    /// lands (`PortForwardStarted` finds it no longer starting), pending
-    /// retries are dropped, and a shared connection left with no forward
-    /// closes. The soft lock keeps them, like it keeps the terminals.
-    /// Auto-start rules come back with the vault's next unlock.
-    pub(crate) fn stop_vault_forwards(&mut self) -> Task<Message> {
-        let ids: Vec<Uuid> = self.vaults.cur().port_forward_rules.iter().map(|r| r.id).collect();
-        let vault = self.vaults.current_id();
-        let mut sessions = Vec::new();
-        for id in &ids {
-            self.port_forward_starting.remove(id);
-            self.port_forward_retry.remove(id);
-            if let Some(session) = self.active_forwards.remove(id) {
-                sessions.push(session);
-            }
-        }
-        self.pf_aborted_pending.retain(|(v, _), _| *v != vault);
-        self.pf_gc_host_conns();
-        Task::batch(sessions.into_iter().map(|session| {
-            Task::perform(async move { session.cancel().await }, |_| {
-                Message::PortForward(PortForwardMessage::PortForwardLivenessTick)
-            })
-        }))
-    }
-
     /// Mark a failed/dropped rule as pending and schedule its first
     /// re-attempt. No-op for a rule that nothing opted into self-healing
     /// (per-cause gates below) or that already has a pending retry
@@ -990,14 +958,7 @@ impl ObsidianSsh {
             self.port_forward_agent_watch = None;
             return Task::none();
         }
-        let watch = PfAgentWatch {
-            agents,
-            added_keys: self
-                .agent
-                .runtime
-                .as_ref()
-                .map_or(0, |r| r.external_add_generation()),
-        };
+        let watch = PfAgentWatch { agents };
         let changed = pf_agent_changed(self.port_forward_agent_watch.as_ref(), &watch);
         self.port_forward_agent_watch = Some(watch);
         if !changed {
@@ -1128,27 +1089,24 @@ mod tests {
     use super::{pf_agent_changed, pf_retry_backoff, pf_retry_still_wanted, PfAgentWatch};
     use std::time::Duration;
 
-    fn watch(agents: &[&str], added_keys: u64) -> PfAgentWatch {
-        PfAgentWatch {
-            agents: agents.iter().map(|s| s.to_string()).collect(),
-            added_keys,
-        }
+    fn watch(agents: &[&str]) -> PfAgentWatch {
+        PfAgentWatch { agents: agents.iter().map(|s| s.to_string()).collect() }
     }
 
     #[test]
     fn first_agent_reading_is_a_baseline_not_a_kick() {
         // Nothing to compare against: an unchanged environment must not
         // read as "the keys moved" on the very first tick.
-        assert!(!pf_agent_changed(None, &watch(&[], 0)));
-        assert!(!pf_agent_changed(None, &watch(&["/tmp/agent.sock SHA256:aaa"], 3)));
+        assert!(!pf_agent_changed(None, &watch(&[])));
+        assert!(!pf_agent_changed(None, &watch(&["/tmp/agent.sock SHA256:aaa"])));
     }
 
     #[test]
     fn steady_agent_picture_never_kicks() {
-        let prev = watch(&["/tmp/agent.sock SHA256:aaa"], 2);
+        let prev = watch(&["/tmp/agent.sock SHA256:aaa"]);
         assert!(!pf_agent_changed(
             Some(&prev),
-            &watch(&["/tmp/agent.sock SHA256:aaa"], 2)
+            &watch(&["/tmp/agent.sock SHA256:aaa"])
         ));
     }
 
@@ -1157,8 +1115,8 @@ mod tests {
         // The issue-#101 edge, and the one an endpoint-only watch would
         // miss: the agent (the always-on Windows OpenSSH service) was
         // there all along, KeePassXC just handed it the key.
-        let before = watch(&[r"\\.\pipe\openssh-ssh-agent <empty>"], 0);
-        let after = watch(&[r"\\.\pipe\openssh-ssh-agent SHA256:aaa"], 0);
+        let before = watch(&[r"\\.\pipe\openssh-ssh-agent <empty>"]);
+        let after = watch(&[r"\\.\pipe\openssh-ssh-agent SHA256:aaa"]);
         assert!(pf_agent_changed(Some(&before), &after));
         // The reverse (KeePassXC locked, keys pulled) also counts: the
         // picture moved, and one extra dial is cheap next to leaving a
@@ -1169,17 +1127,8 @@ mod tests {
     #[test]
     fn whole_agent_appearing_kicks() {
         // KeePassXC in Pageant mode publishes its own pipe on launch.
-        let before = watch(&[], 0);
-        let after = watch(&[r"\\.\pipe\pageant.alice.abcd SHA256:aaa"], 0);
-        assert!(pf_agent_changed(Some(&before), &after));
-    }
-
-    #[test]
-    fn key_pushed_into_our_own_agent_kicks() {
-        // Same endpoint set, but KeePassXC just ADDed a key to the
-        // Obsidian SSH agent server: the missing credential is now available.
-        let before = watch(&[r"\\.\pipe\openssh-ssh-agent"], 0);
-        let after = watch(&[r"\\.\pipe\openssh-ssh-agent"], 1);
+        let before = watch(&[]);
+        let after = watch(&[r"\\.\pipe\pageant.alice.abcd SHA256:aaa"]);
         assert!(pf_agent_changed(Some(&before), &after));
     }
 

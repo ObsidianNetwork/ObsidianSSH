@@ -18,7 +18,7 @@ mode: Zen
 settle 250
 click "Skip"
 settle 250
-click "Continue without password"
+click "Get started"
 settle 250
 # The shell's spawn is what the first expect waits for: a batch run under
 # load (the previous test's dial still ending) has taken past 500 ms to
@@ -32,7 +32,7 @@ timeout 500
 # Through the tab context menu, one of the three close paths that reach
 # `close_tab_now`. Coordinates rather than a text selector: the chip's
 # own label is the string being asserted on.
-click right (150.00, 20.00)
+click right (76.00, 20.00)
 settle 250
 click "Close Tab"
 settle 250

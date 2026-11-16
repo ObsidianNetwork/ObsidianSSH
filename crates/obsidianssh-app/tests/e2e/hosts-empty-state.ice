@@ -14,7 +14,7 @@ mode: Zen
 # different assertion and would burn the 15 s connect timeout here.
 settle 250
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle 250
 expect "Create host"
 expect "or"

@@ -16,7 +16,7 @@ mode: Zen
 # the editor's section list and a click needs it actually on screen (the
 # emulator's wheel does not reach side-panel scrollables).
 click "Skip"
-click "Continue without password"
+click "Get started"
 expect "Create host"
 click "Continue"
 settle 400

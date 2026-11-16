@@ -18,7 +18,7 @@ mode: Zen
 # scrollable.
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 expect "Create host"
 click "Continue"
 expect "New Host"
@@ -38,13 +38,13 @@ click "Settings"
 settle
 click "Features & Plugins"
 settle
-click (1338, 207)
+click (1338, 215)
 # The engine keeps running from here on: cap the per-instruction wait.
 # 1.5 s is what the probe's refusal and the picker need between two
 # instructions (82s -> 43s from 5 s, two clean local passes, 2026-10-20).
 timeout 1500
 settle
-click (60, 463)
+click (60, 426)
 settle
 expect "Transport"
 click "Set up your own relay"

@@ -6,7 +6,7 @@ mode: Zen
 # the new card lands in the keys list.
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 expect "Create host"
 click "Keychain"
 expect "Generate key"

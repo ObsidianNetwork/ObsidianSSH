@@ -12,7 +12,7 @@ mode: Zen
 # back. The emulator shows the last window opened, so the first strip is
 # only visible again after the move back (see tab-move-windows.ice).
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle
 type ctrl+shift+e
 settle 500

@@ -229,7 +229,14 @@ impl ObsidianSsh {
                 Some(term.clone())
             },
             username: self.vaults.cur().prefs.default_username.clone(),
-            auth_method: self.vaults.cur().prefs.default_auth_method.clone(),
+            // With an agent serving keys (the Bitwarden desktop agent), a
+            // new host signs in through it unless a default was chosen.
+            auth_method: match self.vaults.cur().prefs.default_auth_method.clone() {
+                obsidianssh_core::models::connection::AuthMethod::Auto if self.agents_have_keys() => {
+                    obsidianssh_core::models::connection::AuthMethod::Agent
+                }
+                method => method,
+            },
             selected_identity: default_identity,
             selected_key: default_key,
             group_name: default_group,
@@ -307,7 +314,13 @@ impl ObsidianSsh {
             AuthMethod::Agent => KeyComboFilter::SecurityKeysFirst,
             _ => KeyComboFilter::All,
         };
-        key_combo_options(&self.vaults.cur().keys, filter)
+        let mut options = key_combo_options(&self.vaults.cur().keys, filter);
+        // Under Agent the pick may also be a key that lives only in an
+        // agent (a Bitwarden SSH key), listed after the saved ones.
+        if self.vaults.cur().editor_form.auth_method == AuthMethod::Agent {
+            options.extend(self.editor_agent_choices().into_iter().map(|(label, _)| label));
+        }
+        options
     }
 
     /// (Re)build the SSH Key combo with an empty typed value. Same
@@ -318,6 +331,14 @@ impl ObsidianSsh {
     pub(crate) fn reset_editor_key_combo(&mut self) {
         self.vaults.cur_mut().editor_key_combo =
             iced::widget::combo_box::State::new(self.editor_key_options());
+    }
+
+    /// Pick up keys that appeared since the SSH Key combo was built (a key
+    /// saved while the editor is open, an agent that just unlocked)
+    /// without re-filtering an open menu (see `refresh_combo`).
+    pub(crate) fn sync_editor_key_combo(&mut self) {
+        let options = self.editor_key_options();
+        Self::refresh_combo(&mut self.vaults.cur_mut().editor_key_combo, options);
     }
 
     /// Refresh a forced-selection combo's options ONLY when they
@@ -522,9 +543,22 @@ impl ObsidianSsh {
         };
         conn.auth_method = self.vaults.cur().editor_form.auth_method.clone();
         conn.group_id = group_id;
-        conn.key_id = self.vaults.cur().editor_form.selected_key.as_ref().and_then(|label| {
-            self.vaults.cur().keys.iter().find(|k| k.label == *label).map(|k| k.id)
-        });
+        // Under Agent the pick may be a key that lives only in an agent
+        // (Bitwarden): the host pins its public line instead of a vault key.
+        let agent_pick = (self.vaults.cur().editor_form.auth_method
+            == obsidianssh_core::models::connection::AuthMethod::Agent)
+            .then(|| self.vaults.cur().editor_form.selected_key.clone())
+            .flatten()
+            .and_then(|label| self.editor_agent_choices().into_iter().find(|(l, _)| *l == label))
+            .map(|(_, line)| line);
+        conn.key_id = if agent_pick.is_some() {
+            None
+        } else {
+            self.vaults.cur().editor_form.selected_key.as_ref().and_then(|label| {
+                self.vaults.cur().keys.iter().find(|k| k.label == *label).map(|k| k.id)
+            })
+        };
+        conn.agent_key = agent_pick;
         conn.use_disk_key = self.vaults.cur().editor_form.use_disk_key;
         // Blank is "scan the default names", which is what the field's
         // placeholder promises, so an emptied path is not a path.
@@ -873,9 +907,13 @@ impl ObsidianSsh {
                 .filter(|gid| self.vaults.cur().groups.iter().any(|g| g.id == *gid))
                 .map(|gid| obsidianssh_core::models::Group::path_of(&self.vaults.cur().groups, gid))
                 .unwrap_or_default(),
-            selected_key: conn.key_id.and_then(|kid| {
-                self.vaults.cur().keys.iter().find(|k| k.id == kid).map(|k| k.label.clone())
-            }),
+            selected_key: conn
+                .key_id
+                .and_then(|kid| {
+                    self.vaults.cur().keys.iter().find(|k| k.id == kid).map(|k| k.label.clone())
+                })
+                .or_else(|| conn.agent_key.as_deref().map(|line| self.agent_key_label(line))),
+            agent_key: conn.agent_key.clone(),
             jump_chain: conn.jump_chain.clone(),
             selected_identity: conn.identity_id.and_then(|iid| {
                 self.vaults.cur().identities.iter().find(|i| i.id == iid).map(|i| i.label.clone())

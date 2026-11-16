@@ -185,7 +185,6 @@ pub(crate) struct ParkedView {
     pub(crate) active: Option<Uuid>,
     pub(crate) mru: Vec<TabRef>,
     pub(crate) view: View,
-    pub(crate) nav: WindowNav,
 }
 
 impl ParkedView {
@@ -617,84 +616,6 @@ impl ObsidianSsh {
         task
     }
 
-    /// Point the window in the fields at vault `target` (the switcher):
-    /// what it shows of the vault it leaves is parked, panels aside (they
-    /// follow it: Settings now edits `target`), and what it kept of
-    /// `target` comes back; the hosts screen the first time. The tabs it
-    /// parks keep running.
-    pub(crate) fn switch_window_vault(&mut self, target: Uuid) {
-        let from = self.vaults.window_id();
-        if from == target || !self.vaults.is_open(target) {
-            return;
-        }
-        let on_panel = crate::state::PanelKind::for_view(self.active_view).is_some();
-        // The SFTP buffer goes home to its tab before the tab is parked.
-        let owner = self.park_sftp_owner();
-        let active = match (self.active_view, owner) {
-            (View::Sftp, SftpOwner::Standalone(id)) => Some(id),
-            _ => self.active_tab.and_then(|i| self.tabs.get(i)).map(|t| t._id),
-        };
-        let is_panel = |r: &TabRef| matches!(r, TabRef::Panel(_));
-        let (panels, tabs): (Vec<TabRef>, Vec<TabRef>) =
-            std::mem::take(&mut self.tab_order).into_iter().partition(is_panel);
-        let (panel_mru, tab_mru): (Vec<TabRef>, Vec<TabRef>) =
-            std::mem::take(&mut self.tab_mru).into_iter().partition(is_panel);
-        let left = ParkedView {
-            order: tabs,
-            active,
-            mru: tab_mru,
-            view: if on_panel { View::Dashboard } else { self.active_view },
-            nav: std::mem::take(&mut self.nav),
-        };
-        self.parked_views.insert(from, left);
-        // A menu, a card context menu or a drag raised over the vault
-        // this window leaves is index-keyed into ITS lists; over the
-        // other vault's they would act on the wrong row.
-        if self.floats_here() {
-            self.overlay = None;
-            self.card_context_menu = None;
-        }
-        self.on_window_blur();
-        self.vaults.switch_window_to(target);
-        // Brought up by the user: its idle clock starts now, or a vault
-        // left in the background for longer than its threshold would
-        // lock under the user at the next tick.
-        self.vaults.cur_mut().last_user_activity = std::time::Instant::now();
-        let back = self.parked_views.remove(&target).unwrap_or(ParkedView {
-            order: Vec::new(),
-            active: None,
-            mru: Vec::new(),
-            view: View::Dashboard,
-            nav: WindowNav::default(),
-        });
-        self.tab_order = back.order;
-        self.tab_order.extend(panels);
-        self.tab_mru = back.mru;
-        self.tab_mru.extend(panel_mru);
-        self.nav = back.nav;
-        self.active_tab = None;
-        let mut view = back.view;
-        match (view, back.active) {
-            (View::Sftp, Some(id)) => {
-                self.hoist_sftp_owner(SftpOwner::Standalone(id));
-                if self.active_sftp.is_none() {
-                    view = View::Dashboard;
-                }
-            }
-            (_, Some(id)) => {
-                self.active_tab = self.tabs.iter().position(|t| t._id == id);
-                if view == View::Terminal && self.active_tab.is_none() {
-                    view = View::Dashboard;
-                }
-            }
-            (View::Terminal | View::Sftp, None) => view = View::Dashboard,
-            _ => {}
-        }
-        if !on_panel {
-            self.active_view = view;
-        }
-    }
-
     /// The window that shows the tab with strip id `id` (terminal or
     /// SFTP): `None` is the resident one.
     pub(crate) fn window_of_tab(&self, id: Uuid) -> Option<window::Id> {
@@ -731,12 +652,7 @@ impl ObsidianSsh {
             // (its emulator owns a single window) and a window on its
             // way out on the ordinary path.
             let _pass = ViewPass::begin(Viewing::Main, None);
-            // The start picker is in no vault's theme: none is chosen yet.
-            let theme = if self.start_picker {
-                crate::theme::ThemeSelection::named(None)
-            } else {
-                self.vaults.cur().ui_theme
-            };
+            let theme = self.vaults.cur().ui_theme;
             let _scope = crate::theme::SelectionScope::enter(theme);
             crate::widgets::theme_scope(self.view(), theme)
         }
@@ -747,9 +663,6 @@ impl ObsidianSsh {
     /// `ObsidianSsh::theme_for`, which iced asks per window.
     pub(crate) fn theme_of_window(&self, id: window::Id) -> crate::theme::ThemeSelection {
         let vault = self.extra_windows.get(&id).map(|w| w.vault);
-        if vault.is_none() && self.start_picker {
-            return crate::theme::ThemeSelection::named(None);
-        }
         let _pass = ViewPass::begin(Viewing::Nothing, vault);
         self.vaults.cur().ui_theme
     }
@@ -1014,33 +927,6 @@ impl ObsidianSsh {
                     .filter(|_| self.vaults.window_id() == vault)
                     .map(|c| Some(c.id))
             })
-    }
-
-    /// Every window working on vault `vault` (`None` = the resident one).
-    pub(crate) fn windows_on_vault(&self, vault: Uuid) -> Vec<Option<window::Id>> {
-        let mut out: Vec<Option<window::Id>> = Vec::new();
-        if self.vault_of_window(None) == vault {
-            out.push(None);
-        }
-        if let Some(ctx) = &self.window_ctx
-            && self.vaults.window_id() == vault
-        {
-            out.push(Some(ctx.id));
-        }
-        out.extend(self.extra_windows.iter().filter(|(_, w)| w.vault == vault).map(|(id, _)| Some(*id)));
-        out
-    }
-
-    /// Forget every view of vault `vault` a window parked (the vault is
-    /// going away; its tabs already ended).
-    pub(crate) fn drop_parked_views_of(&mut self, vault: Uuid) {
-        self.parked_views.remove(&vault);
-        if let Some(ctx) = self.window_ctx.as_mut() {
-            ctx.parked.remove(&vault);
-        }
-        for w in self.extra_windows.values_mut() {
-            w.parked.remove(&vault);
-        }
     }
 
     /// Every window but the current one (`None` is the resident), in a

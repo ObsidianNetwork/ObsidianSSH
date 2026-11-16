@@ -11,7 +11,7 @@ mode: Zen
 # original, and `order` refuses a text shown twice.
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 expect "Create host"
 click (1176, 64)
 settle 500
@@ -24,7 +24,7 @@ click "Before the label"
 settle 300
 # Close the Settings tab (its X): a panel tab holds a strip slot too, and
 # the shell has to be the first number.
-click (165, 21)
+click (91, 21)
 settle 300
 
 # Off: a double click is two clicks on a tab that is already selected.

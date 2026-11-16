@@ -422,45 +422,17 @@ impl ObsidianSsh {
     /// referenced" and take every file with it. Files whose fetch is in
     /// flight are spared, since their account does not exist yet.
     pub(crate) fn sweep_orphan_kubeconfigs(&self) {
-        // The folder is the DEVICE's, every vault's accounts point into
-        // it: a file is an orphan only when no registered vault's account
-        // references it. An open, unlocked vault answers from its store;
-        // any other from its file, read-only (`config` is plaintext). A
-        // vault whose accounts cannot be read (its file not there, a USB
-        // key unplugged) leaves its references unknown: nothing is swept.
+        // A file is an orphan only when no account of the vault
+        // references it; a vault whose accounts cannot be read (locked)
+        // leaves its references unknown, so nothing is swept.
         let mut referenced = std::collections::HashSet::new();
-        let registered = self.registered_vaults();
-        let device = obsidianssh_vault::device::installed();
-        for entry in &registered {
-            let open = self.vaults.all().find(|v| v.id == entry.id);
-            match open.and_then(|v| v.store.as_ref().filter(|s| !s.is_locked())) {
-                Some(store) => {
-                    let Ok(profiles) = store.list_cloud_profiles() else {
-                        return;
-                    };
-                    referenced.extend(crate::kubeconfig_file::referenced_paths(&profiles));
-                }
-                None => {
-                    let Some(path) = device.as_ref().map(|d| d.resolve(entry)) else {
-                        return;
-                    };
-                    let Some(configs) = obsidianssh_vault::device::read_k8s_profile_configs(&path) else {
-                        return;
-                    };
-                    referenced.extend(configs.iter().filter_map(|c| crate::kubeconfig_file::referenced_path(c)));
-                }
-            }
-        }
-        // No registry (a store not installed): the one vault this is.
-        if registered.is_empty() {
-            let Some(store) = self.vaults.cur().store.as_ref().filter(|v| !v.is_locked()) else {
-                return;
-            };
-            let Ok(profiles) = store.list_cloud_profiles() else {
-                return;
-            };
-            referenced.extend(crate::kubeconfig_file::referenced_paths(&profiles));
-        }
+        let Some(store) = self.vaults.cur().store.as_ref().filter(|v| !v.is_locked()) else {
+            return;
+        };
+        let Ok(profiles) = store.list_cloud_profiles() else {
+            return;
+        };
+        referenced.extend(crate::kubeconfig_file::referenced_paths(&profiles));
         let Some(dir) = crate::kubeconfig_file::dir() else {
             return;
         };

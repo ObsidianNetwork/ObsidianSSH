@@ -10,7 +10,7 @@ mode: Zen
 # edge is owner QA: the harness has no press-move-release.
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle 250
 click "Type IP or Hostname"
 type "web01"
@@ -28,7 +28,7 @@ type escape
 settle 250
 absent "Connect in New Window"
 # A local shell from the `+` popover, then its chip's menu.
-click (161, 20)
+click (87, 20)
 expect "Local Shell"
 timeout 800
 click "Local Shell"

@@ -15,8 +15,8 @@ use std::path::Path;
 /// vault unless the process or the machine can only have one of it).
 const VAULT_KEYS: &[&str] = &[
     "ai_api_key", "ai_api_url", "ai_default_mode", "ai_enabled", "ai_model", "ai_provider",
-    "ai_reasoning", "ai_save_history", "ai_system_prompt", "app_theme", "auto_lock_minutes",
-    "auto_reconnect", "biometric_unlock_enabled", "bold_is_bright", "card_accent_glass",
+    "ai_reasoning", "ai_save_history", "ai_system_prompt", "app_theme", 
+    "auto_reconnect", "bold_is_bright", "card_accent_glass",
     "careful_paste", "cloud_auto_archive_orphans", "cloud_auto_refresh_enabled",
     "cloud_auto_refresh_interval_minutes", "cloud_orphan_archive_days", "command_history",
     "command_history_file", "confirm_close_session_tab", "connection_history", "copy_on_select",
@@ -28,7 +28,7 @@ const VAULT_KEYS: &[&str] = &[
     "hint_link_click_used", "hint_privacy_mask", "host_list_view", "host_monitoring_enabled",
     "host_monitoring_seeded", "host_view_mode", "hosts_sort", "inactive_tab_style",
     "install_presets_seeded", "keepalive_default_v2_applied", "keepalive_interval", "keys_sort",
-    "keyword_highlight", "layout_mode", "logs_retention", "manual_lock_action",
+    "keyword_highlight", "layout_mode", "logs_retention", 
     "max_reconnect_attempts", "mcp_config_vault_pw", "mcp_server_allow_transfers", "mcp_server_allow_writes",
     "mcp_server_enabled", "mcp_server_token", "monitor_all_hosts", "monitor_dash_list_view",
     "monitor_dash_live_only", "monitor_interval_seconds", "monitor_status_bar", "nav_orientation",

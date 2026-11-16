@@ -9,7 +9,7 @@ mode: Zen
 # (19, 20) is the burger.
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle 250
 click "Type IP or Hostname"
 type "web01"

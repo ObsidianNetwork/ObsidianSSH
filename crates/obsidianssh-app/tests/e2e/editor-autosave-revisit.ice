@@ -11,7 +11,7 @@ mode: Zen
 # The label is what carries the assertion, since it also renders on
 # the card, outside the text_input `expect` cannot read.
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle 250
 click "Type IP or Hostname"
 type "web01"

@@ -13,7 +13,7 @@ mode: Zen
 # to the app, and a dev binary counts as installed, so this file then
 # meets the account list instead of the explainer.
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle
 click "Cloud Accounts"
 settle

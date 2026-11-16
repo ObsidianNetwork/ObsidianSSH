@@ -20,26 +20,6 @@ impl ObsidianSsh {
             VaultMessage::VaultTogglePasswordVisibility => {
                 self.vaults.cur_mut().vault_ui.password_visible = !self.vaults.cur_mut().vault_ui.password_visible;
             }
-            VaultMessage::VaultSetup => {
-                if self.vaults.cur().vault_ui.password_input.len() < 4 {
-                    self.vaults.cur_mut().vault_ui.error =
-                        Some(crate::i18n::t("password_too_short").to_string());
-                    return Task::none();
-                }
-                // Phase 1 (E1): calibrate Argon2id off the UI thread, then
-                // apply on `VaultKdfCalibrated`. A doubled click while the
-                // spinner is up is a no-op.
-                if self.vaults.cur().vault_ui.calibrating {
-                    return Task::none();
-                }
-                self.vaults.cur_mut().vault_ui.calibrating = true;
-                self.vaults.cur_mut().vault_ui.error = None;
-                // Snapshot the confirmed password: the input stays live
-                // during the calibration and must not be re-read at apply
-                // time (see `pending_kdf_pw`).
-                self.vaults.cur_mut().vault_ui.pending_kdf_pw = Some(self.vaults.cur_mut().vault_ui.password_input.clone());
-                return calibrate_kdf_task(crate::state::VaultPwOp::FirstSetup);
-            }
             VaultMessage::VaultSkipPassword => {
                 if let Some(vault) = &mut self.vaults.cur_mut().store {
                     match vault.open_without_password() {
@@ -60,9 +40,6 @@ impl ObsidianSsh {
                                 // Onboarding's import offer, now that
                                 // there IS a vault to import into.
                                 self.take_onboarding_import_task(),
-                                // The export a vault made by "Import as a new vault"
-                                // waited for: its key exists now.
-                                self.take_pending_import(),
                                 fetches,
                                 crate::widgets::focus_input(iced::widget::Id::new(
                                     "search-dashboard",
@@ -120,16 +97,8 @@ impl ObsidianSsh {
                             // Retain the password in memory so we can spawn
                             // child windows with it via stdin pipe.
                             self.vaults.cur_mut().master_password = Some(self.vaults.cur_mut().vault_ui.password_input.clone());
-                            // Keep the OS-keystore copy current so biometric
-                            // unlock reflects the live password (self-heals
-                            // after a rotation). No-op unless opted in;
-                            // enroll never prompts.
-                            self.biometric_reenroll(&self.vaults.cur().vault_ui.password_input);
                             self.vaults.cur_mut().vault_ui.password_input.clear();
                             self.vaults.cur_mut().vault_ui.password_visible = false;
-                            // Next lock screen leads with biometrics again
-                            // (a one-time fallback choice shouldn't stick).
-                            self.vaults.cur_mut().vault_ui.password_fallback = false;
                             return self.finish_vault_open();
                         }
                         Err(VaultError::InvalidPassword) => {
@@ -155,9 +124,6 @@ impl ObsidianSsh {
     /// of the strip it left. One place, so a vault opened from the
     /// switcher or the start picker gets what an unlock gives.
     pub(crate) fn finish_vault_open(&mut self) -> Task<Message> {
-        // Its idle clock starts at the open, not at whatever input its
-        // windows last saw before a lock.
-        self.vaults.cur_mut().last_user_activity = std::time::Instant::now();
         self.load_data_from_vault();
         // What the recordings spooled under a soft
         // lock goes into the vault now, ahead of the
@@ -166,9 +132,6 @@ impl ObsidianSsh {
         // is still recording, and a session closed
         // under the lock left a spool with no pane.
         self.flush_session_logs();
-        // Re-arm the ssh-agent's dedicated handle if a
-        // runtime survived a soft lock.
-        self.agent_on_unlock();
         // Bring the sync engine up now that the
         // vault is open, if the user left it on. Only
         // the P2P transport has a background engine;
@@ -201,8 +164,6 @@ impl ObsidianSsh {
         unlock_tasks.extend(self.unlock_fetch_tasks());
         // One-time performance-mode auto-enable notice.
         unlock_tasks.push(self.take_perf_mode_toast_task());
-        // Bring the ssh-agent up if the user left it on.
-        unlock_tasks.push(self.agent_boot_task());
         // The lock sweep dropped the History content-search
         // results (decrypted excerpts must not sit behind the
         // lock screen) but the chip and the typed query survive,

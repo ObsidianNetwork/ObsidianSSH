@@ -16,9 +16,9 @@ mode: Zen
 # press-move-release.
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle 250
-click (161, 20)
+click (87, 20)
 expect "Local Shell"
 timeout 800
 click "Local Shell"
@@ -34,7 +34,7 @@ type "alpha"
 type enter
 settle 300
 expect "alpha"
-click (402, 20)
+click (328, 20)
 expect "Local Shell"
 click "Local Shell"
 settle 900

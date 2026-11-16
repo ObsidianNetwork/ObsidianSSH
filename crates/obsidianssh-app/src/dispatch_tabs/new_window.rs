@@ -47,12 +47,6 @@ impl ObsidianSsh {
         self.open_extra_window_on(vault, order, view, at)
     }
 
-    /// A new window working on vault `vault` (the switcher's "Open in new
-    /// window"), on its hosts screen.
-    pub(crate) fn open_window_for_vault(&mut self, vault: Uuid) -> (window::Id, Task<Message>) {
-        self.open_extra_window_on(vault, Vec::new(), View::Dashboard, None)
-    }
-
     fn open_extra_window_on(
         &mut self,
         vault: Uuid,
@@ -903,10 +897,6 @@ impl ObsidianSsh {
                 self.window_focused = focused;
                 if focused {
                     self.input_window = Some(id);
-                    // A USB key may have come back while the app was
-                    // in the background.
-                    self.refresh_vault_presence();
-                    self.remember_window_vault();
                 }
                 if !focused {
                     self.on_window_blur();

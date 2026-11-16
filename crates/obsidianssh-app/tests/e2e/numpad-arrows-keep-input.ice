@@ -18,7 +18,7 @@ mode: Zen
 # typed chunks would make the expected string caret-order dependent.
 settle 250
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle 250
 expect "Create host"
 clipboard "sentinel"

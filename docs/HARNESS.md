@@ -12,11 +12,11 @@ it, so it adds zero weight to shipped binaries.
 
 ## Isolation
 
-Both modes redirect `$HOME` (and `%USERPROFILE%` on Windows) to a sandbox directory **before anything reads the vault**, and point `OBSIDIANSSH_HOME` at it too: the app resolves its whole `.obsidianssh` tree through that override (`obsidianssh_core::paths`), which is what makes the sandbox hold on Windows as well, where the OS home comes from a WinAPI call that ignores env vars. A harness run can never touch your real `~/.obsidianssh`. The variable also wins over a portable `data` folder beside the binary under test.
+Both modes redirect `$HOME` (and `%USERPROFILE%` on Windows) to a sandbox directory **before anything reads the vault**, and point `OBSIDIANSSH_HOME` at it too: the app resolves its whole `.obsidianssh` tree through that override (`obsidianssh_core::paths`), which is what makes the sandbox hold on Windows as well, where the OS home comes from a WinAPI call that ignores env vars. A harness run can never touch your real `~/.obsidianssh`. The variable also wins over a portable `data` folder beside the binary under test. `SSH_AUTH_SOCK` and `BITWARDEN_SSH_AUTH_SOCK` are cleared as well, so the ssh-agents running on the machine (a Bitwarden agent serving keys switches new hosts to agent auth) never leak into a run.
 
 - Default sandbox: `<system tmp>/obsidianssh-harness`. It persists across
-  runs on purpose: a master password set in one session is still
-  there in the next, which keeps iterative QA cheap.
+  runs on purpose: a vault set up in one session is still there in
+  the next, which keeps iterative QA cheap.
 - Override with `--home <dir>`. Batch runs in CI should always pass a
   fresh directory so first-boot flows (onboarding) are reproducible.
 
@@ -257,8 +257,8 @@ Two things to know:
 ## How it works / limitations
 
 The harness relies on harness-grade emulator work that lives in the
-wilsonglasser/iced fork's `obsidianssh` branch (landed 2026-07-10 via the
-`obsidianssh-harness` feature branch): a fixed `Emulator::screenshot` (the
+wilsonglasser/iced fork's `oryxis` branch (landed 2026-07-10 via the
+`oryxis-harness` feature branch): a fixed `Emulator::screenshot` (the
 upstream one loses the widget cache and poisons the next
 instruction), a public `Emulator::operate` (backs `texts`/`find`), an
 in-memory emulated clipboard (runtime tasks + widget-level paste,

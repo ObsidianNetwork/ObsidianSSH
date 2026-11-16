@@ -320,7 +320,6 @@ impl ObsidianSsh {
     /// no field of the view asked first.
     pub(crate) fn terminal_ime_target(&self) -> Option<crate::widgets::ImeTarget> {
         if !matches!(self.vaults.cur().vault_ui.state, crate::state::VaultState::Unlocked)
-            || self.start_picker_here()
             || !self.terminal_surface_visible()
         {
             return None;

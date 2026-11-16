@@ -128,12 +128,8 @@ impl ObsidianSsh {
                             self.download_mirror.url_input = url.clone();
                         }
                     }
-                    token => {
-                        let choice = match token {
-                            "github" => MirrorChoice::GitHubDirect,
-                            "project" => MirrorChoice::ProjectMirror,
-                            _ => MirrorChoice::Auto,
-                        };
+                    _ => {
+                        let choice = MirrorChoice::GitHubDirect;
                         self.download_mirror.custom_pending = false;
                         self.download_mirror.url_error = false;
                         self.download_mirror.choice = choice.clone();
@@ -175,8 +171,8 @@ impl ObsidianSsh {
                 }
                 // Custom is tested against the field's LIVE contents,
                 // which may not be committed yet (testing before
-                // saving is the point of the button); every other mode
-                // owns a fixed endpoint, so the choice resolves it.
+                // saving is the point of the button); direct GitHub
+                // has no mirror, so the choice resolves to nothing.
                 let editing_custom = self.download_mirror.custom_pending
                     || matches!(self.download_mirror.choice, MirrorChoice::Custom(_));
                 let target = if editing_custom {

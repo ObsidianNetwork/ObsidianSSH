@@ -370,28 +370,6 @@ impl ObsidianSsh {
         let mut items = column![
             self.menu_item(iced_fonts::lucide::pencil(), crate::i18n::t("edit"), Message::Keys(KeysMessage::EditKey(idx)), ObsidianSshColors::t().text_secondary),
         ];
-        // Expose-via-agent toggle: only offered while the agent server
-        // is running, so it stays out of the menu for users who never
-        // turned the feature on. A check glyph marks the current state.
-        // Security-key rows (B3) have no private half in the vault, so
-        // Obsidian SSH's own agent can never serve them; the toggle would be
-        // a lie there and is hidden.
-        if self.agent.enabled
-            && let Some(key) = self.vaults.cur().keys.get(idx)
-            && !key.algorithm.is_security_key()
-        {
-            let (glyph, label) = if key.expose_via_agent {
-                (iced_fonts::lucide::circle_check(), crate::i18n::t("agent_key_exposed"))
-            } else {
-                (iced_fonts::lucide::circle(), crate::i18n::t("agent_key_hidden"))
-            };
-            items = items.push(self.menu_item(
-                glyph,
-                label,
-                Message::Agent(AgentMessage::KeyExposeViaAgentToggled(key.id)),
-                ObsidianSshColors::t().text_secondary,
-            ));
-        }
         // Certificate actions, only when the key carries one (B2).
         if let Some(key) = self.vaults.cur().keys.get(idx)
             && key.certificate.is_some()

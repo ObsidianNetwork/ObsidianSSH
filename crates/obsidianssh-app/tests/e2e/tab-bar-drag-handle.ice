@@ -17,7 +17,7 @@ mode: Zen
 settle 250
 click "Skip"
 settle 250
-click "Continue without password"
+click "Get started"
 settle 250
 # A live PTY never lets the emulator quiesce, so cap the per-instruction
 # wait instead of burning the full timeout on every line.
@@ -44,10 +44,10 @@ screenshot tab-bar-drag-handle
 # The handle: right of the docked `+`, left of the `⋯` (1115 minus the
 # chrome, the side-panel toggle, the `⋯` and the 40 px handle itself
 # puts it at x 841..881).
-move (861.00, 18.00)
+move (787.00, 18.00)
 settle 250
 absent "New Tab"
-click right (861.00, 18.00)
+click right (787.00, 18.00)
 settle 250
 expect "New Tab"
 absent "Close Tab"

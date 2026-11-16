@@ -199,7 +199,6 @@ impl ObsidianSsh {
             active: None,
             mru: Vec::new(),
             view: crate::state::View::Dashboard,
-            nav: crate::window_ctx::WindowNav::default(),
         });
         if !parked.order.contains(&r) {
             parked.order.push(r);

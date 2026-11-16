@@ -12,7 +12,7 @@ mode: Zen
 # click landed on. "Groups" is the mirror image: the root list's
 # section header, absent inside a folder.
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle 250
 # A group at the root, then a subgroup inside it.
 click "New group"

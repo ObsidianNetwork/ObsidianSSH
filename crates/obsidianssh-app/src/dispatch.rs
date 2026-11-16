@@ -75,10 +75,7 @@ impl ObsidianSsh {
         // press anchors, the kebab-menu position) fresh the rest of the
         // time. A change since the previous message means the user
         // physically moved the mouse: restore the hover highlight that
-        // keyboard navigation muted and count it as activity for the
-        // vault auto-lock idle clock (the 30 s AutoLockTick is itself a
-        // message, so a moving-but-not-clicking user is registered here
-        // before the lock decision runs).
+        // keyboard navigation muted and count it as user activity.
         let (live_window, live_mouse) = crate::subscription::live_mouse();
         // The position is in the coordinates of the window the cursor is
         // over, so it only means something to that window.
@@ -90,7 +87,6 @@ impl ObsidianSsh {
         if here && live_mouse != self.cur_mouse() {
             self.mouse_position = live_mouse;
             self.sftp.suppress_hover = false;
-            self.vaults.window_vault_mut().last_user_activity = std::time::Instant::now();
         }
         // An armed drag-out (issue #167) advances here, off the two
         // cursor moments it rides on. The armed flag keeps
@@ -119,21 +115,6 @@ impl ObsidianSsh {
         {
             self.drag_out_echo.swap_remove(i);
             return drag_out_started.unwrap_or_else(Task::none);
-        }
-        // Any user input event resets the auto-lock idle clock of the
-        // window's vault.
-        // These are the raw-event messages `subscription.rs` maps from
-        // iced's global listener, so presence is detected app-wide
-        // without touching individual handlers.
-        if matches!(
-            message,
-            Message::Terminal(
-                TerminalMessage::KeyboardEvent(_) | TerminalMessage::KeyboardEventCaptured(_)
-            ) | Message::Tabs(TabsMessage::MouseMoved(_))
-                | Message::Sftp(SftpMessage::SftpMouseLeftPressed)
-                | Message::Terminal(TerminalMessage::TerminalImeCommit(_))
-        ) {
-            self.vaults.window_vault_mut().last_user_activity = std::time::Instant::now();
         }
         // Was the host editor on screen before this message? Compared
         // against the post-dispatch answer below, that is the "the
@@ -503,8 +484,6 @@ impl ObsidianSsh {
             Message::Zmodem(m) => self.handle_zmodem(m),
             Message::Update(m) => self.handle_update(m),
             Message::PortForward(m) => self.handle_port_forwards(m),
-            Message::Agent(m) => self.handle_agent(m),
-            Message::MultiVault(m) => self.handle_multi_vault(m),
             Message::ProxyIdentity(m) => self.handle_proxy_identity(m),
             Message::CommandHistory(m) => self.handle_command_history(m),
             Message::Navigation(m) => self.handle_navigation(m),
@@ -587,6 +566,8 @@ impl ObsidianSsh {
             | Message::ErrorDialogDismiss
             | Message::ErrorDialogRunAction
             | Message::TogglePrivacyReveal
+            | Message::RefreshAgentRoster
+            | Message::AgentRoster(_)
             | Message::NoOp => self.handle_global(message),
         }
     }

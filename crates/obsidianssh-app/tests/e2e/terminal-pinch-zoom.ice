@@ -19,9 +19,9 @@ mode: Zen
 # and (370, 20) the Settings chip once both are open (the active shell chip is the wide one).
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 expect "Create host"
-click (161, 20)
+click (87, 20)
 settle 300
 expect "Local Shell"
 timeout 800
@@ -51,10 +51,10 @@ type enter
 settle 500
 click (1142, 70)
 settle
-click (219, 20)
+click (145, 20)
 settle 600
 pinch 0.12 (600, 400)
 settle 400
-click (439, 20)
+click (365, 20)
 settle 400
 expect "Zoomed to 17 for this session"

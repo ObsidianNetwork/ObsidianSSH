@@ -110,15 +110,12 @@ impl ObsidianSsh {
                         .collect();
                     // Recent hosts: top 10, through the one
                     // authority every recency surface reads.
-                    // Every open vault's, each row naming its vault
-                    // when there are several.
                     let recent: Vec<(String, String)> = self
                         .recent_connections_everywhere(10)
                         .iter()
-                        .map(|(vault, c)| {
+                        .map(|(_, c)| {
                             let shown =
                                 self.privacy_display_label(&c.label, &c.label, &privacy_terms);
-                            let shown = self.recent_host_door_label(*vault, &shown);
                             (shown.replace('&', "&&"), c.id.to_string())
                         })
                         .collect();
@@ -431,7 +428,13 @@ impl ObsidianSsh {
                 }
             }
             TrayMessage::OpenHost(uuid) => {
-                let open = self.open_host_anywhere(uuid);
+                // A locked vault keeps the dial for its unlock.
+                let open = if self.vaults.cur().vault_ui.state == crate::state::VaultState::Unlocked {
+                    Task::done(Message::Ssh(crate::app::SshMessage::ConnectSavedHost(uuid)))
+                } else {
+                    self.pending_auto_connect = Some(uuid);
+                    Task::none()
+                };
                 return Task::batch(vec![Task::done(Message::Tray(TrayMessage::Show)), open]);
             }
         }
@@ -477,10 +480,7 @@ impl ObsidianSsh {
         let privacy_terms = self.privacy_terms();
         let entries: Vec<(String, uuid::Uuid)> = recent
             .iter()
-            .map(|(vault, c)| {
-                let shown = self.privacy_display_label(&c.label, &c.label, &privacy_terms);
-                (self.recent_host_door_label(*vault, &shown), c.id)
-            })
+            .map(|(_, c)| (self.privacy_display_label(&c.label, &c.label, &privacy_terms), c.id))
             .collect();
 
         // Signature covers label + id so a rename or reorder refreshes;

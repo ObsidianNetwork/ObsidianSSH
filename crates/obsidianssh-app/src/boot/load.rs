@@ -909,38 +909,6 @@ impl ObsidianSsh {
             // `boot` before the unlock, next to the update settings:
             // the boot fetches run against a vault that may still be
             // locked, and reading them here left those on the defaults.
-            self.agent.confirm = vault
-                .get_setting("agent_server_confirm")
-                .ok()
-                .flatten()
-                .map(|v| v != "false")
-                .unwrap_or(true);
-            self.agent.allow_add = matches!(
-                vault.get_setting("agent_server_allow_add"),
-                Ok(Some(ref v)) if v == "true"
-            );
-            self.agent.openssh_pipe = matches!(
-                vault.get_setting("agent_server_openssh_pipe"),
-                Ok(Some(ref v)) if v == "true"
-            );
-            // The agent runtime is started after boot (needs the live
-            // vault handle + master password); remember the desired
-            // state so the post-unlock hook can start it.
-            self.agent.enabled = matches!(
-                vault.get_setting("agent_server_enabled"),
-                Ok(Some(ref v)) if v == "true"
-            );
-            if let Ok(Some(v)) = vault.get_setting("vault_switcher_hide_single") {
-                self.device_prefs.vault_switcher_hide_single = v == "true";
-            }
-            if let Ok(Some(v)) = vault.get_setting("vault_start_picker") {
-                self.device_prefs.vault_start_picker = v == "true";
-            }
-            if let Ok(Some(v)) = vault.get_setting("vault_switcher_place")
-                && let Some(place) = crate::state::VaultSwitcherPlace::from_code(&v)
-            {
-                self.device_prefs.vault_switcher_place = place;
-            }
             if let Ok(Some(v)) = vault.get_setting("close_to_tray") {
                 self.device_prefs.close_to_tray = v == "true";
             }
@@ -1150,9 +1118,6 @@ impl ObsidianSsh {
     /// Hotkey overrides (with factory-conflict resolution) and the
     /// new-connection defaults, including the one-shot setting migrations.
     fn load_vault_hotkeys_and_defaults(&mut self) {
-        // The vaults' own chords (Settings > Vaults) are user choices that
-        // collide with everything, like a snippet's.
-        let vault_chords: Vec<crate::hotkeys::HotkeyBinding> = self.vault_chords.iter().map(|(_, c)| *c).collect();
         let ov = self.vaults.cur_mut();
         if let Some(vault) = &ov.store {
             // Hotkey overrides: each action persists under
@@ -1221,7 +1186,6 @@ impl ObsidianSsh {
                     .filter_map(crate::hotkeys::HotkeyBinding::parse)
                     .map(|b| (b, None)),
             );
-            user_chords.extend(vault_chords.iter().map(|b| (*b, None)));
             let mut emptied: Vec<crate::hotkeys::HotkeyAction> = Vec::new();
             for action in crate::hotkeys::HotkeyAction::all() {
                 if user_bound.contains(action) {
@@ -1458,22 +1422,6 @@ impl ObsidianSsh {
             if let Ok(Some(v)) = vault.get_setting("max_reconnect_attempts") {
                 ov.prefs.max_reconnect_attempts = v;
             }
-            if let Ok(Some(v)) = vault.get_setting("auto_lock_minutes") {
-                ov.prefs.auto_lock_minutes = v;
-            }
-            // Unknown tokens fall back to "ask" so a corrupted row can't
-            // silently make the Lock button skip its confirm.
-            if let Ok(Some(v)) = vault.get_setting("manual_lock_action") {
-                ov.prefs.manual_lock_action = match v.as_str() {
-                    "sleep" | "lock" => v,
-                    _ => "ask".into(),
-                };
-            }
-            if let Ok(Some(v)) = vault.get_setting("biometric_unlock_enabled") {
-                ov.prefs.biometric_unlock_enabled = v == "true";
-            }
-            // Availability is probed once at boot (pre-unlock, provider
-            // level) and stays stable for the session, so no re-probe here.
             if let Ok(Some(v)) = vault.get_setting("os_detection") {
                 ov.prefs.os_detection = v == "true";
             }

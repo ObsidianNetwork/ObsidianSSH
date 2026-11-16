@@ -55,7 +55,6 @@ impl ObsidianSsh {
             // longer translations of both on one line.
             OverlayContent::CloudProviderPicker => 210.0,
             // A vault name plus its "open in new window" button.
-            OverlayContent::VaultSwitcher => 240.0,
             // "Export transcript (.txt)" + translations on one line,
             // with room for the privacy footer to wrap sanely.
             OverlayContent::SessionLogActions(_) => 240.0,
@@ -218,7 +217,6 @@ impl ObsidianSsh {
             // conditional (`split_menu_rows` / `tab_bar_menu_rows`).
             OverlayContent::SplitMenu => self.split_menu_rows(),
             OverlayContent::TabBarActions => self.tab_bar_menu_rows(),
-            OverlayContent::VaultSwitcher => self.vault_switcher_menu_rows(),
             // Counted next to its builder too, for the same reason as
             // the two above: its rows are conditional.
             OverlayContent::TerminalContextMenu(pane_id, sel) => {
@@ -408,7 +406,6 @@ impl ObsidianSsh {
             OverlayContent::DynamicGroupActions(id) => self.build_menu_dynamic_group_actions(*id),
             OverlayContent::CloudProfileActions(id) => self.build_menu_cloud_profile_actions(*id),
             OverlayContent::CloudProviderPicker => self.build_menu_cloud_provider_picker(),
-            OverlayContent::VaultSwitcher => self.build_menu_vault_switcher(),
             OverlayContent::SidebarFilesRow { path, is_dir } => {
                 self.build_menu_sidebar_files_row(path.clone(), *is_dir)
             }
@@ -549,12 +546,8 @@ impl ObsidianSsh {
                 },
                 ..Default::default()
             });
-        // Estimated x of the "…" trigger: row left padding + chip + gap
-        // + the inline pills. Lands the dropdown just under the cue. The
-        // chip is only present when the vault switcher shows (must match
-        // `subnav_pill_split`), otherwise the menu lands ~115 px too far
-        // right and clips off the window edge.
-        let chip = if self.vault_switcher_in_toolbar() { self.vault_chip_width() + 8.0 } else { 0.0 };
+        // Estimated x of the "…" trigger: row left padding + the inline
+        // pills. Lands the dropdown just under the cue.
         let inline_w: f32 = inline
             .iter()
             .map(|(k, _)| Self::subnav_pill_width(k))
@@ -565,7 +558,7 @@ impl ObsidianSsh {
         let strip_left = self.side_strip_left_offset();
         let strip_right = self.side_strip_reserve() - strip_left;
         // Clamp so the 200 px panel never runs past the right edge.
-        let dots_x = (8.0 + strip_left + chip + inline_w)
+        let dots_x = (8.0 + strip_left + inline_w)
             .min((self.cur_window_size().width - strip_right - 206.0).max(0.0));
         let side_hidden_bar = self.top_bar_hidden();
         let pinned = container::<_, iced::Theme>(panel)
@@ -827,17 +820,6 @@ impl ObsidianSsh {
             item("local_shell", Message::Settings(SettingsMessage::OpenLocalShell), hk_local_shell),
             item("new_window", Message::Tabs(TabsMessage::SpawnNewWindow), hk_new_window),
             item("check_for_updates_now", Message::Update(UpdateMessage::CheckForUpdateManual), None),
-            // Lock Vault only when a master password is set; without one,
-            // locking has nothing to protect and the unlock screen has no
-            // way to re-enter (mirrors the Settings -> Security gating).
-            if self.vaults.cur().vault_ui.has_user_password {
-                // Asks first: Lock Vault tears every live session down, so
-                // the item opens the confirm dialog (`LockVaultConfirm`)
-                // rather than committing directly.
-                item("lock_vault", Message::Vault(VaultMessage::LockVaultConfirm), None)
-            } else {
-                Space::new().boxed()
-            },
         ]
         .width(Length::Fill);
         // 300 px: wide enough that the longest label + the longest

@@ -10,7 +10,7 @@ mode: Zen
 # host search field, (19, 20) the burger, (1176, 20) the close button.
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle 250
 click "Type IP or Hostname"
 type "web01"

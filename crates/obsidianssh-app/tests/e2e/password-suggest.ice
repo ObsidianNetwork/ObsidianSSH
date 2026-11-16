@@ -17,7 +17,7 @@ mode: Zen
 # text_inputs, whose placeholders the text selector cannot match.
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 expect "Create host"
 click "Keychain"
 expect "Add a key"
@@ -52,7 +52,7 @@ screenshot pwsuggest-identity
 
 # A local shell: the popup's identity rows are origin-independent, so
 # this covers the whole path without a server.
-click (161, 20)
+click (87, 20)
 expect "Local Shell"
 # A live PTY never lets the emulator quiesce, so every instruction from
 # here would otherwise burn the full timeout, the spawning click first.

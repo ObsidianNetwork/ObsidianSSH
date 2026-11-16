@@ -38,11 +38,10 @@ const MAX_RELEASES_JSON: u64 = 32 * 1024 * 1024;
 const MAX_MANIFEST_JSON: u64 = 1024 * 1024;
 
 /// The catalog file for a provider, tracked in this repo under
-/// `plugins/` and published to the asset host by `publish-mirror.yml`.
+/// `plugins/`.
 ///
-/// A FIXED address is the whole point: `net_mirror::candidates` turns
-/// it into "git first, asset host second" with no API call in the
-/// path, and the file is the same `<provider>.json` the release
+/// A FIXED address is the whole point: it needs no API call, routes
+/// through a configured mirror via `net_mirror::candidates`, and the file is the same `<provider>.json` the release
 /// workflow already builds and signs off on.
 fn catalog_url(provider_id: &str) -> String {
     format!("https://raw.githubusercontent.com/{RELEASE_REPO}/main/plugins/{provider_id}.json")

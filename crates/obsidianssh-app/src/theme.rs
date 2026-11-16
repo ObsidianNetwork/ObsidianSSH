@@ -134,12 +134,6 @@ pub struct ThemeSelection {
 }
 
 impl ThemeSelection {
-    /// The built-in theme called `name` (the stored `app_theme` of a vault
-    /// read before its unlock; a custom one resolves with the vault's
-    /// themes once it is loaded). Unknown or absent: the default.
-    pub fn named(name: Option<&str>) -> Self {
-        Self { builtin: name.map_or(AppTheme::ObsidianSshDark, AppTheme::from_name), custom: None }
-    }
 
     /// What the process-wide theme is right now (the vault the code in
     /// `update` works on keeps it there).

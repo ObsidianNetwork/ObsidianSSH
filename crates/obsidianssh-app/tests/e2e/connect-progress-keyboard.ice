@@ -13,7 +13,7 @@ mode: Zen
 # failure can take the full 15 s connect timeout; `expect` waits for it.
 settle 250
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle 250
 type tab
 type enter

@@ -19,7 +19,7 @@ mode: Zen
 # of the `screenshot` the same problem is usually solved with.
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 expect "Create host"
 
 # A rule needs a host to travel through, so make one first. Continue

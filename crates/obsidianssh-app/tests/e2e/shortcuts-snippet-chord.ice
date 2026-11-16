@@ -9,7 +9,7 @@ mode: Zen
 # the toast is not asserted here: the armed capture is the proof.)
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle 250
 click "Snippets"
 settle

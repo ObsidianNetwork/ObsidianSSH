@@ -6,7 +6,7 @@ mode: Zen
 # label or English keyword as well as the theme name, so "warm" finds
 # Gruvbox and "light" finds every light palette.
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle
 # Settings (gear) -> Terminal Settings -> the active-theme card opens the gallery.
 click (1215, 64)

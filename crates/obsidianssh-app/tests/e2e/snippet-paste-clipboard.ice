@@ -19,7 +19,7 @@ mode: Zen
 settle 250
 click "Skip"
 settle 250
-click "Continue without password"
+click "Get started"
 settle 250
 click "Snippets"
 settle

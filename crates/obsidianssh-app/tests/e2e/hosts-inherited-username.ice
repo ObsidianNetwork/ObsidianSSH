@@ -7,7 +7,7 @@ mode: Zen
 # dial inherited deploy. The search reads the same resolved login, so
 # the folder's user finds the host too.
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle 250
 # A folder whose hosts inherit a username.
 click "New group"

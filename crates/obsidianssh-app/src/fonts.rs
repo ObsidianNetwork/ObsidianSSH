@@ -1077,12 +1077,9 @@ mod tests {
     }
 
     /// Every downloadable font pin must be well-formed: lowercase-hex
-    /// 64-char sha256, a nonzero length, an https URL on the one host
-    /// the mirror layer rewrites to `fonts/<file>` (a pin on any other
-    /// host would silently lose the China-mirror fallback), and a URL
-    /// that actually ends in the cache file name (the mirror bucket
-    /// key is derived from the URL's last segment, so a mismatch would
-    /// 404 only on the fallback leg, the least-tested path).
+    /// 64-char sha256, a nonzero length, an https URL on a GitHub host
+    /// (the only hosts a configured download mirror rewrites), and a
+    /// URL that actually ends in the cache file name.
     #[test]
     fn download_pins_are_well_formed() {
         let all: Vec<(&str, &super::FontAsset)> = super::ASSETS

@@ -509,9 +509,6 @@ impl ObsidianSsh {
             .align_y(iced::Alignment::Center);
         // Search moved out of this row into each view's toolbar
         // (see `vault_search_field`).
-        // The vault chip on the leading edge: the vault this window works
-        // on, and the switcher behind it.
-        let vault_chip: Element<'_, Message> = self.vault_switcher_chip();
 
         // Settings gear pinned at the trailing edge, outside the
         // scrollable, so it never scrolls out of reach (mirrors how the
@@ -591,19 +588,12 @@ impl ObsidianSsh {
             .boxed()
         };
 
-        let mut row_items: Vec<Element<'_, Message>> = Vec::new();
-        // The vault chip, unless a single vault is all there is and the
-        // user hid it for that case.
-        if self.vault_switcher_in_toolbar() {
-            // First on the toolbar's keyboard ring: it leads the row.
-            self.keynav_toolbar_record(crate::keynav::ToolbarItem::VaultSwitcher);
-            row_items.push(vault_chip);
-            row_items.push(Space::new().width(8).boxed());
-        }
-        row_items.push(pills.boxed());
-        row_items.push(overflow_btn);
-        row_items.push(Space::new().width(Length::Fill).boxed());
-        row_items.push(settings_gear);
+        let row_items: Vec<Element<'_, Message>> = vec![
+            pills.boxed(),
+            overflow_btn,
+            Space::new().width(Length::Fill).boxed(),
+            settings_gear,
+        ];
         let row_inner = dir_row(row_items).align_y(iced::Alignment::Center);
         // Vertical padding equals the left padding so the chip sits with
         // equal breathing room on all sides. Background is a vertical
@@ -666,13 +656,11 @@ impl ObsidianSsh {
     /// active destination is always kept inline so its highlight stays
     /// visible in the row.
     pub(crate) fn subnav_pill_split(&self) -> (Vec<SubnavPill>, Vec<SubnavPill>) {
-        // Reserve only the pinned flanks of THIS row: chip (~115, only
-        // when the vault switcher shows), gear (~31), the "…" button
+        // Reserve only the pinned flanks of THIS row: gear (~31), the "…" button
         // (~28), plus row padding and gaps. Search no longer lives here
         // (it moved to each view's toolbar), so nothing is reserved for
         // it, otherwise the "…" triggered way too early.
-        let chip = if self.vault_switcher_in_toolbar() { self.vault_chip_width() } else { 0.0 };
-        let flank = chip + 31.0 + 28.0 + 24.0;
+        let flank = 31.0 + 28.0 + 24.0;
         // An open side panel sits over the sub-nav's trailing edge now,
         // so subtract its width from the budget or pills would render
         // under the panel before the "…" kicks in.

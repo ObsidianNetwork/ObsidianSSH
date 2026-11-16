@@ -17,7 +17,7 @@ mode: Zen
 expect "Welcome to Obsidian SSH"
 click "Skip"
 settle
-click "Continue without password"
+click "Get started"
 settle
 
 # A saved SSH host, which is what the entry is gated on.

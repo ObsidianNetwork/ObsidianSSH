@@ -15,7 +15,7 @@ mode: Zen
 #   Without it the sandbox home's own `shots/` directory sorts first (dirs
 #   before files) and the click would land on THAT row.
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle
 type ctrl+shift+e
 settle

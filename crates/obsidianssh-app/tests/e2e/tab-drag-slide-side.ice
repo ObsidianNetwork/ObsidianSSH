@@ -17,7 +17,7 @@ mode: Zen
 # tab-drag-slide.ice).
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 expect "Create host"
 timeout 800
 type ctrl+shift+l

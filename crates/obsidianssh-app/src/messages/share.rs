@@ -22,10 +22,6 @@ pub enum ShareMessage {
     /// The picked table's bytes (or why it could not be read).
     ImportHostsCsvLoaded(Result<Vec<u8>, String>),
     ImportVault,
-    /// The import dialog's "as a new vault" switch.
-    ImportAsNewVaultToggled,
-    /// The name of that new vault.
-    ImportNewVaultNameChanged(String),
     /// Pick `~/.ssh/config` (or any file the user chooses) and read it.
     /// The parsed Host blocks land in a preview modal where the user
     /// ticks which to import.

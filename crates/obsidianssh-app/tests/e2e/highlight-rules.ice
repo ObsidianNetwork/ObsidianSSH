@@ -13,7 +13,7 @@ mode: Zen
 # Tall viewport on purpose: the block sits below the Appearance card in
 # a long section.
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle
 # Through the burger rather than the toolbar gear, so the flow does not
 # depend on the gear's pixel position at this width.

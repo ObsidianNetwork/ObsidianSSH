@@ -194,8 +194,6 @@ pub(crate) static SETTINGS_INDEX: &[SettingsIndexEntry] = &[
     e(S::Security, "vault_password", "vault password master encryption protect"),
     e(S::Security, "lock_vault", "lock vault now secure"),
     e(S::Security, "update_password", "change master password rotate update"),
-    e(S::Security, "auto_lock_minutes", "auto lock idle timeout vault minutes inactivity"),
-    e(S::Security, "manual_lock_action", "manual lock button sleep soft hard ask sessions behavior"),
     e(S::Security, "privacy_mode_label", "privacy mode mask redact hide secrets screenshot"),
     e(S::Security, "privacy_class_public_ips", "mask public ip address privacy"),
     e(S::Security, "privacy_class_private_ips", "mask private loopback ip lan privacy"),
@@ -282,22 +280,6 @@ pub(crate) static SETTINGS_INDEX: &[SettingsIndexEntry] = &[
     ),
     e(S::Monitoring, "monitor_interval", "monitoring interval seconds probe poll"),
     e(S::Monitoring, "monitor_status_bar", "monitoring status bar vitals cpu memory widget"),
-    // ── SSH Agent ──────────────────────────────────────────────────
-    e(S::Agent, "agent_server_confirm", "ssh agent confirm each use approve signature"),
-    e(S::Agent, "agent_allow_add", "ssh agent accept add keys external apps keepassxc"),
-    e(S::Agent, "agent_server_copy_path", "ssh agent socket path copy pipe"),
-    e(S::Agent, "agent_server_snippet_ssh_config", "ssh agent identityagent config snippet"),
-    // ── Vaults ─────────────────────────────────────────────────────
-    e(S::Vaults, "vault_new", "vault new create add another vault profile workspace"),
-    e(S::Vaults, "vault_open_existing", "vault open existing file usb add register import database"),
-    e(S::Vaults, "vault_start_picker", "vault start launch open ask choose picker last opened"),
-    e(S::Vaults, "vault_hotkey", "vault shortcut hotkey key binding chord switch"),
-    e(S::Vaults, "vault_switcher_place", "vault switcher position place tab bar home toolbar chip"),
-    e(
-        S::Vaults,
-        "vault_switcher_hide_single",
-        "vault switcher chip hide single one toolbar",
-    ),
     // ── Advanced ───────────────────────────────────────────────────
     e(
         S::Advanced,
@@ -334,7 +316,6 @@ pub(crate) static SETTINGS_INDEX: &[SettingsIndexEntry] = &[
     e(S::Plugins, "remote_desktop", "feature remote desktop rdp vnc enable"),
     e(S::Plugins, "feature_monitoring", "feature host monitoring enable vitals"),
     e(S::Plugins, "feature_tmux", "feature tmux session manager multiplexer attach kill"),
-    e(S::Plugins, "agent_server", "feature ssh agent server enable"),
     e(S::Plugins, "plugin_action_check_updates", "plugin check updates all providers"),
     e(S::Plugins, "plugins_auto_update_global", "plugin auto update all global"),
 ];
@@ -343,8 +324,7 @@ pub(crate) static SETTINGS_INDEX: &[SettingsIndexEntry] = &[
 /// label key -> the setting it writes: they apply to every vault, while
 /// the rest of Settings edits the window's vault, so each carries the
 /// "this device" badge (`widgets::setting_label`, drawn by the Settings
-/// row builders). The Vaults section is the device's whole and says so
-/// once in its header; the shortcut table likewise (Shortcuts).
+/// row builders). The shortcut table says so once in its header.
 pub(crate) static DEVICE_ROWS: &[(&str, &str)] = &[
     ("language", "language"),
     ("layout_direction", "layout_direction"),
@@ -361,10 +341,6 @@ pub(crate) static DEVICE_ROWS: &[(&str, &str)] = &[
     ("sync_listen_port", "sync_listen_port"),
     ("setting_default_editor", "sftp_default_editor"),
     ("default_download_dir", "zmodem_download_dir"),
-    ("agent_server", "agent_server_enabled"),
-    ("agent_server_confirm", "agent_server_confirm"),
-    ("agent_allow_add", "agent_server_allow_add"),
-    ("agent_openssh_pipe", "agent_server_openssh_pipe"),
     ("offline_mode", "offline_mode"),
     ("download_mirror", "download_mirror"),
     ("debug_logging", "debug_logging"),
@@ -408,24 +384,18 @@ fn platform_entries() -> &'static [SettingsIndexEntry] {
         static WIN: &[SettingsIndexEntry] = &[
             e(S::Interface, "close_to_tray", "close tray notification area background"),
             e(S::Interface, "minimize_to_tray", "minimize tray notification area hide"),
-            e(S::Security, "biometric_setting_windows", "biometric fingerprint windows hello unlock face"),
-            e(S::Agent, "agent_openssh_pipe", "ssh agent openssh pipe standard alias"),
         ];
         WIN
     }
     #[cfg(target_os = "macos")]
     {
         static MAC: &[SettingsIndexEntry] = &[
-            e(S::Security, "biometric_setting_macos", "biometric fingerprint touch id unlock"),
-            e(S::Agent, "agent_server_snippet_env", "ssh agent auth sock env snippet shell"),
         ];
         MAC
     }
     #[cfg(not(any(target_os = "windows", target_os = "macos")))]
     {
         static LINUX: &[SettingsIndexEntry] = &[
-            e(S::Security, "biometric_setting_linux", "biometric keyring login unlock secret service"),
-            e(S::Agent, "agent_server_snippet_env", "ssh agent auth sock env snippet shell"),
         ];
         LINUX
     }
@@ -569,11 +539,11 @@ mod tests {
     #[test]
     fn a_row_named_after_a_device_setting_is_marked() {
         // Most rows are labelled by the key they write: such a row that
-        // is a device setting must carry the badge. Vaults and Shortcuts
-        // (the table's whole-set buttons) say it once in their header.
+        // is a device setting must carry the badge. Shortcuts (the
+        // table's whole-set buttons) says it once in its header.
         for entry in all_entries() {
             if obsidianssh_vault::device::is_device_key(entry.label_key)
-                && !matches!(entry.section, S::Vaults | S::Shortcuts)
+                && entry.section != S::Shortcuts
             {
                 assert!(
                     DEVICE_ROWS.iter().any(|(key, _)| *key == entry.label_key),

@@ -13,7 +13,7 @@ mode: Zen
 # tab stayed where it was.
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 expect "Create host"
 timeout 800
 type ctrl+shift+l
@@ -31,15 +31,15 @@ settle 500
 expect "alpha"
 expect "bash (default)"
 
-press (209, 20)
-move (229, 26)
-move (269, 10)
-move (200, -20)
-move (200, -60)
+press (135, 20)
+move (155, 26)
+move (195, 10)
+move (126, -20)
+move (126, -60)
 settle 500
 expect "alpha"
 absent "bash (default)"
-release (200, -60)
+release (126, -60)
 settle 300
 expect "alpha"
 absent "bash (default)"

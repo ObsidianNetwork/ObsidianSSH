@@ -24,7 +24,7 @@ mode: Zen
 # owner QA: the harness grammar has no middle click.
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle
 # Toolbar gear (icon only, no text selector).
 click (1175, 64)

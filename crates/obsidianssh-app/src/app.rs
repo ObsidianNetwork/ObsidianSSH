@@ -97,7 +97,7 @@ use crate::theme::ObsidianSshColors;
 
 // `Message` lives in its own module; re-export so call sites that
 // import `crate::app::Message` keep working.
-pub use crate::messages::{Message, SettingsMessage, TabsMessage, EditorMessage, KeysMessage, SidebarFilesMessage, MonitorMessage, NetToolsMessage, TmuxMessage, TerminalMessage, SshMessage, CloudMessage, HistoryMessage, McpMessage, NavigationMessage, CommandHistoryMessage, UpdateMessage, ProxyIdentityMessage, PluginMessage, AgentMessage, MultiVaultMessage, ZmodemMessage, KnownHostMessage, RemoteDesktopMessage, TrayMessage, SessionGroupMessage, PortForwardMessage, VaultMessage, SnippetMessage, AiMessage, OnboardingMessage, PlayerMessage, ShareMessage, SftpMessage, SyncMessage};
+pub use crate::messages::{Message, SettingsMessage, TabsMessage, EditorMessage, KeysMessage, SidebarFilesMessage, MonitorMessage, NetToolsMessage, TmuxMessage, TerminalMessage, SshMessage, CloudMessage, HistoryMessage, McpMessage, NavigationMessage, CommandHistoryMessage, UpdateMessage, ProxyIdentityMessage, PluginMessage, ZmodemMessage, KnownHostMessage, RemoteDesktopMessage, TrayMessage, SessionGroupMessage, PortForwardMessage, VaultMessage, SnippetMessage, AiMessage, OnboardingMessage, PlayerMessage, ShareMessage, SftpMessage, SyncMessage};
 
 // Layout constants
 pub(crate) const DEFAULT_TERM_COLS: u32 = 120;
@@ -659,30 +659,6 @@ pub struct ObsidianSsh {
     /// What the window in the fields keeps of the vaults it is not working
     /// on (see `window_ctx::ParkedView`); swapped like `nav`.
     pub(crate) parked_views: crate::window_ctx::ParkedViews,
-    /// The vault dialog (create / rename / delete), while it is up
-    /// (`Modal::VaultDialog`).
-    pub(crate) vault_dialog: Option<crate::state::VaultDialog>,
-    /// Whether each registered vault's file is there, as last checked
-    /// (`refresh_vault_presence`: a door opening, a window taking the
-    /// focus, a registry change). Views read this, never the disk: a
-    /// vault on a network share can take seconds to answer a stat.
-    pub(crate) vault_presence: std::collections::HashMap<uuid::Uuid, bool>,
-    /// Each registered vault's chord, parsed from the registry by
-    /// `refresh_vault_presence` (a keypress is matched against this, never
-    /// against `device.json`).
-    pub(crate) vault_chords: Vec<(uuid::Uuid, crate::hotkeys::HotkeyBinding)>,
-    /// Settings > Vaults is recording the chord of this vault: the next
-    /// keypress becomes it (Esc cancels).
-    pub(crate) editing_vault_hotkey: Option<uuid::Uuid>,
-    /// The start picker is the window's screen (several vaults, asked for
-    /// in Settings > Vaults): nothing of a vault loads until one is picked.
-    pub(crate) start_picker: bool,
-    /// The vault switcher chip on the toolbar and the badge on the nav
-    /// rail, as last drawn: the switcher menu opens under the one pressed.
-    pub(crate) vault_chip_bounds: crate::widgets::BoundsCell,
-    /// Where the Home tab's switcher chevron was last drawn.
-    pub(crate) vault_tab_bounds: crate::widgets::BoundsCell,
-    pub(crate) vault_badge_bounds: crate::widgets::BoundsCell,
     pub(crate) tab_order: Vec<crate::state::TabRef>,
     /// The extra windows (terminal tabs only), by window id. See
     /// `window_ctx`.
@@ -1191,10 +1167,6 @@ pub struct ObsidianSsh {
     /// The key router swallows key events for a breath after this
     /// stamp. `None` until the first unlock.
     pub(crate) last_unlock: Option<std::time::Instant>,
-    /// Whether this platform / session can service biometric unlock at
-    /// all (probed once at boot via the provider). The whole affordance
-    /// (setting row + lock-screen button) hides when false. Not persisted.
-    pub(crate) biometric_available: bool,
 
     // Update state (set by the async GitHub check on boot)
     pub(crate) pending_update: Option<crate::update::UpdateInfo>,
@@ -1304,13 +1276,13 @@ pub struct ObsidianSsh {
     /// tree shows every match with its ancestor chain force-expanded.
     pub(crate) hosts_tree_search: String,
 
-    // ── SSH-agent server (B1): expose vault keys over the standard
-    // ssh-agent socket. Feature-gated (off by default), in-core (the
-    // signing oracle needs the unlocked vault in-process).
-    pub(crate) agent: crate::state::AgentState,
     // ── `obsidianssh-mcp` asking to hand a host's stored password to sudo
     // (`obsidianssh_vault::mcp_consent`): app-wide, one dialog on screen.
     pub(crate) mcp_sudo: crate::state::McpSudoState,
+    // ── Every live ssh-agent endpoint (the Bitwarden desktop agent among
+    // them) with the keys it serves, see `crate::ssh_agents`. Read at
+    // boot, on a slow timer and when the editor's key picker opens.
+    pub(crate) ssh_agents: Vec<obsidianssh_ssh::AgentEndpoint>,
 }
 
 
@@ -1470,16 +1442,6 @@ impl ObsidianSsh {
         recent
     }
 
-    /// A recent host's label on an app-wide door: with several vaults
-    /// (registered, the rule the switcher and the Settings tab follow),
-    /// the vault holding it follows the name.
-    pub(crate) fn recent_host_door_label(&self, vault: Uuid, label: &str) -> String {
-        if self.vault_count() > 1 {
-            format!("{label} \u{b7} {}", self.vault_name(vault))
-        } else {
-            label.to_string()
-        }
-    }
 
     pub(crate) fn snippet_injection_tab(&self) -> Option<usize> {
         let idx = self.cur_active_tab().or(self.last_terminal_tab)?;
@@ -1537,18 +1499,14 @@ impl ObsidianSsh {
 
     /// The daemon's per-window forms of `title` / `theme` / `view`. With
     /// several windows the title names what each shows (its tab, or
-    /// Hosts), so the taskbar and Alt+Tab can tell them apart; with
-    /// several vaults it names the window's vault too ("Work - Obsidian SSH",
-    /// "db01 · Work - Obsidian SSH"). One window on one vault keeps the plain
-    /// name.
+    /// Hosts), so the taskbar and Alt+Tab can tell them apart. A single
+    /// window keeps the plain name.
     pub fn title_for(&self, window: iced::window::Id) -> String {
         let target = (Some(window) != resident_window_id()).then_some(window);
-        let vault = (self.vault_count() > 1).then(|| self.vault_name(self.vault_of_window(target)));
-        match (self.extra_windows.is_empty(), vault) {
-            (true, None) => self.title(),
-            (true, Some(vault)) => format!("{vault} - {}", self.title()),
-            (false, None) => format!("{} - {}", self.window_label(target), self.title()),
-            (false, Some(vault)) => format!("{} \u{b7} {vault} - {}", self.window_label(target), self.title()),
+        if self.extra_windows.is_empty() {
+            self.title()
+        } else {
+            format!("{} - {}", self.window_label(target), self.title())
         }
     }
 

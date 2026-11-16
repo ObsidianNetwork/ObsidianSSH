@@ -8,7 +8,7 @@ mode: Zen
 # which dropped the input's state and every keystroke after the first.
 # A backspace that brings the hint back is the proof the focus stayed.
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle 250
 # A folder whose hosts inherit a username.
 click "New group"

@@ -26,7 +26,7 @@ mode: Zen
 # break-out button, the middle of its three controls.
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 expect "Create host"
 click (1168, 55)
 expect "Terminal Settings"
@@ -38,7 +38,7 @@ type enter
 settle 500
 click (1140, 70)
 settle 400
-click (402, 20)
+click (328, 20)
 expect "Local Shell"
 timeout 800
 click "Local Shell"
@@ -60,12 +60,12 @@ settle 1400
 expect "bash (default) (exited)"
 expect "Broadcast"
 # A third tab to drop onto, then back to the split.
-click (507, 11)
+click (433, 11)
 expect "Local Shell"
 click "Local Shell"
 settle 1200
 absent "Broadcast"
-click (352, 20)
+click (278, 20)
 settle 800
 expect "Broadcast"
 # Drag the dead pane by its header onto the third tab's chip. The two
@@ -74,9 +74,9 @@ press (300, 54)
 settle 200
 move (340, 70)
 settle 200
-move (539, 20)
+move (465, 20)
 settle 400
-release (539, 20)
+release (465, 20)
 settle 900
 # The view followed the pane into the destination split, and the pane
 # arrived whole: its header still says how its session ended.
@@ -85,7 +85,7 @@ expect "bash (default) (exited)"
 screenshot pane-out-of-grid-dropped
 # Tab menu: the arriving pane took the focus, so the row breaks it out
 # again, into a lone tab of its own where its card answers for it.
-click right (529, 20)
+click right (455, 20)
 settle 300
 expect "Move to a new tab"
 click "Move to a new tab"

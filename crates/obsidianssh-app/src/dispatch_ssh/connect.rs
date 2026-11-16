@@ -474,6 +474,11 @@ impl ObsidianSsh {
                     AuthMethod::SecurityKey => "ssh_progress_method_security_key",
                 })
                 .to_string();
+                // Bitwarden asks for approval in its own window before it
+                // signs; without a word here the dial just looks stuck.
+                let agent_approval_hint = (matches!(conn.auth_method, AuthMethod::Agent | AuthMethod::Auto)
+                    && self.ssh_agents.iter().any(|a| a.bitwarden))
+                .then(|| crate::i18n::t("ssh_progress_bitwarden_approve").to_string());
                 let keepalive = self.effective_keepalive(&conn);
                 let session_timeout = self.ssh_session_timeout();
                 let address_family = conn.address_family;
@@ -891,6 +896,12 @@ impl ObsidianSsh {
                             ConnectionStep::Authenticating,
                             crate::i18n::t_fill("ssh_progress_authenticating", &[("user", &username), ("method", &auth_method_label)]),
                         )).await;
+                        if let Some(hint) = &agent_approval_hint {
+                            let _ = sender.send(SshStreamMsg::Progress(
+                                ConnectionStep::Authenticating,
+                                hint.clone(),
+                            )).await;
+                        }
 
                         let auth_material = private_key
                             .as_deref()

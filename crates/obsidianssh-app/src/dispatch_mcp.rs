@@ -23,13 +23,6 @@ impl ObsidianSsh {
                 if let Some(vault) = &self.vaults.cur().store {
                     let _ = vault.set_setting("mcp_server_enabled", if self.vaults.cur().mcp.server_enabled { "true" } else { "false" });
                 }
-                // With several vaults every vault gets a token when its
-                // MCP goes on: `obsidianssh-mcp` serves a tokenless vault only
-                // to a config from before there were several (a client
-                // configured for one vault must not reach another).
-                if self.vaults.cur().mcp.server_enabled {
-                    self.mcp_ensure_token_with_several_vaults();
-                }
                 // MCP ships as a plugin (~5 MB binary external clients
                 // like Claude Desktop spawn). First-time enable triggers
                 // the install modal; an already-installed plugin or a
@@ -67,7 +60,6 @@ impl ObsidianSsh {
                 self.vaults.cur_mut().mcp.config_copied = false;
             }
             McpMessage::CopyMcpConfig => {
-                self.mcp_ensure_token_with_several_vaults();
                 self.vaults.cur_mut().mcp.config_copied = true;
                 let secrets = self.mcp_secrets();
                 let client = self.vaults.cur().mcp.client;
@@ -87,7 +79,6 @@ impl ObsidianSsh {
                 if !self.vaults.cur().mcp.detected.contains(&self.vaults.cur().mcp.client) {
                     return Task::none();
                 }
-                self.mcp_ensure_token_with_several_vaults();
                 self.vaults.cur_mut().mcp.install_status = None;
                 let secrets = self.mcp_secrets();
                 let wsl = self.vaults.cur().mcp.target_wsl;
@@ -239,18 +230,6 @@ impl ObsidianSsh {
 }
 
 impl ObsidianSsh {
-    /// With several vaults registered, give the acting vault a token
-    /// when it has none: a config written now names vaults by slug, and
-    /// `obsidianssh-mcp` serves a tokenless vault to such a config only when
-    /// named by `--vault`.
-    fn mcp_ensure_token_with_several_vaults(&mut self) {
-        if self.vault_count() > 1 && self.vaults.cur().mcp.server_token.is_empty() {
-            // Minted, not "regenerated": that arm reveals the token on
-            // screen, which a Copy or Install did not ask for.
-            self.mint_mcp_token();
-        }
-    }
-
     /// A fresh MCP token for the acting vault, stored and in state.
     fn mint_mcp_token(&mut self) {
         let mut bytes = [0u8; 32];

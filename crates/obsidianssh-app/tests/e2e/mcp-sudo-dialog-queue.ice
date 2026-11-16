@@ -28,7 +28,7 @@ mode: Zen
 # are claimed while the first dialog is up, in the order a person would see.
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 expect "Create host"
 click #empty-quick-host
 type "localbox.example"

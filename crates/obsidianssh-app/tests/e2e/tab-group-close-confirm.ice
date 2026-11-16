@@ -12,14 +12,14 @@ mode: Zen
 # it every instruction after the first shell burns the full default.
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 expect "Create host"
 timeout 800
 type ctrl+shift+l
 settle 300
 
 # Split the tab: one chip, two live sessions.
-click right (219, 20)
+click right (145, 20)
 expect "Split side by side"
 click "Split side by side"
 settle 300
@@ -27,7 +27,7 @@ click "Local Shell"
 settle 500
 
 # The X on the grouped chip must NOT close it outright.
-click (164, 20)
+click (90, 20)
 settle 300
 expect "Close this group?"
 # Negative button reads Cancel, not Close: beside "Close group" the
@@ -44,12 +44,12 @@ expect "bash (default)"
 # A single-pane tab still closes with no prompt at all.
 type ctrl+shift+l
 settle 500
-click (317, 20)
+click (243, 20)
 settle 300
 expect "bash (default)"
 
 # Confirming really does close the group.
-click (164, 20)
+click (90, 20)
 settle 300
 expect "Close group"
 click "Close group"

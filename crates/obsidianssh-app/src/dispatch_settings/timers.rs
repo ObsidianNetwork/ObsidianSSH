@@ -1,5 +1,5 @@
-//! The settings that own a clock: auto-reconnect, the vault's idle
-//! auto-lock, and the connect animation.
+//! The settings that own a clock: auto-reconnect and the connect
+//! animation.
 //!
 //! Their ticks live with them. `AutoReconnectTick` is the largest thing
 //! here because a reconnect has to decide, per dormant tab, whether it
@@ -26,53 +26,6 @@ impl ObsidianSsh {
                     "max_reconnect_attempts",
                     &self.vaults.cur().prefs.max_reconnect_attempts,
                 );
-            }
-            SettingsMessage::SettingAutoLockChanged(val) => {
-                self.vaults.cur_mut().prefs.auto_lock_minutes = sanitize_uint(&val, 1440);
-                self.persist_setting("auto_lock_minutes", &self.vaults.cur().prefs.auto_lock_minutes);
-            }
-            SettingsMessage::SettingManualLockActionChanged(val) => {
-                // Sibling of the lock family above: what the Lock Vault
-                // button does. The pick_list only offers the three known
-                // tokens, but the guard keeps a corrupted row from
-                // sticking as a phantom fourth state.
-                let normalized = match val.as_str() {
-                    "sleep" | "lock" => val.as_str(),
-                    _ => "ask",
-                };
-                self.vaults.cur_mut().prefs.manual_lock_action = normalized.into();
-                self.persist_setting("manual_lock_action", normalized);
-            }
-            SettingsMessage::AutoLockTick => {
-                // Idle check, per open vault: each against its own
-                // threshold and the input in ITS windows, so a vault
-                // nobody is looking at locks on time while the user
-                // works in another. Guarded on Unlocked so a tick racing
-                // the lock is a no-op, and on a parseable non-zero
-                // threshold (the subscription only mounts then, but the
-                // setting can change between mount and fire).
-                let idle: Vec<uuid::Uuid> = self
-                    .vaults
-                    .all()
-                    .filter(|v| v.auto_lock_due())
-                    .map(|v| v.id)
-                    .collect();
-                // Delivered in a window showing the vault when one does,
-                // so the lock's sweep of that window's own surface (its
-                // SFTP buffer, its floats) runs with that window in the
-                // fields; a vault no window shows locks as the resident.
-                let locks: Vec<Message> = idle
-                    .into_iter()
-                    .map(|vault| {
-                        tracing::info!(%vault, "vault auto-lock after its idle threshold");
-                        let lock = Message::ForVault(vault, Box::new(Message::Vault(VaultMessage::SoftLockVault)));
-                        match self.window_on_vault(vault) {
-                            Some(Some(window)) => Message::InWindow(window, Box::new(lock)),
-                            _ => lock,
-                        }
-                    })
-                    .collect();
-                return Ok(Task::batch(locks.into_iter().map(Task::done)));
             }
             SettingsMessage::ConnectAnimTick => {
                 self.connect_anim_tick = self.connect_anim_tick.wrapping_add(1);

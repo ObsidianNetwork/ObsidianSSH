@@ -198,18 +198,6 @@ pub enum HotkeyAction {
     /// Shift+F10, the other system gesture, stays with the PTY: it is
     /// `ESC[21;2~` there, and programs read it.
     TerminalContextMenu,
-    /// Lock the vault, through its confirm (the burger menu's row). The
-    /// palette used to carry this as a hand-written extra; it is an
-    /// ordinary action now so a chord can reach it.
-    LockVault,
-    /// Open the vault switcher's menu under the door this window draws
-    /// (the Home tab's chevron, the toolbar chip, the rail badge).
-    ShowVaultSwitcher,
-    /// Move the window to the next vault of the registry (wrapping), the
-    /// unavailable ones passed over.
-    NextVault,
-    /// The same, backwards.
-    PreviousVault,
     /// Connect the host the keyboard ring has focused (else every host
     /// of the dashboard selection) in a NEW window: the card menu's
     /// "Connect in New Window" on a chord. The one factory chord among
@@ -286,10 +274,6 @@ impl HotkeyAction {
             VaultSectionPrev,
             VaultSectionNext,
             ReopenClosedTab,
-            LockVault,
-            ShowVaultSwitcher,
-            NextVault,
-            PreviousVault,
         ]
     }
 
@@ -358,10 +342,6 @@ impl HotkeyAction {
             TerminalCopyLastCommand => "terminal_copy_last_command",
             TerminalClearScrollback => "terminal_clear_scrollback",
             TerminalContextMenu => "terminal_context_menu",
-            LockVault => "lock_vault",
-            ShowVaultSwitcher => "show_vault_switcher",
-            NextVault => "next_vault",
-            PreviousVault => "previous_vault",
             ConnectInNewWindow => "connect_in_new_window",
         }
     }
@@ -446,10 +426,6 @@ impl HotkeyAction {
             TerminalCopyLastCommand => "terminal_copy_last_command",
             TerminalClearScrollback => "terminal_clear_scrollback",
             TerminalContextMenu => "hotkey_terminal_context_menu",
-            LockVault => "lock_vault",
-            ShowVaultSwitcher => "hotkey_show_vault_switcher",
-            NextVault => "hotkey_next_vault",
-            PreviousVault => "hotkey_previous_vault",
             // The card menu's own row label.
             ConnectInNewWindow => "connect_new_window",
         }
@@ -476,10 +452,6 @@ impl HotkeyAction {
                 | TerminalCopyScreen
                 | TerminalCopyLastCommand
                 | TerminalClearScrollback
-                | LockVault
-                | ShowVaultSwitcher
-                | NextVault
-                | PreviousVault
         )
     }
 

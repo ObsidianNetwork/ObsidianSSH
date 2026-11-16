@@ -20,7 +20,7 @@ mode: Zen
 # other Reset-ish labels on the Shortcuts screen never match it).
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle
 # Toolbar gear (icon only, no text selector).
 click (1175, 64)

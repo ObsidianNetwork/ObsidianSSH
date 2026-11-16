@@ -15,7 +15,7 @@ pub(crate) use std::sync::{Arc, Mutex};
 
 pub(crate) use obsidianssh_terminal::widget::TerminalState;
 
-pub(crate) use crate::app::{SettingsMessage, TabsMessage, SshMessage, VaultMessage, Message, ObsidianSsh, DEFAULT_TERM_COLS, DEFAULT_TERM_ROWS};
+pub(crate) use crate::app::{SettingsMessage, TabsMessage, SshMessage, Message, ObsidianSsh, DEFAULT_TERM_COLS, DEFAULT_TERM_ROWS};
 pub(crate) use crate::state::{TerminalTab, View};
 pub(crate) use crate::theme::AppTheme;
 pub(crate) use crate::util::sanitize_uint;
@@ -419,9 +419,6 @@ impl ObsidianSsh {
             m @ (
             SettingsMessage::SettingToggleAutoReconnect
             | SettingsMessage::SettingMaxReconnectChanged(..)
-            | SettingsMessage::SettingAutoLockChanged(..)
-            | SettingsMessage::SettingManualLockActionChanged(..)
-            | SettingsMessage::AutoLockTick
             | SettingsMessage::ConnectAnimTick
             | SettingsMessage::AutoReconnectTick
             ) => self.handle_settings_timers(m).unwrap_or_else(crate::dispatch::unrouted),

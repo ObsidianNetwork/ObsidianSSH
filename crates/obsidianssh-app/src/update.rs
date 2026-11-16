@@ -349,8 +349,7 @@ pub(crate) fn appimage_path() -> Option<PathBuf> {
 /// The tag was `nightly` until 2026-07-16, when a release published
 /// under GitHub's "release immutability" burned that name permanently
 /// (a tag ever used by an immutable release can never be recreated).
-/// Binaries older than the rename get a 404 here and fall back to the
-/// mirror snapshot, which kept the `releases/nightly.json` path.
+/// Binaries older than the rename get a 404 here.
 async fn check_nightly() -> Result<Option<UpdateInfo>, UpdateError> {
     let json = fetch_release("releases/tags/nightly-latest").await?;
     let remote_sha = nightly_commit(&json).ok_or(UpdateError::Parse)?;

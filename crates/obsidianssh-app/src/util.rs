@@ -1665,8 +1665,8 @@ mod tests {
         assert_eq!(label.chars().count(), 307);
         let name = path.file_name().unwrap().to_string_lossy().into_owned();
         assert!(name.ends_with(".tar.gz"));
-        // uuid prefix (43 chars incl. separators) + capped stem.
-        assert!(name.chars().count() <= 43 + 120 + 1);
+        // uuid prefix (48 chars incl. separators) + capped stem.
+        assert!(name.chars().count() <= 48 + 120 + 1);
 
         // Unicode names survive intact.
         let (_, path) = edit_temp_file("/srv/配置ファイル.yaml");

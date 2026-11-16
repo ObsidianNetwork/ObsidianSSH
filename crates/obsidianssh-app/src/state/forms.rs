@@ -290,6 +290,9 @@ pub(crate) struct ConnectionForm {
     /// filter-by-host-tags toggle.
     pub tags_text: String,
     pub selected_key: Option<String>,
+    /// The host's stored agent-key pin (`Connection::agent_key`), so the
+    /// key picker keeps offering it while no agent serves it.
+    pub agent_key: Option<String>,
     /// Ordered jump-host chain (connection ids). The session tunnels
     /// through each hop in order before reaching this host. Mirrors
     /// `Connection.jump_chain` one-to-one; edited via the chain editor.
@@ -1370,6 +1373,7 @@ impl Default for ConnectionForm {
             group_name: String::new(),
             tags_text: String::new(),
             selected_key: None,
+            agent_key: None,
             jump_chain: Vec::new(),
             selected_identity: None,
             editing_id: None,

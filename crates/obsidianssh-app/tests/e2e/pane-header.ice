@@ -17,7 +17,7 @@ mode: Zen
 # answer this.
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 expect "Create host"
 click (1168, 55)
 expect "Terminal Settings"
@@ -30,7 +30,7 @@ settle 500
 click (1140, 70)
 settle 400
 # A second tab, leaving Settings open so the `+` keeps its position.
-click (402, 20)
+click (328, 20)
 expect "Local Shell"
 timeout 800
 click "Local Shell"

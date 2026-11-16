@@ -595,8 +595,6 @@ impl ObsidianSsh {
                 self.vaults.cur_mut().vault_import.file_data = None;
                 self.vaults.cur_mut().vault_import.summary = None;
                 self.vaults.cur_mut().vault_import.selection = obsidianssh_vault::ExportSelection::all();
-                self.vaults.cur_mut().vault_import.as_new_vault = false;
-                self.vaults.cur_mut().vault_import.new_vault_name = String::new();
                 // Picker + read off the event loop; the follow-up
                 // messages route back into the dialog state.
                 return Task::perform(
@@ -617,16 +615,6 @@ impl ObsidianSsh {
                         _ => Message::NoOp,
                     },
                 );
-            }
-            ShareMessage::ImportAsNewVaultToggled => {
-                let import = &mut self.vaults.cur_mut().vault_import;
-                import.as_new_vault = !import.as_new_vault;
-                import.status = None;
-            }
-            ShareMessage::ImportNewVaultNameChanged(name) => {
-                let import = &mut self.vaults.cur_mut().vault_import;
-                import.new_vault_name = name;
-                import.status = None;
             }
             ShareMessage::ImportFileLoaded(data) => {
                 self.vaults.cur_mut().vault_import.file_data = Some(data);
@@ -673,11 +661,6 @@ impl ObsidianSsh {
                 // hides the button until then, this guards the message path.
                 if self.vaults.cur().vault_import.summary.is_none() {
                     return Task::none();
-                }
-                // As a vault of its own: made now, filled once its setup
-                // step (the master password, or none) has made its key.
-                if self.vaults.cur().vault_import.as_new_vault {
-                    return self.import_as_new_vault();
                 }
                 if !self.vault_usable() {
                     self.vaults.cur_mut().vault_import.status = Some(Self::vault_locked_status("vault import"));
@@ -1610,63 +1593,6 @@ fn share_file_name(label: &str) -> String {
     }
 }
 
-impl ObsidianSsh {
-    /// "Import as a new vault": make the vault (named in the dialog),
-    /// park the inspected file on it and move this window there, onto
-    /// its setup step; [`Self::take_pending_import`] brings the file in
-    /// once that step made the vault's key.
-    fn import_as_new_vault(&mut self) -> Task<Message> {
-        let name = self.vaults.cur().vault_import.new_vault_name.trim().to_string();
-        if name.is_empty() {
-            self.vaults.cur_mut().vault_import.status = Some(Err(crate::i18n::t("vault_name_required").to_string()));
-            return Task::none();
-        }
-        let Some(data) = self.vaults.cur().vault_import.file_data.clone() else {
-            tracing::warn!("vault import: confirm with no file loaded");
-            return Task::none();
-        };
-        let pending = crate::state::PendingImport {
-            data,
-            password: self.vaults.cur().vault_import.password.clone(),
-            selection: self.vaults.cur().vault_import.selection,
-        };
-        let id = match self.make_vault(&name, None) {
-            Ok(id) => id,
-            Err(e) => {
-                self.vaults.cur_mut().vault_import.status = Some(Err(e));
-                return Task::none();
-            }
-        };
-        // The dialog is done here; the file now belongs to the new vault.
-        let import = &mut self.vaults.cur_mut().vault_import;
-        *import = crate::state::VaultImportState::default();
-        self.vaults.cur_mut().panels.import_dialog = false;
-        self.vaults.cur_mut().import_target_group = None;
-        let task = self.enter_new_vault(id);
-        self.vaults.cur_mut().pending_import = Some(pending);
-        task
-    }
-
-    /// Bring in the export a vault was made for, now that it is set up
-    /// (both ends of the setup step call this); said in a toast.
-    pub(crate) fn take_pending_import(&mut self) -> Task<Message> {
-        let Some(pending) = self.vaults.cur_mut().pending_import.take() else {
-            return Task::none();
-        };
-        let Some(store) = self.vaults.cur().store.as_ref() else {
-            return Task::none();
-        };
-        let outcome = obsidianssh_vault::import_vault(store, &pending.data, &pending.password, &pending.selection, None);
-        match outcome {
-            Ok(result) => {
-                let msg = import_summary(&result);
-                self.load_data_from_vault();
-                self.show_toast(msg)
-            }
-            Err(e) => self.show_toast(crate::i18n::t("import_into_new_vault_failed").replacen("{error}", &e.to_string(), 1)),
-        }
-    }
-}
 
 /// What an import brought in, as the toast and the dialog say it: the
 /// non-empty families, fully translated, and the forwards whose

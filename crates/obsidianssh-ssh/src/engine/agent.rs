@@ -266,7 +266,13 @@ pub(crate) fn agent_endpoints_present() -> Vec<String> {
 /// so the socket appearing later registers as a change.
 #[cfg(any(unix, test))]
 pub(crate) fn unix_agent_endpoints(env_sock: Option<String>) -> Vec<String> {
-    unix_agent_sock_candidates(env_sock)
+    live_endpoints(unix_agent_sock_candidates(env_sock))
+}
+
+/// The candidates whose socket is actually on disk, for display.
+#[cfg(any(unix, test))]
+pub(crate) fn live_endpoints(candidates: Vec<std::path::PathBuf>) -> Vec<String> {
+    candidates
         .into_iter()
         .filter(|p| p.exists())
         .map(|p| p.display().to_string())
@@ -307,16 +313,13 @@ pub(crate) fn census_lines(
     }
 }
 
-/// What every reachable agent is holding right now, as sorted
-/// `<endpoint> <fingerprint>` lines. Meaningless in isolation: callers
-/// compare two readings, and a difference means the key situation moved
-/// (an agent appeared, went away, or its roster changed).
-///
-/// LIST is the only request made. It is unauthenticated in every agent
-/// implementation and never triggers a confirm prompt (only signing
-/// does), so polling it cannot nag the user.
+/// Dial every live agent endpoint and LIST its keys: `None` for an
+/// endpoint that did not answer in time. LIST is the only request made.
+/// It is unauthenticated in every agent implementation and never
+/// triggers a confirm prompt (only signing does), so polling it cannot
+/// nag the user.
 #[cfg(unix)]
-pub(crate) async fn agent_key_census() -> Vec<String> {
+async fn list_endpoints() -> Vec<(String, Option<Vec<russh::keys::agent::AgentIdentity>>)> {
     let mut out = Vec::new();
     for path in unix_agent_endpoints(std::env::var("SSH_AUTH_SOCK").ok()) {
         let ids = tokio::time::timeout(CENSUS_TIMEOUT, async {
@@ -328,14 +331,13 @@ pub(crate) async fn agent_key_census() -> Vec<String> {
         .await
         .ok()
         .flatten();
-        out.extend(census_lines(&path, ids));
+        out.push((path, ids));
     }
-    out.sort();
     out
 }
 
 #[cfg(windows)]
-pub(crate) async fn agent_key_census() -> Vec<String> {
+async fn list_endpoints() -> Vec<(String, Option<Vec<russh::keys::agent::AgentIdentity>>)> {
     let mut out = Vec::new();
     for pipe in agent_endpoints_present() {
         let ids = tokio::time::timeout(CENSUS_TIMEOUT, async {
@@ -347,34 +349,141 @@ pub(crate) async fn agent_key_census() -> Vec<String> {
         .await
         .ok()
         .flatten();
-        out.extend(census_lines(&pipe, ids));
+        out.push((pipe, ids));
     }
-    out.sort();
     out
 }
 
 #[cfg(not(any(unix, windows)))]
-pub(crate) async fn agent_key_census() -> Vec<String> {
+async fn list_endpoints() -> Vec<(String, Option<Vec<russh::keys::agent::AgentIdentity>>)> {
     Vec::new()
 }
 
-/// Agent sockets for CLIENT auth on Unix: just `SSH_AUTH_SOCK` (empty
-/// or unset yields no candidate). Deliberately NOT the Obsidian SSH agent's
-/// own socket: dialing our own in-process agent to auth our own
-/// connection is redundant (the engine already offers the connection's
-/// key directly in the publickey phase) and would trip the agent-server
-/// confirm prompt on a connection the user just initiated in this same
-/// app. A user who explicitly points `SSH_AUTH_SOCK` at the Obsidian SSH
-/// socket still routes here, by their own choice.
+/// What every reachable agent is holding right now, as sorted
+/// `<endpoint> <fingerprint>` lines. Meaningless in isolation: callers
+/// compare two readings, and a difference means the key situation moved
+/// (an agent appeared, went away, or its roster changed).
+pub(crate) async fn agent_key_census() -> Vec<String> {
+    let mut out: Vec<String> = list_endpoints()
+        .await
+        .into_iter()
+        .flat_map(|(endpoint, ids)| census_lines(&endpoint, ids))
+        .collect();
+    out.sort();
+    out
+}
+
+/// Every live agent endpoint with the keys it serves, for the UI.
+pub(crate) async fn agent_roster() -> Vec<super::AgentEndpoint> {
+    list_endpoints()
+        .await
+        .into_iter()
+        .map(|(endpoint, ids)| roster_entry(endpoint, ids))
+        .collect()
+}
+
+/// One endpoint's LIST answer as the UI reports it. A certificate
+/// identity is listed by its underlying key, which is what a host pins.
+pub(crate) fn roster_entry(
+    endpoint: String,
+    identities: Option<Vec<russh::keys::agent::AgentIdentity>>,
+) -> super::AgentEndpoint {
+    let keys = identities.map(|ids| {
+        ids.iter()
+            .filter_map(|id| {
+                let mut key = id.public_key().into_owned();
+                key.set_comment(id.comment());
+                Some(super::AgentKey {
+                    comment: id.comment().to_string(),
+                    public_line: key.to_openssh().ok()?,
+                    fingerprint: key.fingerprint(russh::keys::HashAlg::Sha256).to_string(),
+                })
+            })
+            .collect()
+    });
+    super::AgentEndpoint { bitwarden: is_bitwarden_endpoint(&endpoint), endpoint, keys }
+}
+
+/// Agent sockets for CLIENT auth on Unix, in dial order: `SSH_AUTH_SOCK`
+/// (empty or unset yields no candidate), then the Bitwarden desktop
+/// agent wherever its install puts the socket (`BITWARDEN_SSH_AUTH_SOCK`
+/// first, then [`BITWARDEN_SOCKETS`] under the home directory). The
+/// Bitwarden sockets count only when they exist, so a machine without
+/// Bitwarden dials exactly what it did before, and they are found even
+/// when the app was started from a desktop launcher that never exported
+/// `SSH_AUTH_SOCK`.
+///
+/// Deliberately NOT the Obsidian SSH agent's own socket: dialing our own
+/// in-process agent to auth our own connection is redundant (the engine
+/// already offers the connection's key directly in the publickey phase)
+/// and would trip the agent-server confirm prompt on a connection the
+/// user just initiated in this same app. A user who explicitly points
+/// `SSH_AUTH_SOCK` at the Obsidian SSH socket still routes here, by
+/// their own choice.
 #[cfg(any(unix, test))]
 pub(crate) fn unix_agent_sock_candidates(
     env_sock: Option<String>,
 ) -> Vec<std::path::PathBuf> {
-    env_sock
+    let home = std::env::var_os("HOME").map(std::path::PathBuf::from);
+    sock_candidates_from(
+        env_sock,
+        std::env::var("BITWARDEN_SSH_AUTH_SOCK").ok(),
+        home.as_deref(),
+        |p| p.exists(),
+    )
+}
+
+/// Where the Bitwarden desktop app puts its agent socket, relative to
+/// the home directory: the native package, then the App Store sandbox.
+#[cfg(all(any(unix, test), target_os = "macos"))]
+const BITWARDEN_SOCKETS: &[&str] = &[
+    ".bitwarden-ssh-agent.sock",
+    "Library/Containers/com.bitwarden.desktop/Data/.bitwarden-ssh-agent.sock",
+];
+
+/// Where the Bitwarden desktop app puts its agent socket, relative to
+/// the home directory: the native package (deb, rpm, AppImage, AUR),
+/// then the Snap and the Flatpak.
+#[cfg(all(any(unix, test), not(target_os = "macos")))]
+const BITWARDEN_SOCKETS: &[&str] = &[
+    ".bitwarden-ssh-agent.sock",
+    "snap/bitwarden/current/.bitwarden-ssh-agent.sock",
+    ".var/app/com.bitwarden.desktop/data/.bitwarden-ssh-agent.sock",
+];
+
+/// Pure core of [`unix_agent_sock_candidates`]: the environment, the
+/// home directory and the filesystem are inputs so the order and the
+/// dedup are testable.
+#[cfg(any(unix, test))]
+pub(crate) fn sock_candidates_from(
+    env_sock: Option<String>,
+    bitwarden_env: Option<String>,
+    home: Option<&std::path::Path>,
+    exists: impl Fn(&std::path::Path) -> bool,
+) -> Vec<std::path::PathBuf> {
+    let mut out: Vec<std::path::PathBuf> = Vec::new();
+    if let Some(sock) = env_sock.filter(|p| !p.is_empty()) {
+        out.push(sock.into());
+    }
+    let bitwarden = bitwarden_env
         .filter(|p| !p.is_empty())
         .map(std::path::PathBuf::from)
         .into_iter()
-        .collect()
+        .chain(home.into_iter().flat_map(|h| BITWARDEN_SOCKETS.iter().map(move |rel| h.join(rel))));
+    for path in bitwarden {
+        if exists(&path) && !out.contains(&path) {
+            out.push(path);
+        }
+    }
+    out
+}
+
+/// Whether an endpoint (socket path or pipe name) is the Bitwarden
+/// desktop agent, judged by the socket name every Bitwarden install
+/// uses. On Windows Bitwarden serves the shared OpenSSH pipe, which
+/// says nothing about who is behind it, so this answers false there.
+pub(crate) fn is_bitwarden_endpoint(endpoint: &str) -> bool {
+    endpoint.contains(".bitwarden-ssh-agent.sock")
 }
 
 /// Bridge an inbound agent-forward channel to the local ssh-agent so
@@ -385,9 +494,14 @@ pub(crate) fn unix_agent_sock_candidates(
 pub(crate) async fn bridge_agent_channel(
     channel: russh::Channel<russh::client::Msg>,
 ) -> std::io::Result<()> {
-    let path = std::env::var_os("SSH_AUTH_SOCK").ok_or_else(|| {
-        std::io::Error::other("agent forwarding requested but SSH_AUTH_SOCK is not set")
-    })?;
+    let path = unix_agent_sock_candidates(std::env::var("SSH_AUTH_SOCK").ok())
+        .into_iter()
+        .next()
+        .ok_or_else(|| {
+            std::io::Error::other(
+                "agent forwarding requested but no ssh-agent was found (SSH_AUTH_SOCK is not set and no Bitwarden agent socket exists)",
+            )
+        })?;
     let mut agent = tokio::net::UnixStream::connect(&path).await?;
     let mut stream = channel.into_stream();
     let _ = tokio::io::copy_bidirectional(&mut agent, &mut stream).await?;

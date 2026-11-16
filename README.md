@@ -18,9 +18,6 @@
   <a href="https://github.com/ObsidianNetwork/ObsidianSSH/releases"><img src="https://img.shields.io/github/downloads/ObsidianNetwork/ObsidianSSH/total?color=blue" alt="Downloads"></a>
   <img src="https://img.shields.io/badge/platforms-linux%20%7C%20macos%20%7C%20windows-blue" alt="Platforms">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue" alt="License"></a>
-  <a href="https://github.com/ObsidianNetwork/ObsidianSSH"><img src="https://img.shields.io/badge/website-obsidianssh.app-3CBBB1" alt="Website"></a>
-  <a href="https://ko-fi.com/wilsonglasser"><img src="https://img.shields.io/badge/Ko--fi-Support%20me-ff5e5b?logo=ko-fi&logoColor=white" alt="Ko-fi"></a>
-  <a href="https://buymeacoffee.com/wilsonglasser"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-donate-yellow?logo=buymeacoffee&logoColor=black" alt="Buy Me a Coffee"></a>
 </p>
 
 <p align="center">
@@ -101,15 +98,12 @@ matching installer. Windows binaries are Authenticode-signed (see
 
 - **Native and fast.** Pure Rust, GPU-accelerated [iced](https://iced.rs)
   UI, single binary. No Electron, no webview.
-- **Encrypted local vault.** Argon2id + ChaCha20-Poly1305 per field,
-  optional master password, biometric unlock (Windows Hello / Touch ID /
-  Linux keyring), idle auto-lock, TOTP autofill for 2FA hosts, and
-  stored passwords offered at `sudo` prompts (never sent on their own).
-- **Several vaults.** Keep Work and Personal in separate encrypted
-  files, each with its own master password, settings, sync and MCP
-  exposure, open at once: every window works on one vault and switches
-  in place from the Home tab, a per-vault shortcut or the palette, while
-  the other vault's tabs keep running. Two vaults never share a key.
+- **Encrypted local vault.** Argon2id + ChaCha20-Poly1305 per field for
+  the credentials you do store, TOTP autofill for 2FA hosts, and stored
+  passwords offered at `sudo` prompts (never sent on their own).
+- **Bitwarden as your SSH agent.** Hosts authenticate through Bitwarden's
+  (or any) SSH agent: pick a key per host, and Bitwarden asks you to
+  approve each connection. The status bar shows which agent is live.
 - **The full SSH pipeline.** Auto-auth, multi-hop jump chains, SOCKS /
   HTTP / command proxies, agent forwarding, standalone `-L`/`-R`/`-D` port
   forwarding, expect-style login scripts for menu-driven bastions
@@ -249,8 +243,8 @@ Click any thumbnail for the full-size image.
 
 ## Quick start
 
-1. **First launch:** choose a master password or continue without one
-   (you can enable it, plus biometric unlock, later in Settings).
+1. **First launch:** a short tour, then **Get started** (or import your
+   hosts from another client straight away).
 2. **Add hosts:** click `+ HOST`, or just type `user@host` (Ctrl+K) to
    connect without saving. Coming from another SSH client? Import
    brings its saved sessions over in one step.
@@ -333,7 +327,9 @@ handling).
 
 ## License
 
-Copyright (C) 2026 Wilson Glasser. Licensed under
+Obsidian SSH is a fork of [Oryxis](https://github.com/wilsonglasser/oryxis) by Wilson Glasser.
+Original work Copyright (C) 2026 Wilson Glasser; modifications
+Copyright (C) 2026 ObsidianNetwork. Licensed under
 [AGPL-3.0-or-later](LICENSE). Free and open-source forever: anyone can
 use, modify, and distribute Obsidian SSH, but any modified version made
 available over a network must also share its source code under the same

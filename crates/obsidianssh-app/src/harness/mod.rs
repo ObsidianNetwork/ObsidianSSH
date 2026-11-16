@@ -221,6 +221,14 @@ pub fn options_from_args() -> Option<Options> {
         // platform so a harness run can never touch the real
         // ~/.obsidianssh.
         std::env::set_var("OBSIDIANSSH_HOME", &options.home);
+        // The developer's own ssh-agents are machine state like the
+        // home folder: a Bitwarden agent serving keys turns new hosts to
+        // agent auth (`new_connection_form`), so a run would depend on
+        // what this machine has unlocked. Bitwarden's default socket
+        // already sits under the redirected home; these two name it
+        // from outside.
+        std::env::remove_var("SSH_AUTH_SOCK");
+        std::env::remove_var("BITWARDEN_SSH_AUTH_SOCK");
     }
     SANDBOXED.store(true, std::sync::atomic::Ordering::Relaxed);
 

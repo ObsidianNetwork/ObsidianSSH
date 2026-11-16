@@ -23,7 +23,7 @@ mode: Zen
 # records it and `expect "Create host"` is what proves nothing connected.
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 expect "Create host"
 click (1168, 55)
 expect "Terminal Settings"
@@ -37,7 +37,7 @@ click (1140, 70)
 settle 400
 screenshot restore-tabs-setting-on
 # A local shell tab, leaving Settings open so the `+` keeps its position.
-click (402, 20)
+click (328, 20)
 expect "Local Shell"
 timeout 800
 click "Local Shell"

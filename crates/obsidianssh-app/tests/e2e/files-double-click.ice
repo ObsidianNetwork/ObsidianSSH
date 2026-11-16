@@ -13,7 +13,7 @@ mode: Zen
 # folders apart: the folder's own name also shows in the breadcrumb once
 # inside it, so it cannot be the assertion.
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle
 type ctrl+shift+e
 settle
@@ -62,7 +62,7 @@ settle
 expect "dc-marker.txt"
 # The sidebar Files tab of a local shell lists the same home. The new-tab
 # button sits after the SFTP chip; a coordinate, as it carries no text.
-click (402, 20)
+click (328, 20)
 settle
 # A PTY lives from here on, so no instruction settles on its own:
 # cap the per-instruction wait (20 s by default) like the other

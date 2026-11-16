@@ -11,7 +11,6 @@ expect "Welcome to Obsidian SSH"
 click "Next"
 click "Next"
 click "Next"
-click "Next"
 settle
 expect "Make it yours"
 expect "Offline mode"
@@ -21,10 +20,8 @@ click (793, 358)
 settle
 click "Next"
 settle
-click "Next"
-settle
-expect "Protect your vault"
-click "Continue without password"
+expect "Bring your hosts along"
+click "Get started"
 settle
 expect "Create host"
 click (1175, 64)

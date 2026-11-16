@@ -2,7 +2,7 @@ viewport: 1200x750
 mode: Zen
 -----
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle 250
 click (1175.00, 64.00)
 settle 250

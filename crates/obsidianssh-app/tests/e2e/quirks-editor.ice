@@ -14,7 +14,7 @@ mode: Zen
 # opens.
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 expect "Create host"
 click "Create host"
 settle 300

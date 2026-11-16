@@ -6,7 +6,7 @@ mode: Zen
 # The picker itself is a native dialog the harness cannot drive; the
 # reader and planner are covered by importers::csv_plan_tests.
 click "Skip"
-click "Continue without password"
+click "Get started"
 expect "Create host"
 click (1175, 64)
 expect "Security & Privacy"

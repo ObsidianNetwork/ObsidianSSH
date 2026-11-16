@@ -21,7 +21,7 @@ mode: Zen
 # keeps the vault, so the value the restart shows is the persisted row.
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 expect "Create host"
 click (1168, 55)
 settle 500

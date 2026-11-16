@@ -254,6 +254,15 @@ impl ObsidianSsh {
             }
             Message::NoOp => {}
 
+            Message::RefreshAgentRoster => return crate::ssh_agents::refresh(),
+            Message::AgentRoster(agents) => {
+                if self.ssh_agents != agents {
+                    self.ssh_agents = agents;
+                    // An open key picker lists the agents' keys.
+                    self.sync_editor_key_combo();
+                }
+            }
+
             // `update` lists the cross-cutting globals explicitly, so
             // anything else here is a routing mistake, not a runtime
             // case.

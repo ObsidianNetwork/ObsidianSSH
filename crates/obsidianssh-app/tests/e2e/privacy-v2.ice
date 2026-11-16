@@ -9,7 +9,7 @@ mode: Zen
 # viewport keeps the host editor's Username field above the fold.
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 expect "Create host"
 
 # Save a host whose label embeds the address (the block-5 label leak)

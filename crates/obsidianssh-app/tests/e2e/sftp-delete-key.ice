@@ -7,11 +7,11 @@ mode: Zen
 # The test creates the row it deletes: the sandbox home is empty at
 # first run, so there is nothing here to select otherwise.
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle 250
 # New-tab button and the host picker's close: neither carries text, so
 # both are coordinates. Retake them if the tab strip's metrics change.
-click (161.00, 20.00)
+click (87.00, 20.00)
 settle 250
 click "SFTP"
 settle 250

@@ -8,7 +8,7 @@ mode: Zen
 # secondary buttons, and every one of them is a keyboard row.
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 expect "Create host"
 click "Keychain"
 expect "Add a key"

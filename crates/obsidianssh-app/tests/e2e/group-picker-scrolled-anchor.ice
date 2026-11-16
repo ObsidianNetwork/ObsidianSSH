@@ -10,7 +10,7 @@ mode: Zen
 # the folder card's count the evidence; "zzz" typed with no click on
 # the search box is the focus's.
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle 250
 click "Type IP or Hostname"
 type "web01"

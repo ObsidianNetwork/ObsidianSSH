@@ -9,7 +9,7 @@ mode: Zen
 # (the issue #241 sweep). A backspace that brings the line back is the
 # proof the focus stayed: it only shows while the password is empty.
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle 250
 # An identity, so the username field has something to suggest.
 click "Keychain"

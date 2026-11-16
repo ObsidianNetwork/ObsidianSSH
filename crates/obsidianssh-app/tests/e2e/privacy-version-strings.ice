@@ -12,7 +12,7 @@ mode: Zen
 # the batch runner wipes the sandbox before every test.
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 expect "Create host"
 
 # Enable Privacy Mode (Settings > Security & Privacy). The toggle is

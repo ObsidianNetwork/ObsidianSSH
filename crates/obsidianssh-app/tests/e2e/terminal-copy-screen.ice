@@ -10,7 +10,7 @@ mode: Zen
 settle 250
 click "Skip"
 settle 250
-click "Continue without password"
+click "Get started"
 settle 250
 # A live PTY never lets the emulator quiesce, so cap the per-instruction
 # wait instead of burning the full timeout on every line.
@@ -20,7 +20,7 @@ settle 250
 expect "bash (default)"
 # Default scheme is Paste, so the chip's menu is the only door there is.
 # Coordinates because the chip's own label is the string being asserted.
-click right (150.00, 20.00)
+click right (76.00, 20.00)
 settle 250
 expect "Copy Screen"
 type escape
@@ -43,10 +43,10 @@ click (1022.00, 121.00)
 settle 400
 # Back on the shell: the chip's menu still opens (Close Tab is there) and
 # no longer carries an entry the terminal's own menu now answers for.
-click (150.00, 20.00)
+click (76.00, 20.00)
 settle 400
 timeout 500
-click right (150.00, 20.00)
+click right (76.00, 20.00)
 settle 250
 absent "Copy Screen"
 expect "Close Tab"

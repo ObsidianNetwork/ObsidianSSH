@@ -13,7 +13,7 @@ mode: Zen
 # the same code as the CJK fonts, and the pins are unit-tested
 # (fonts::download_pins_are_well_formed).
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle
 click (19, 20)
 settle

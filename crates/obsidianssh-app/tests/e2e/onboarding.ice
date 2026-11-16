@@ -3,6 +3,6 @@ mode: Zen
 -----
 expect "Welcome to Obsidian SSH"
 click "Skip"
-expect "Protect your vault"
-click "Continue without password"
+expect "Bring your hosts along"
+click "Get started"
 expect "Create host"

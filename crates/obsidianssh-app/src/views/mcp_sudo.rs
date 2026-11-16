@@ -63,10 +63,6 @@ impl ObsidianSsh {
             info = info.push(Space::new().height(8).boxed());
         }
         info = info
-            // The name this app shows for it: the request's label is the
-            // server's, which falls back to the slug.
-            .push(panel_field(t("vault"), value(self.vault_name(r.vault_id))))
-            .push(Space::new().height(8).boxed())
             .push(panel_field(t("host"), value(format!("{} ({})", r.host_label, r.address))))
             .push(Space::new().height(8).boxed());
         if !r.route.is_empty() {

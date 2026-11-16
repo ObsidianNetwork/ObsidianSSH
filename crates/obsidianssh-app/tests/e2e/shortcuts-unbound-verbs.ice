@@ -2,7 +2,7 @@ viewport: 1200x850
 mode: Zen
 -----
 # Settings > Shortcuts: the menu verbs that ship with NO factory chord
-# ("Move tab to new window" and its eleven siblings, `ships_unbound`) are
+# ("Move tab to new window" and its ten siblings, `ships_unbound`) are
 # rows whose only chip reads "(unbound)". This pins the row's whole
 # life for the one the owner asked for:
 #
@@ -26,7 +26,7 @@ mode: Zen
 # above them carries its factory Ctrl+Enter).
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle 250
 # Toolbar gear (icon only, no text selector).
 click (1175, 64)
@@ -43,7 +43,6 @@ expect "Save Output As…"
 expect "Copy Screen"
 expect "Copy Last Command + Output"
 expect "Clear Scrollback"
-expect "Lock Vault"
 expect "(unbound)"
 # Bind Ctrl+Alt+M to "Move tab to new window", then take it back.
 click (251, 790)

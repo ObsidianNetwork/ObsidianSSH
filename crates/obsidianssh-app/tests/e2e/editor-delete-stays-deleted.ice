@@ -10,7 +10,7 @@ mode: Zen
 # delete. The group's own "0 hosts" is the assertion: a card count is
 # real text, where a text_input VALUE would be invisible to `expect`.
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle 250
 click "Type IP or Hostname"
 type "web01"

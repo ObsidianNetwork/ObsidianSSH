@@ -7,7 +7,7 @@ mode: Zen
 # keepalive, and the settings search finds it by what a user who hit
 # the error would type ("pty", from the message that names the step).
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle 250
 click (1175.00, 64.00)
 settle 250

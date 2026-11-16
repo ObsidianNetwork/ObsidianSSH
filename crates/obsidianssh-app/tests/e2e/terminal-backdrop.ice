@@ -18,7 +18,7 @@ mode: Zen
 # missing entry fails here rather than silently degrading to "the
 # setting exists but nobody can find it".
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle
 click (19, 20)
 settle

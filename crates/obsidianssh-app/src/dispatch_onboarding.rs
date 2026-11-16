@@ -7,17 +7,15 @@ use iced::Task;
 
 use crate::app::{Message, OnboardingMessage, ObsidianSsh};
 
-/// Last slide index. The carousel has seven slides (0..=6): four
-/// feature slides, the optional-features toggles, the import offer,
-/// and finally the master-password setup. Kept here as the single
-/// source of truth for navigation clamping and the "Skip" jump.
-pub(crate) const ONBOARDING_LAST_SLIDE: usize = 6;
+/// Last slide index. The carousel has five slides (0..=4): welcome,
+/// connect, the SSH agent (Bitwarden), the optional-features toggles,
+/// and the import offer, whose Get started creates the vault. Kept here
+/// as the single source of truth for navigation clamping and the "Skip"
+/// jump.
+pub(crate) const ONBOARDING_LAST_SLIDE: usize = 4;
 
 /// Index of the optional-features slide (toggles).
-pub(crate) const ONBOARDING_FEATURES_SLIDE: usize = 4;
-
-/// Index of the import-offer slide.
-pub(crate) const ONBOARDING_IMPORT_SLIDE: usize = 5;
+pub(crate) const ONBOARDING_FEATURES_SLIDE: usize = 3;
 
 impl ObsidianSsh {
     pub(crate) fn handle_onboarding(
@@ -39,12 +37,11 @@ impl ObsidianSsh {
                 self.onboarding_slide = ONBOARDING_LAST_SLIDE;
             }
             OnboardingMessage::ImportAfterSetup => {
-                // The import needs an unlocked vault, which does not
-                // exist yet on this screen: remember the intent and
-                // move to the password slide. Both vault-creation
-                // paths consume it (`take_onboarding_import_task`).
+                // The import needs the vault, which does not exist yet on
+                // this screen: remember the intent and create it; the
+                // creation consumes the intent (`take_onboarding_import_task`).
                 self.onboarding_import_pending = true;
-                self.onboarding_slide = ONBOARDING_LAST_SLIDE;
+                return Task::done(Message::Vault(crate::app::VaultMessage::VaultSkipPassword));
             }
         }
         Task::none()

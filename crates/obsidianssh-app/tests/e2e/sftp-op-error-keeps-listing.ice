@@ -10,11 +10,11 @@ mode: Zen
 # server: a second "New file" with the same name collides, the message
 # lands, the first file's row is still there, and the × clears it.
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle 250
 # New-tab button and the host picker's close: neither carries text, so
 # both are coordinates (same as sftp-delete-key.ice).
-click (161.00, 20.00)
+click (87.00, 20.00)
 settle 250
 click "SFTP"
 settle 250

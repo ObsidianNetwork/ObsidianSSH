@@ -96,12 +96,13 @@ impl ObsidianSsh {
             conn.identity_id.and_then(|iid| {
                 self.vaults.cur().identities.iter().find(|i| i.id == iid).and_then(|i| i.key_id)
             })
-        })?;
-        self.vaults.cur().keys
-            .iter()
-            .find(|k| k.id == kid)
+        });
+        kid.and_then(|kid| self.vaults.cur().keys.iter().find(|k| k.id == kid))
             .map(|k| k.public_key.clone())
             .filter(|p| !p.trim().is_empty())
+            // A key that lives only in an agent (Bitwarden) is pinned by
+            // its public line on the host itself.
+            .or_else(|| conn.agent_key.clone().filter(|p| !p.trim().is_empty()))
     }
 
     /// Whether connecting to `conn` would ask a person to touch a security

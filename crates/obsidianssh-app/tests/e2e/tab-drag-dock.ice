@@ -18,7 +18,7 @@ mode: Zen
 # (19, 20) is the burger, (92, 20) the `+` of an empty strip.
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 expect "Create host"
 timeout 800
 type ctrl+shift+l
@@ -39,7 +39,7 @@ settle 300
 click "New Window"
 settle 700
 window 2 at (300, 500)
-click (161, 20)
+click (87, 20)
 expect "Local Shell"
 click "Local Shell"
 settle 900
@@ -56,10 +56,10 @@ absent "alpha"
 # Drag "alpha" out of the first window.
 window 1
 expect "alpha"
-press (209, 20)
-move (229, 26)
-move (269, 10)
-move (200, -60)
+press (135, 20)
+move (155, 26)
+move (195, 10)
+move (126, -60)
 settle 500
 expect "alpha"
 absent "other"

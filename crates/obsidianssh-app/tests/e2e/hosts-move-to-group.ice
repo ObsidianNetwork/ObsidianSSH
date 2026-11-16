@@ -9,7 +9,7 @@ mode: Zen
 #
 # The drag itself is owner QA: the harness has no press-move-release.
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle 250
 click "Type IP or Hostname"
 type "web01"

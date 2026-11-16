@@ -114,7 +114,7 @@ fn hotkey_category(action: HotkeyAction) -> PaletteCategory {
         }
         OpenSettings => PaletteCategory::Settings,
         ToggleFullscreen | ShowCommandPalette | SwitchToTabSlot | CycleTabs
-        | TogglePrivacyMode | LockVault | ShowVaultSwitcher | NextVault | PreviousVault => {
+        | TogglePrivacyMode => {
             PaletteCategory::Session
         }
     }
@@ -197,7 +197,6 @@ impl ObsidianSsh {
             (t("connection"), S::Connection),
             (t("shortcuts"), S::Shortcuts),
             (t("security_privacy"), S::Security),
-            (t("vaults"), S::Vaults),
             (t("features_and_plugins"), S::Plugins),
         ];
         if self.vaults.cur().ai.enabled {
@@ -214,11 +213,6 @@ impl ObsidianSsh {
         }
         if self.vaults.cur().sync.enabled {
             items.push((t("sync"), S::Sync));
-        }
-        // Same gate as the Features toggle: no listener on this
-        // platform means no section either.
-        if self.agent.enabled && crate::agent_server::listener_socket_display().is_some() {
-            items.push((t("agent_server"), S::Agent));
         }
         if self.any_cloud_provider_installed() {
             items.push((t("settings_cloud_section"), S::Cloud));
@@ -256,15 +250,9 @@ impl ObsidianSsh {
             // Mirror the exact gate the keyboard loop applies before it
             // calls dispatch_hotkey_action (shortcuts.rs): terminal_only
             // needs a focused terminal, vault_only needs the vault area.
-            // Lock Vault has one more gate, the same one its handler
-            // applies: nothing to lock without a master password.
             let enabled = (!action.terminal_only() || in_terminal)
                 && (!action.vault_only() || self.in_vault_area())
-                && (!action.tab_only() || self.focused_strip_tab().is_some())
-                && (action != HotkeyAction::LockVault || self.vaults.cur().vault_ui.has_user_password)
-                // Nothing to move to with a single vault.
-                && (!matches!(action, HotkeyAction::NextVault | HotkeyAction::PreviousVault)
-                    || self.vault_count() > 1);
+                && (!action.tab_only() || self.focused_strip_tab().is_some());
             candidates.push(Candidate {
                 label: t(action.label_key()).to_string(),
                 keywords: action.id(),
@@ -277,8 +265,6 @@ impl ObsidianSsh {
         }
 
         // ── Non-hotkey extras ──────────────────────────────────────────
-        // (Lock Vault is a generated row above since it became the
-        // `LockVault` action; the chord reaches the same confirm.)
         candidates.push(Candidate {
             label: t("privacy_mode_label").to_string(),
             keywords: "privacy_mode",
@@ -302,42 +288,6 @@ impl ObsidianSsh {
                 enabled: true,
             });
         }
-
-        // ── Dynamic: vaults ────────────────────────────────────────────
-        // Every vault this device knows, its own chord on the row; the
-        // one this window is on, and one whose file is gone, list
-        // disabled. Then the two doors of the switcher's menu.
-        let vault_word = t("vault");
-        let here = self.vaults.cur().id;
-        for entry in self.registered_vaults() {
-            candidates.push(Candidate {
-                label: format!("{vault_word}: {}", Self::vault_display_name(&entry)),
-                keywords: "vault_switch",
-                hotkey: None,
-                chord: self.vault_chords.iter().find(|(id, _)| *id == entry.id).map(|(_, c)| *c),
-                category: PaletteCategory::Vault,
-                message: Message::MultiVault(crate::app::MultiVaultMessage::SwitchToVault(entry.id)),
-                enabled: entry.id != here && self.vault_available(entry.id),
-            });
-        }
-        candidates.push(Candidate {
-            label: t("vault_new").to_string(),
-            keywords: "vault_new_create",
-            hotkey: None,
-            chord: None,
-            category: PaletteCategory::Vault,
-            message: Message::MultiVault(crate::app::MultiVaultMessage::ShowNewVault),
-            enabled: true,
-        });
-        candidates.push(Candidate {
-            label: t("vault_lock_all").to_string(),
-            keywords: "vault_lock_all",
-            hotkey: None,
-            chord: None,
-            category: PaletteCategory::Session,
-            message: Message::MultiVault(crate::app::MultiVaultMessage::LockAllVaults),
-            enabled: self.any_vault_lockable(),
-        });
 
         // ── Dynamic: Settings sections ─────────────────────────────────
         let settings = t("settings");

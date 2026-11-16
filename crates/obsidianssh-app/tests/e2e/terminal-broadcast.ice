@@ -11,16 +11,16 @@ mode: Zen
 # zen emulator never quiesces with a running shell.
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 expect "Create host"
-click (160, 20)
+click (86, 20)
 expect "Local Shell"
 timeout 500
 click "Local Shell"
 settle 400
 # Split via the tab context menu (robust vs the split hotkey under the
 # emulator). The split opens the picker to choose the new pane.
-click right (217, 20)
+click right (143, 20)
 settle 300
 expect "Split side by side"
 click "Split side by side"

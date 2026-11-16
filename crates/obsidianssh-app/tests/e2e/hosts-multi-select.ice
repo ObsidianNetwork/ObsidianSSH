@@ -22,8 +22,8 @@ mode: Zen
 # for "this many are picked" rather than the boxes.
 expect "Welcome to Obsidian SSH"
 click "Skip"
-expect "Protect your vault"
-click "Continue without password"
+expect "Bring your hosts along"
+click "Get started"
 expect "Create host"
 
 # Three hosts to have a batch out of. The first goes through the

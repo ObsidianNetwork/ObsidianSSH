@@ -65,7 +65,6 @@ that the app composes.
 | `obsidianssh-zmodem` | ZMODEM transfer engine: auto-detects `sz` / `rz` on the byte stream over SSH, Telnet and serial |
 | `obsidianssh-archive` | SFTP archive operations: remote `tar` / `unzip` / `zip` command synthesis with safe quoting (POSIX + Windows), local zip / tar.gz codecs, zip central-directory browsing over ranged reads |
 | `obsidianssh-vault` | Encrypted vault: SQLite + Argon2id + ChaCha20-Poly1305 per-field + session logs / recordings + `.obsidianssh` export/import; the device store (`device.json`: device-level settings and the registry of vaults) |
-| `obsidianssh-biometric` | Biometric / OS-keyring app unlock: Windows Hello, macOS Touch ID (Keychain user presence), Linux Secret Service |
 | `obsidianssh-sync` | P2P sync engine: QUIC (quinn) + mDNS + STUN + signaling + HTTP relay fallback + Ed25519/X25519 + LWW conflict resolution |
 | `obsidianssh-relay` | Self-hostable signaling + relay HTTP server (axum + in-memory queues) |
 | `obsidianssh-mcp` | MCP server binary: JSON-RPC 2.0 over stdio, exposes SSH hosts to AI assistants. Distributed as a plugin, not bundled in the OS installers |
@@ -89,7 +88,7 @@ that the app composes.
 
 | Layer | Technology |
 |-------|-----------|
-| UI | Iced (wilsonglasser fork, branch `obsidianssh`, wgpu GPU-accelerated, software-renderer fallback) |
+| UI | Iced (wilsonglasser fork, branch `oryxis`, wgpu GPU-accelerated, software-renderer fallback) |
 | Icons | Lucide + Codicon (iced_fonts) + brand SVG icons |
 | Fonts | Noto Sans (UI, CJK / Hebrew / Thai / Devanagari coverage) + SauceCodePro / Symbols Nerd Font (terminal) |
 | Terminal | alacritty_terminal |

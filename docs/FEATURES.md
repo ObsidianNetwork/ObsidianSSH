@@ -672,7 +672,7 @@ If your vault has no password, omit the `env` field.
 - **Proxy Identities.** Same shape for proxy configs, password stored
   encrypted.
 - **Encrypted SSH key import.** Passphrase-protected keys are decrypted on
-  import; the vault master password protects them at rest.
+  import; the vault encrypts them at rest.
 - **Group settings inheritance.** A group carries defaults (login user,
   identity, proxy identity, terminal theme, startup snippet,
   environment variables, and the port new hosts start with) and every
@@ -689,26 +689,17 @@ If your vault has no password, omit the `env` field.
 
 ## Vault & security
 
-- **No password by default.** Opens instantly; enable a master password in
-  Settings.
-- **Argon2id + ChaCha20-Poly1305** with a per-field salt and nonce;
-  re-encryption of all secrets when the password changes; vault reset from
-  the lock screen.
-- **Biometric unlock.** Windows Hello, Touch ID, or the Linux system
-  keyring; opt-in, with the password always one click away.
-- **Idle auto-lock.** A timer zeroizes the master key and shows the lock
-  screen while live SSH sessions and tabs survive and greet you after
-  unlock; secret-bearing UI is swept on lock.
-- **Several vaults.** Keep work and personal hosts in separate encrypted
-  files, each with its own master password, settings, sync and MCP
-  exposure, open at once: every window works on one vault, switched in
-  place from the Home tab (or a toolbar chip), by a shortcut you assign
-  to each vault, or from the command palette; its tabs keep running
-  while you look at another. Settings > Vaults creates, renames, locks,
-  removes and deletes vaults, opens a vault file from anywhere (a USB
-  key), and can ask which vault to open at start; an `.obsidianssh` export
-  can be imported as a new vault. Settings rows that apply to the whole
-  device carry a badge; the rest are the vault's own.
+- **Opens instantly.** No master password to set or type: the vault is
+  basic credential storage, and most keys are meant to live in your SSH
+  agent.
+- **Argon2id + ChaCha20-Poly1305** with a per-field salt and nonce for
+  every stored credential.
+- **Bitwarden as the SSH agent.** A host can authenticate through
+  Bitwarden's SSH agent (or any agent on `SSH_AUTH_SOCK`) with one chosen
+  key; the connect screen reminds you to approve the request in
+  Bitwarden, and the status bar shows the live agent and its key count.
+- **Device badge.** Settings rows that apply to the whole device carry a
+  badge; the rest are the vault's own.
 - **TOTP 2FA autofill.** Store a per-host TOTP secret (bare base32 or an
   `otpauth://` URI), encrypted like every credential;
   keyboard-interactive verification-code prompts are answered

@@ -23,7 +23,7 @@ mode: Zen
 # The host is deliberately not named "...Save...": selectors match by
 # SUBSTRING, so `absent "Save"` would hit the card, not the button.
 click "Skip"
-click "Continue without password"
+click "Get started"
 expect "Create host"
 click "Continue"
 expect "New Host"

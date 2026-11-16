@@ -14,9 +14,9 @@ mode: Zen
 # the window's close button.
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle 250
-click (161, 20)
+click (87, 20)
 expect "Local Shell"
 timeout 800
 click "Local Shell"
@@ -36,7 +36,7 @@ settle 300
 click "New Window"
 settle 700
 absent "first"
-click (161, 20)
+click (87, 20)
 expect "Local Shell"
 click "Local Shell"
 settle 900

@@ -12,9 +12,9 @@ mode: Zen
 # zen emulator never quiesces with a running shell.
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 expect "Create host"
-click (160, 20)
+click (86, 20)
 expect "Local Shell"
 timeout 500
 click "Local Shell"

@@ -16,7 +16,7 @@ mode: Zen
 # hides the stray character a paste or an IME can leave behind).
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle
 # Sync is a feature toggle: enable it on the Plugins screen before the
 # Sync section exists in the sidebar. The switch sits on the row's
@@ -28,7 +28,7 @@ click "Settings"
 settle
 click "Features & Plugins"
 settle
-click (1338, 207)
+click (1338, 215)
 # Enabling sync mounts an engine that keeps running, so from here on no
 # instruction reports done and each one waits out the per-instruction
 # timeout instead. Same rule the agent and PTY tests follow; declared
@@ -37,8 +37,8 @@ click (1338, 207)
 # clean local passes, 2026-10-20).
 timeout 1500
 settle
-# The sidebar gained "Sync" under SFTP (fixed-height rows: y 463).
-click (60, 463)
+# The sidebar gained "Sync" under SFTP (fixed-height rows: y 426).
+click (60, 426)
 settle
 expect "Transport"
 # The transport row is the first recorded content row: Tab from the
@@ -77,7 +77,7 @@ click (19, 20)
 settle
 click "Settings"
 settle
-click (60, 463)
+click (60, 426)
 settle
 click "••••••••"
 settle

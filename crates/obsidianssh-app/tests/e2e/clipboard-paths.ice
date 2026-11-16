@@ -18,7 +18,7 @@ mode: Zen
 # runtime, `clipboard is "..."` sees the app's own copies.
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 expect "Create host"
 
 # 1. Ctrl+C with nothing selected, on the hosts screen: the clipboard
@@ -31,7 +31,7 @@ clipboard is "kept on the hosts screen"
 # 2. Paste into the SFTP path bar (the crashing gesture). The path input
 #    is a text_input, so the runtime performs the read; the value is not
 #    text-selectable, hence the screenshot.
-click (160, 20)
+click (86, 20)
 expect "SFTP"
 click "SFTP"
 settle
@@ -55,7 +55,7 @@ screenshot sftp-path-paste
 #    instead of saying it grabbed the wrong row. Filling the screen with
 #    the SAME line removes the dependency: any row in the block yields
 #    the same text. `clear` puts the block at a known top.
-click (402, 20)
+click (328, 20)
 expect "Local Shell"
 # Before the click that spawns the shell: that click already leaves the
 # never-ending PTY task pending and would burn the default 20 s itself.

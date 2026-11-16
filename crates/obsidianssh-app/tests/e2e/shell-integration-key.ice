@@ -10,7 +10,7 @@ mode: Zen
 # Tall viewport on purpose: the Terminal section is long and the row
 # sits under the command-history toggle it belongs to.
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle
 # Through the burger rather than the toolbar gear, so the flow does not
 # depend on the gear's pixel position at this width (same reasoning as

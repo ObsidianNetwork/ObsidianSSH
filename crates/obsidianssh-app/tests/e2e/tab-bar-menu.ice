@@ -15,11 +15,11 @@ mode: Zen
 settle 250
 click "Skip"
 settle 250
-click "Continue without password"
+click "Get started"
 settle 250
 # Empty strip, right of the `+`. Coordinates because empty space has no
 # text to aim a selector at, which is the whole point of the surface.
-click right (470.00, 18.00)
+click right (396.00, 18.00)
 settle 250
 expect "New Tab"
 absent "Reopen Closed Tab"
@@ -35,14 +35,14 @@ expect "bash (default)"
 # Closed through the chip's menu, one of the user close paths that feed
 # the stack. Coordinates again: the chip's own label is the string the
 # assertions below are about.
-click right (150.00, 20.00)
+click right (76.00, 20.00)
 settle 250
 click "Close Tab"
 settle 250
 absent "bash (default)"
 # Now the strip has something to offer back, and it is the mouse path
 # the issue asked for.
-click right (470.00, 18.00)
+click right (396.00, 18.00)
 settle 250
 expect "Reopen Closed Tab"
 click "Reopen Closed Tab"

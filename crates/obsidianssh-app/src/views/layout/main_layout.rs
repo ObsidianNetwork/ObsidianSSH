@@ -449,19 +449,6 @@ impl ObsidianSsh {
             return self.layer_cloud_import_confirm(base, resize_overlay);
         }
 
-        // The "New vault" dialog, raised from the switcher menu.
-        if let Some(form) = &self.vault_dialog {
-            return wrap_with_resize(
-                crate::widgets::modal_overlay(
-                    base,
-                    self.build_vault_dialog(form),
-                    Some(Message::MultiVault(crate::app::MultiVaultMessage::CancelVaultDialog)),
-                    0.0,
-                ),
-                resize_overlay,
-            );
-        }
-
         // Snippet-variables prompt: a snippet with `{name}` placeholders
         // parks here so the values are filled before anything reaches
         // the session. Same dialog shell as the careful paste below.
@@ -471,22 +458,6 @@ impl ObsidianSsh {
                     base,
                     self.build_snippet_vars_dialog(pending),
                     Some(Message::Snippet(SnippetMessage::CancelSnippetVars)),
-                    0.0,
-                ),
-                resize_overlay,
-            );
-        }
-
-        // ssh-agent per-signature confirmation: a security prompt with a
-        // 60s deny-by-default timeout, so it takes priority over the
-        // lower-stakes modals below. Clicking outside denies (safe
-        // default), the same as pressing Deny.
-        if let Some(ref card) = self.agent.pending_confirm {
-            return wrap_with_resize(
-                crate::widgets::modal_overlay(
-                    base,
-                    self.build_agent_confirm_dialog(card),
-                    Some(Message::Agent(AgentMessage::AgentConfirmDecision { allow: false, always: false })),
                     0.0,
                 ),
                 resize_overlay,
@@ -642,22 +613,6 @@ impl ObsidianSsh {
                     base,
                     self.build_monitor_kill_dialog(pending),
                     Some(Message::Monitor(MonitorMessage::CancelKillPort)),
-                    0.0,
-                ),
-                resize_overlay,
-            );
-        }
-
-        // Manual-lock confirmation: Lock Vault tears down every live SSH
-        // session and tab, so the button asks first. Backdrop / Esc /
-        // Cancel all decline (the safe default); only the Lock button
-        // commits.
-        if self.vaults.cur().vault_ui.lock_confirm {
-            return wrap_with_resize(
-                crate::widgets::modal_overlay(
-                    base,
-                    self.build_lock_confirm_dialog(),
-                    Some(Message::Vault(VaultMessage::CancelLockVaultConfirm)),
                     0.0,
                 ),
                 resize_overlay,

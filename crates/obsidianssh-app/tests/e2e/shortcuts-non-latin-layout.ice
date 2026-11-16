@@ -14,7 +14,7 @@ mode: Zen
 # X chip sits once in the table, on the row that recorded it).
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle 250
 expect "Hosts"
 type ctrl+б@comma

@@ -72,6 +72,13 @@ pub struct Connection {
     pub username: Option<String>,
     pub auth_method: AuthMethod,
     pub key_id: Option<Uuid>,
+    /// OpenSSH public line of an ssh-agent key (a Bitwarden SSH key, for
+    /// one) this host prefers, for keys that live only in the agent.
+    /// Feeds the same agent-auth pin as a vault `key_id`, which wins
+    /// when both are set. `#[serde(default)]` -> None on legacy
+    /// payloads; sync / portable export ride the serde field.
+    #[serde(default)]
+    pub agent_key: Option<String>,
     /// Offer a key read from the user's `~/.ssh` directory when this
     /// host resolves no vault key. Off by default and per-host on
     /// purpose (same shape as `x11_forwarding`): offering a credential
@@ -424,6 +431,7 @@ impl Connection {
             username: None,
             auth_method: AuthMethod::Auto,
             key_id: None,
+            agent_key: None,
             use_disk_key: false,
             identity_file: None,
             identity_id: None,
@@ -1025,6 +1033,18 @@ mod tests {
         value.as_object_mut().unwrap().remove("mac_address");
         let de: Connection = serde_json::from_value(value).unwrap();
         assert_eq!(de.mac_address, None);
+    }
+
+    /// A payload from before the agent-key pin carries no `agent_key`
+    /// and must land as `None`: no pin, the agent offers its keys in
+    /// its own order.
+    #[test]
+    fn agent_key_legacy_payload_defaults_to_none() {
+        let conn = Connection::new("legacy", "10.0.0.1");
+        let mut value = serde_json::to_value(&conn).unwrap();
+        value.as_object_mut().unwrap().remove("agent_key");
+        let de: Connection = serde_json::from_value(value).unwrap();
+        assert_eq!(de.agent_key, None);
     }
 
     /// Same contract for the login script: a payload from a peer that

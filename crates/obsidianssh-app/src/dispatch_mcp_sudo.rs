@@ -218,15 +218,6 @@ impl ObsidianSsh {
         }
     }
 
-    /// The acting vault is locking (soft or manual) or going away: its
-    /// questions are refused, the other vaults' stay up.
-    pub(crate) fn mcp_sudo_on_lock(&mut self) {
-        let vault = self.vaults.current_id();
-        for card in self.mcp_sudo.remove_where(|r| r.vault_id == vault) {
-            self.mcp_sudo_answer(&card, Decision::Deny, Some(DenyReason::Locked));
-        }
-    }
-
     /// The app is quitting or hiding to the tray (`persist_before_exit`):
     /// every question still up is refused, so the server answers its
     /// agent now rather than at its deadline.

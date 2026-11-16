@@ -11,7 +11,7 @@ mode: Zen
 # passphrase field (set-sync-sftp-passphrase) has the same problem.
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle
 # Through the burger menu rather than the toolbar gear, so the flow
 # doesn't depend on the gear's pixel position at this viewport width.

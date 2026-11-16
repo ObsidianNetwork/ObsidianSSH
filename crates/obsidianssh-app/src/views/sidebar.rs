@@ -86,19 +86,7 @@ impl ObsidianSsh {
         let footer = container(column![settings_item, rail_toggle_item(expanded)].spacing(4))
             .padding(Padding { top: 8.0, right: 0.0, bottom: 12.0, left: 0.0 });
 
-        // The vault badge: the vault this window works on, and the
-        // switcher behind it (glyph only while the rail is collapsed).
-        let vault_badge = self.vault_switcher_badge(expanded);
-
-        // The vault badge, unless a single vault is all there is and the
-        // user hid it for that case.
-        let mut col_items: Vec<Element<'_, Message>> = Vec::new();
-        if self.vault_switcher_in_toolbar() {
-            col_items.push(vault_badge);
-        }
-        col_items.push(nav.boxed());
-        col_items.push(footer.boxed());
-        let content = iced::widget::Column::with_children(col_items).width(Length::Fill);
+        let content = iced::widget::Column::with_children(vec![nav.boxed(), footer.boxed()]).width(Length::Fill);
 
         let width = if expanded {
             NAV_RAIL_WIDTH_EXPANDED

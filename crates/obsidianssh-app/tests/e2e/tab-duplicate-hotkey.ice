@@ -9,7 +9,7 @@ mode: Zen
 # there already.
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 expect "Create host"
 # A PTY lives from here on, so no instruction settles on its own:
 # cap the per-instruction wait (20 s by default) like the other

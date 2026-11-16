@@ -98,20 +98,6 @@ impl SessionSpool {
         Self::open_in(Self::own_dir()?.join(vault.simple().to_string()))
     }
 
-    /// Delete vault `vault`'s spool folder in this process (the vault is
-    /// being removed; its key goes with it).
-    pub(crate) fn remove_for(vault: Uuid) {
-        let Some(own) = Self::own_dir() else {
-            return;
-        };
-        let dir = own.join(vault.simple().to_string());
-        if dir.exists()
-            && let Err(e) = std::fs::remove_dir_all(&dir)
-        {
-            tracing::warn!("session spool {} not removed: {e}", dir.display());
-        }
-    }
-
     fn open_in(dir: PathBuf) -> Option<Self> {
         let mut builder = std::fs::DirBuilder::new();
         builder.recursive(true);

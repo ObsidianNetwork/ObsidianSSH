@@ -11,7 +11,7 @@ mode: Zen
 settle 250
 click "Skip"
 settle 250
-click "Continue without password"
+click "Get started"
 settle 250
 # A live PTY never lets the emulator quiesce, so cap the per-instruction
 # wait instead of burning the full timeout on every line.
@@ -20,7 +20,7 @@ type ctrl+shift+l
 settle 250
 expect "bash (default)"
 # Default scheme is Paste: the chip's menu is the door.
-click right (150.00, 20.00)
+click right (76.00, 20.00)
 settle 250
 click "Save Output As…"
 settle 250
@@ -32,7 +32,7 @@ type escape
 settle 250
 absent "scrollback included"
 # Again, and Enter takes the default row: the clipboard.
-click right (150.00, 20.00)
+click right (76.00, 20.00)
 settle 250
 click "Save Output As…"
 settle 250
@@ -60,10 +60,10 @@ settle 400
 click (1022.00, 121.00)
 settle 400
 # Back on the shell: the chip no longer offers it, the terminal does.
-click (150.00, 20.00)
+click (76.00, 20.00)
 settle 400
 timeout 500
-click right (150.00, 20.00)
+click right (76.00, 20.00)
 settle 250
 absent "Save Output"
 expect "Close Tab"

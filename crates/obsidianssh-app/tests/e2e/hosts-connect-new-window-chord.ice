@@ -25,7 +25,7 @@ mode: Zen
 # (`shortcuts-unbound-verbs.ice` clicks the same chip).
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle 250
 click "Type IP or Hostname"
 type "web01"

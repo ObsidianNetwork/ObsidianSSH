@@ -71,6 +71,38 @@ pub async fn agent_key_census() -> Vec<String> {
     agent::agent_key_census().await
 }
 
+/// One live ssh-agent endpoint and the keys it serves (see
+/// [`agent_roster`]).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AgentEndpoint {
+    /// Socket path or pipe name, for display.
+    pub endpoint: String,
+    /// The Bitwarden desktop agent (judged by its socket name).
+    pub bitwarden: bool,
+    /// `None` when the endpoint did not answer in time; `Some(empty)`
+    /// when it answered holding nothing.
+    pub keys: Option<Vec<AgentKey>>,
+}
+
+/// One key an ssh-agent serves.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AgentKey {
+    /// The key's comment. Bitwarden puts the vault item's name here.
+    pub comment: String,
+    /// OpenSSH public line (`<algorithm> <base64> <comment>`), what a
+    /// host stores to pin this key.
+    pub public_line: String,
+    /// `SHA256:...` fingerprint.
+    pub fingerprint: String,
+}
+
+/// Every live ssh-agent endpoint (`SSH_AUTH_SOCK`, the Bitwarden desktop
+/// agent, Windows agent pipes) with the keys it serves. One bounded dial
+/// and LIST per endpoint; LIST never prompts, so this is safe to poll.
+pub async fn agent_roster() -> Vec<AgentEndpoint> {
+    agent::agent_roster().await
+}
+
 /// The key material offered during publickey auth: the private key PEM
 /// and, optionally, an OpenSSH user certificate to present alongside it
 /// (B2). Bundling the two guarantees the certificate travels with the
@@ -678,20 +710,45 @@ mod tests {
     }
 
     #[test]
-    fn unix_sock_candidates_use_env_only() {
-        // Only SSH_AUTH_SOCK is dialed; the Obsidian SSH agent's own socket is
-        // deliberately not appended (we don't dial ourselves).
+    fn unix_sock_candidates_use_env_and_no_bitwarden() {
+        // SSH_AUTH_SOCK is dialed whether or not it exists; the Obsidian
+        // SSH agent's own socket is deliberately not appended (we don't
+        // dial ourselves), and without a Bitwarden socket nothing else is.
+        let none = |_: &std::path::Path| false;
         assert_eq!(
-            agent::unix_agent_sock_candidates(Some("/run/user/1000/keyring/ssh".to_string())),
+            agent::sock_candidates_from(
+                Some("/run/user/1000/keyring/ssh".to_string()),
+                None,
+                Some(std::path::Path::new("/home/u")),
+                none,
+            ),
             vec![std::path::PathBuf::from("/run/user/1000/keyring/ssh")],
         );
+        // Empty env var is not a candidate, and neither is an unset one.
+        assert!(agent::sock_candidates_from(Some(String::new()), None, None, none).is_empty());
+        assert!(agent::sock_candidates_from(None, None, Some(std::path::Path::new("/home/u")), none).is_empty());
     }
 
     #[test]
-    fn unix_sock_candidates_empty_or_unset_env_is_none() {
-        // Empty env var is not a candidate, and neither is an unset one.
-        assert!(agent::unix_agent_sock_candidates(Some(String::new())).is_empty());
-        assert!(agent::unix_agent_sock_candidates(None).is_empty());
+    fn bitwarden_sockets_follow_the_env_sock_once_each() {
+        let home = std::path::Path::new("/home/u");
+        let native = home.join(".bitwarden-ssh-agent.sock");
+        let exists = |p: &std::path::Path| p == native || p == std::path::Path::new("/tmp/bw.sock");
+        // Found without SSH_AUTH_SOCK (a desktop-launcher start).
+        assert_eq!(agent::sock_candidates_from(None, None, Some(home), exists), vec![native.clone()]);
+        // The override leads, the env socket leads both, and a socket
+        // named twice is dialed once.
+        assert_eq!(
+            agent::sock_candidates_from(
+                Some(native.display().to_string()),
+                Some("/tmp/bw.sock".into()),
+                Some(home),
+                exists,
+            ),
+            vec![native.clone(), std::path::PathBuf::from("/tmp/bw.sock")],
+        );
+        assert!(agent::is_bitwarden_endpoint(&native.display().to_string()));
+        assert!(!agent::is_bitwarden_endpoint("/run/user/1000/keyring/ssh"));
     }
 
     // ── Agent presence fingerprint (issue #101) ──
@@ -755,15 +812,12 @@ mod tests {
     fn unix_endpoints_require_the_socket_to_exist() {
         // An exported-but-dead SSH_AUTH_SOCK reads as "no agent", so the
         // socket showing up later registers as a change.
-        assert!(agent::unix_agent_endpoints(Some(
-            "/definitely/not/here/agent.sock".to_string()
-        ))
-        .is_empty());
+        assert!(agent::live_endpoints(vec!["/definitely/not/here/agent.sock".into()]).is_empty());
         let dir = tempfile::tempdir().unwrap();
         let sock = dir.path().join("agent.sock");
         std::fs::write(&sock, b"").unwrap();
         assert_eq!(
-            agent::unix_agent_endpoints(Some(sock.display().to_string())),
+            agent::live_endpoints(vec![sock.clone()]),
             vec![sock.display().to_string()],
         );
     }

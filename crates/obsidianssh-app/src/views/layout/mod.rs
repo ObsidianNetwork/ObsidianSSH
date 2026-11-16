@@ -6,7 +6,7 @@ pub(crate) use iced::widget::{button, container, text, text_input, MouseArea, Sp
 pub(crate) use iced::window::Direction;
 pub(crate) use iced::{Background, Border, Color, Element, Length, Padding};
 
-pub(crate) use crate::app::{SftpMessage, SettingsMessage, TabsMessage, EditorMessage, KeysMessage, SidebarFilesMessage, TerminalMessage, SshMessage, CloudMessage, HistoryMessage, NavigationMessage, UpdateMessage, ProxyIdentityMessage, PluginMessage, AgentMessage, RemoteDesktopMessage, Message, ObsidianSsh, PlayerMessage, SessionGroupMessage, PortForwardMessage, VaultMessage, ShareMessage, SnippetMessage};
+pub(crate) use crate::app::{SftpMessage, SettingsMessage, TabsMessage, EditorMessage, KeysMessage, SidebarFilesMessage, TerminalMessage, SshMessage, CloudMessage, HistoryMessage, NavigationMessage, UpdateMessage, ProxyIdentityMessage, PluginMessage, RemoteDesktopMessage, Message, ObsidianSsh, PlayerMessage, SessionGroupMessage, PortForwardMessage, ShareMessage, SnippetMessage};
 pub(crate) use crate::state::{OverlayContent, OverlayState, View};
 pub(crate) use crate::theme::ObsidianSshColors;
 pub(crate) use crate::widgets::{context_menu_item, dir_align_x, dir_row, styled_button};
@@ -33,7 +33,6 @@ mod menus;
 mod toolbar;
 pub(crate) use chrome::*;
 pub(crate) use main_layout::TAB_RENAME_INPUT_ID;
-pub(crate) use menu_vault::menu_divider;
 // The password popup's geometry, so `dispatch_password_suggest` can
 // drive its scroll from the same numbers the popup is drawn by.
 pub(crate) use menu_password_suggest::{
@@ -96,40 +95,9 @@ impl ObsidianSsh {
         }
     }
 
-    /// Number of vaults this device knows (the registry in
-    /// `device.json`); the switcher chrome keys off it.
-    pub(crate) fn vault_count(&self) -> usize {
-        self.registered_vaults().len()
-    }
-
-    /// A panel tab's label in the strip. Settings edits the window's
-    /// vault, so with several vaults its tab names it ("Settings · Work");
-    /// the other panels belong to no vault.
+    /// A panel tab's label in the strip.
     pub(crate) fn panel_tab_label(&self, kind: crate::state::PanelKind) -> String {
-        let label = crate::i18n::t(kind.label_key());
-        if kind == crate::state::PanelKind::Settings && self.vault_count() > 1 {
-            format!("{label} \u{b7} {}", self.vault_name(self.vaults.cur().id))
-        } else {
-            label.to_string()
-        }
-    }
-
-    /// Whether to show the vault switcher (the chip in the sub-nav, the
-    /// badge in the rail). Always with several vaults; with one, unless
-    /// the user hid it (its menu is also where a second vault is made).
-    pub(crate) fn show_vault_switcher(&self) -> bool {
-        self.vault_count() > 1 || !self.device_prefs.vault_switcher_hide_single
-    }
-
-    /// The switcher rides the tab bar's Home tab.
-    pub(crate) fn vault_switcher_in_tabs(&self) -> bool {
-        self.show_vault_switcher() && self.device_prefs.vault_switcher_place == crate::state::VaultSwitcherPlace::Tabs
-    }
-
-    /// The switcher is the chip on the vault toolbar (the badge at the
-    /// top of the nav rail).
-    pub(crate) fn vault_switcher_in_toolbar(&self) -> bool {
-        self.show_vault_switcher() && self.device_prefs.vault_switcher_place == crate::state::VaultSwitcherPlace::Toolbar
+        crate::i18n::t(kind.label_key()).to_string()
     }
 
     /// True when the Home area is active: no connection tab open and the

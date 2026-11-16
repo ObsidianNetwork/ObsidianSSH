@@ -651,7 +651,7 @@ mod tests {
         let usb = instance_mutex_name(Some(Path::new("E:\\Obsidian SSH\\data")));
         assert!(usb.starts_with("Local\\obsidianssh-single-instance-"));
         assert_eq!(usb.matches('\\').count(), 1, "one backslash, after the namespace");
-        assert_eq!(usb, instance_mutex_name(Some(Path::new("e:\\obsidianssh\\DATA\\"))));
+        assert_eq!(usb, instance_mutex_name(Some(Path::new("e:\\obsidian ssh\\DATA\\"))));
         assert_ne!(usb, instance_mutex_name(Some(Path::new("F:\\Obsidian SSH\\data"))));
     }
 }

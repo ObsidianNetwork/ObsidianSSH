@@ -2,8 +2,8 @@
 //!
 //! The first-run flow only: rendered off `VaultState::NeedSetup` as the
 //! base view (full screen, wrapped in window chrome by `root_view`). The
-//! final slide creates the vault via `VaultSetup` / `VaultSkipPassword`,
-//! replacing the old dry `view_vault_setup` screen.
+//! final slide creates the vault (no master password) via
+//! `VaultSkipPassword`.
 
 use iced::Widget as _;
 use iced::border::Radius;
@@ -12,62 +12,33 @@ use iced::widget::{button, column, container, svg, text, Space};
 use iced::{Background, Border, Color, Element, Length, Padding};
 
 use crate::app::{VaultMessage, Message, OnboardingMessage, ObsidianSsh};
-use crate::dispatch_onboarding::{
-    ONBOARDING_FEATURES_SLIDE, ONBOARDING_IMPORT_SLIDE, ONBOARDING_LAST_SLIDE,
-};
+use crate::dispatch_onboarding::{ONBOARDING_FEATURES_SLIDE, ONBOARDING_LAST_SLIDE};
 use crate::i18n::t;
 use crate::theme::ObsidianSshColors;
 use crate::theme::mix;
-use crate::widgets::{accent_gradient, dir_row, password_input_with_eye, styled_button};
+use crate::widgets::{accent_gradient, dir_row, styled_button};
 
 impl ObsidianSsh {
     /// Build the full-screen first-run onboarding page (the caller wraps
-    /// it in window chrome). The carousel IS the screen: feature slides
-    /// then a final master-password slide that creates the vault.
+    /// it in window chrome). The carousel IS the screen: feature slides,
+    /// the optional features, then the import slide that creates the
+    /// vault.
     pub(crate) fn view_onboarding_page(&self) -> Element<'_, Message> {
-        // A vault made with "New vault" skips the welcome: its setup is
-        // the master-password step alone, with no way back to slides that
-        // describe the app the user is already in.
-        let setup_only = self.vaults.cur().created_from.is_some();
-        let slide = if setup_only {
-            ONBOARDING_LAST_SLIDE
-        } else {
-            self.onboarding_slide.min(ONBOARDING_LAST_SLIDE)
-        };
+        let slide = self.onboarding_slide.min(ONBOARDING_LAST_SLIDE);
 
         let content: Element<'_, Message> = match slide {
-            ONBOARDING_LAST_SLIDE => self.onboarding_password_slide(),
+            ONBOARDING_LAST_SLIDE => self.onboarding_import_slide(),
             ONBOARDING_FEATURES_SLIDE => self.onboarding_features_slide(),
-            ONBOARDING_IMPORT_SLIDE => self.onboarding_import_slide(),
             _ => self.onboarding_feature_slide(slide),
         };
 
-        let card_inner = if setup_only {
-            column![
-                content,
-                Space::new().height(10),
-                button(text(t("cancel")).size(12).color(ObsidianSshColors::t().text_muted))
-                    .on_press(Message::MultiVault(crate::app::MultiVaultMessage::CancelVaultSetup))
-                    .padding(Padding { top: 6.0, right: 12.0, bottom: 6.0, left: 12.0 })
-                    .style(|_, status| button::Style {
-                        background: Some(Background::Color(match status {
-                            iced::widget::button::Status::Hovered
-                            | iced::widget::button::Status::Pressed => ObsidianSshColors::t().bg_hover,
-                            _ => Color::TRANSPARENT,
-                        })),
-                        border: Border { radius: Radius::from(6.0), ..Default::default() },
-                        ..Default::default()
-                    }),
-            ]
-        } else {
-            column![
-                content,
-                Space::new().height(34),
-                // Pagination dots share the action row, centered between
-                // Back (left) and Skip / Next (right).
-                self.onboarding_nav(slide),
-            ]
-        }
+        let card_inner = column![
+            content,
+            Space::new().height(34),
+            // Pagination dots share the action row, centered between
+            // Back (left) and Skip / Next (right).
+            self.onboarding_nav(slide),
+        ]
         .width(Length::Fill)
         .align_x(iced::Alignment::Center);
 
@@ -107,8 +78,8 @@ impl ObsidianSsh {
 
         // The card centered on a full-fill background carrying a stronger
         // accent gradient, top-left to bottom, like the active-tab wash in
-        // the bar. The user leaves by creating the vault or continuing
-        // without a password on the final slide (no close affordance).
+        // the bar. The user leaves through the final slide's Get started
+        // or Import (no close affordance).
         container(card)
             .center(Length::Fill)
             .style(|_| {
@@ -127,8 +98,8 @@ impl ObsidianSsh {
             .boxed()
     }
 
-    /// One of the four feature slides (welcome / vault / connect / sync).
-    /// Slide 0 is a hero: logo + headline + tagline. Slides 1..3 lead with
+    /// One of the three feature slides (welcome / connect / SSH agent).
+    /// Slide 0 is a hero: logo + headline + tagline. Slides 1..2 lead with
     /// a tinted glyph, a headline, and a short bulleted highlight list so
     /// the value reads at a glance. All copy comes from i18n (17 languages).
     fn onboarding_feature_slide(&self, slide: usize) -> Element<'_, Message> {
@@ -137,18 +108,16 @@ impl ObsidianSsh {
             svg(self.logo_handle.clone()).width(84).height(84).boxed()
         } else {
             let glyph = match slide {
-                1 => iced_fonts::lucide::shield(),
-                2 => iced_fonts::lucide::terminal(),
-                _ => iced_fonts::lucide::sparkles(),
+                1 => iced_fonts::lucide::terminal(),
+                _ => iced_fonts::lucide::key_round(),
             };
             onboarding_icon_badge(glyph.size(38).color(accent).boxed(), accent)
         };
 
         let title_key = match slide {
             0 => "onboarding_welcome_title",
-            1 => "onboarding_vault_title",
-            2 => "onboarding_connect_title",
-            _ => "onboarding_sync_title",
+            1 => "onboarding_connect_title",
+            _ => "onboarding_agent_title",
         };
 
         // Slide 0 stays a single tagline; the feature slides become a
@@ -161,9 +130,8 @@ impl ObsidianSsh {
                 .boxed()
         } else {
             let bullets = match slide {
-                1 => ["onboarding_vault_b1", "onboarding_vault_b2", "onboarding_vault_b3"],
-                2 => ["onboarding_connect_b1", "onboarding_connect_b2", "onboarding_connect_b3"],
-                _ => ["onboarding_sync_b1", "onboarding_sync_b2", "onboarding_sync_b3"],
+                1 => ["onboarding_connect_b1", "onboarding_connect_b2", "onboarding_connect_b3"],
+                _ => ["onboarding_agent_b1", "onboarding_agent_b2", "onboarding_agent_b3"],
             };
             column![
                 onboarding_bullet(t(bullets[0])),
@@ -201,7 +169,7 @@ impl ObsidianSsh {
     /// the settings table (plaintext, reachable before the vault is
     /// initialized, the same path boot uses to stamp a fresh vault).
     fn onboarding_features_slide(&self) -> Element<'_, Message> {
-        use crate::app::{AgentMessage, AiMessage, SettingsMessage, SyncMessage};
+        use crate::app::{AiMessage, SettingsMessage, SyncMessage};
         let accent = ObsidianSshColors::t().accent;
         let badge = onboarding_icon_badge(
             iced_fonts::lucide::sliders_horizontal().size(38).color(accent).boxed(),
@@ -216,7 +184,7 @@ impl ObsidianSsh {
         // this screen (`boot_fetch_tasks`). Above the fold on purpose:
         // the offline bundle arrives with it already on, and this row is
         // where that shows. Settings > Advanced is its home afterwards.
-        let mut rows: Vec<(&str, &str, bool, Message)> = vec![
+        let rows: Vec<(&str, &str, bool, Message)> = vec![
             (
                 t("offline_mode"),
                 t("offline_mode_desc"),
@@ -266,15 +234,6 @@ impl ObsidianSsh {
                 Message::Settings(SettingsMessage::SettingToggleNetworkTools),
             ),
         ];
-        // The agent only exists where a listener can be bound.
-        if crate::agent_server::listener_socket_display().is_some() {
-            rows.push((
-                t("agent_server"),
-                t("agent_server_desc"),
-                self.agent.enabled,
-                Message::Agent(AgentMessage::AgentServerToggled(!self.agent.enabled)),
-            ));
-        }
 
         let mut list = iced::widget::Column::<iced::Element<'_, _>>::new().spacing(10);
         for (label, desc, value, msg) in rows {
@@ -343,110 +302,15 @@ impl ObsidianSsh {
             .align_x(crate::widgets::dir_align_x()),
             Space::new().height(20),
             styled_button(
-                t("onboarding_import_cta"),
-                Message::Onboarding(OnboardingMessage::ImportAfterSetup),
+                t("onboarding_get_started"),
+                Message::Vault(VaultMessage::VaultSkipPassword),
                 accent,
             ),
             Space::new().height(6),
-            text(t("onboarding_import_hint"))
-                .size(11)
-                .color(ObsidianSshColors::t().text_muted)
-                .align_x(iced::alignment::Horizontal::Center),
-        ]
-        .align_x(iced::Alignment::Center)
-        .boxed()
-    }
-
-    /// The final slide: master-password setup. Creates the vault via
-    /// `VaultSetup` (or `VaultSkipPassword`). The "why a password helps"
-    /// copy is reused from the Settings security strings.
-    fn onboarding_password_slide(&self) -> Element<'_, Message> {
-        let accent = ObsidianSshColors::t().accent;
-        let badge = onboarding_icon_badge(
-            iced_fonts::lucide::key_round().size(38).color(accent).boxed(),
-            accent,
-        );
-
-        let header = column![
-            badge,
-            Space::new().height(24),
-            text(if self.vaults.cur().created_from.is_some() {
-                t("vault_setup_title").replacen("{name}", &self.vault_name(self.vaults.cur().id), 1)
-            } else {
-                t("onboarding_password_title").to_string()
-            })
-            .size(30)
-            .font(iced::Font {
-                weight: iced::font::Weight::Bold,
-                ..iced::Font::new(crate::theme::SYSTEM_UI_FAMILY)
-            }).color(ObsidianSshColors::t().text_primary),
-            Space::new().height(14),
-            text(t("vault_importance_desc"))
-                .size(15)
-                .color(ObsidianSshColors::t().text_secondary)
-                .align_x(iced::alignment::Horizontal::Center),
-        ]
-        .align_x(iced::Alignment::Center);
-
-        let fields = container(password_input_with_eye(
-            t("master_password_optional"),
-            &self.vaults.cur().vault_ui.password_input,
-            |v| Message::Vault(VaultMessage::VaultPasswordChanged(v.into())),
-            Some(Message::Vault(VaultMessage::VaultSetup)),
-            self.vaults.cur().vault_ui.password_visible,
-            Message::Vault(VaultMessage::VaultTogglePasswordVisibility),
-            12.0,
-        ))
-        .width(300);
-
-        let error: Element<'_, Message> = if let Some(e) = &self.vaults.cur().vault_ui.error {
-            column![
-                Space::new().height(8),
-                text(e.clone()).size(12).color(ObsidianSshColors::t().error),
-            ].boxed()
-        } else {
-            Space::new().boxed()
-        };
-
-        // Offer the biometric convenience layer at password-creation time
-        // (pre-checked when the platform supports it); `VaultSetup`
-        // enrolls the new password in the same flow.
-        let bio_opt: Element<'_, Message> = if self.biometric_available {
-            column![
-                Space::new().height(10),
-                container(crate::widgets::toggle_row(
-                    crate::biometric::bio_setup_label(),
-                    self.vaults.cur().vault_ui.setup_enable_biometric,
-                    Message::Vault(VaultMessage::ToggleSetupBiometric),
-                ))
-                .width(300),
-            ].boxed()
-        } else {
-            Space::new().boxed()
-        };
-
-        column![
-            header,
-            Space::new().height(8),
-            text(t("vault_set_password_desc"))
-                .size(11)
-                .color(ObsidianSshColors::t().text_muted)
-                .align_x(iced::alignment::Horizontal::Center),
-            Space::new().height(14),
-            fields,
-            bio_opt,
-            Space::new().height(14),
-            // While the KDF calibrates (E1), disable the button and show
-            // the "calibrating" label so the ~1s wait reads as progress,
-            // not a frozen click.
-            if self.vaults.cur().vault_ui.calibrating {
-                crate::widgets::styled_button_opt(t("kdf_calibrating"), None, accent)
-            } else {
-                styled_button(t("create_vault"), Message::Vault(VaultMessage::VaultSetup), accent)
-            },
-            Space::new().height(6),
-            onboarding_text_button(t("continue_without_password"), Message::Vault(VaultMessage::VaultSkipPassword)),
-            error,
+            onboarding_text_button(
+                t("onboarding_import_cta"),
+                Message::Onboarding(OnboardingMessage::ImportAfterSetup),
+            ),
         ]
         .align_x(iced::Alignment::Center)
         .boxed()
@@ -550,7 +414,7 @@ fn onboarding_dots<'a>(active: usize) -> Element<'a, Message> {
 }
 
 /// A subtle text-style button (muted label, hover/press tint) for the
-/// secondary affordances: Back, Skip, "continue without password", Later.
+/// secondary affordances: Back, Skip, "Import my hosts", Later.
 fn onboarding_text_button(label: &str, msg: Message) -> Element<'_, Message> {
     button(text(label.to_string()).size(13).color(ObsidianSshColors::t().text_secondary))
         .on_press(msg)

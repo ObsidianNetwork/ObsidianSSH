@@ -12,7 +12,7 @@ mode: Zen
 # Esc cancels. The emulator applies a focus a frame after the key that
 # asked for it, hence the settle after each Tab.
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle
 type ctrl+shift+e
 settle

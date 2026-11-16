@@ -215,7 +215,7 @@ the answer rules it out up front.
 Two things are worth pre-empting in the certification notes, because a
 reviewer meeting them cold costs a rejection cycle:
 
-- **First run.** The app opens on vault creation (master password). No
+- **First run.** The app opens on a short welcome tour (Get started). No
   account, no server, no credentials needed to exercise the UI.
 - **Plugins.** Cloud providers, the MCP server and the GIF exporter are
   optional first-party components downloaded on demand into

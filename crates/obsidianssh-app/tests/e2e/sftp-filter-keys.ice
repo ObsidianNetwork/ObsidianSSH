@@ -10,7 +10,7 @@ mode: Zen
 # The marker file is what tells the folders apart: it exists only in the
 # sandbox home, so it vanishes from the listing once the pane goes up.
 click "Skip"
-click "Continue without password"
+click "Get started"
 settle
 type ctrl+shift+e
 settle

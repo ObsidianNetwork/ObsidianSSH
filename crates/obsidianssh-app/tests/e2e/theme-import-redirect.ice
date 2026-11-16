@@ -9,7 +9,7 @@ mode: Zen
 # on "Not an Obsidian SSH UI theme file".
 expect "Welcome to Obsidian SSH"
 click "Skip"
-click "Continue without password"
+click "Get started"
 expect "Create host"
 
 # Settings (gear) -> Interface -> the App theme row, which sits below the
