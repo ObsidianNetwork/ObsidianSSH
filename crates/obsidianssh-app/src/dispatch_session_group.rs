@@ -191,7 +191,6 @@ impl ObsidianSsh {
                 ov.icon_picker.color = form.color.clone();
                 ov.icon_picker.hex_input = form.color.clone().unwrap_or_default();
                 ov.icon_picker.for_id = None;
-                ov.icon_picker.for_group_form = false;
                 ov.icon_picker.for_session_group = true;
                 ov.icon_picker.for_local_terminal = false;
                 ov.panels.icon_picker = true;
@@ -277,9 +276,6 @@ impl ObsidianSsh {
         // Drop what the host editor's eyes revealed.
         self.vaults.cur_mut().editor_form.sweep_secrets();
         self.panel_nav_clear();
-        self.vaults.cur_mut().cloud_form.visible = false;
-        self.vaults.cur_mut().cloud_dynamic_form.visible = false;
-        self.vaults.cur_mut().cloud_discover.visible = false;
         self.vaults.cur_mut().group_edit.visible = false;
         // Seed the multi-line script buffer from the first pane.
         form.current_pane = 0;

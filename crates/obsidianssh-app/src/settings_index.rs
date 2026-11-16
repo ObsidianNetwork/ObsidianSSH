@@ -304,11 +304,6 @@ pub(crate) static SETTINGS_INDEX: &[SettingsIndexEntry] = &[
     e(S::Shortcuts, "hotkey_presets_label", "preset keymap layout tabby iterm2 other terminal keys shortcuts"),
     e(S::Shortcuts, "hotkey_export", "export save shortcuts hotkeys keybindings file backup"),
     e(S::Shortcuts, "hotkey_import", "import load shortcuts hotkeys keybindings file restore"),
-    // ── Cloud ──────────────────────────────────────────────────────
-    e(S::Cloud, "settings_cloud_auto_refresh", "cloud auto refresh profiles discover"),
-    e(S::Cloud, "settings_cloud_auto_refresh_interval", "cloud refresh interval minutes"),
-    e(S::Cloud, "settings_cloud_auto_archive", "cloud auto archive orphaned hosts"),
-    e(S::Cloud, "settings_cloud_orphan_archive_days", "cloud orphan archive days retention"),
     // ── Features & Plugins ─────────────────────────────────────────
     e(S::Plugins, "ai_assistant", "feature ai assistant enable chat"),
     e(S::Plugins, "sftp", "feature sftp file transfer browser enable"),

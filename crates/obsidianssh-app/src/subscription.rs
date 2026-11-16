@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicI32, Ordering};
 
 use iced::Subscription;
 
-use crate::app::{SftpMessage, SettingsMessage, TabsMessage, TerminalMessage, CloudMessage, PortForwardMessage, AiMessage, SyncMessage, PlayerMessage, Message, ObsidianSsh};
+use crate::app::{SftpMessage, SettingsMessage, TabsMessage, TerminalMessage, PortForwardMessage, AiMessage, SyncMessage, PlayerMessage, Message, ObsidianSsh};
 #[cfg(target_os = "windows")]
 use crate::app::TrayMessage;
 
@@ -641,51 +641,6 @@ impl ObsidianSsh {
             );
         }
 
-        // Cloud auto-refresh ticker, one per open vault that enabled the
-        // toggle in its Settings (each its own interval, each tick
-        // `ForVault` to that vault); otherwise zero background API calls.
-        // Unlocked only: a refresh reads the profile's secret and writes
-        // the merge into the vault. Interval reads the persisted setting
-        // and falls back to 30 min on any parse failure so a malformed
-        // value doesn't pin the ticker at 1 ms.
-        for vault in self.vaults.all().filter(|v| {
-            v.vault_ui.state == crate::state::VaultState::Unlocked
-                && v.prefs.cloud_auto_refresh_enabled
-                && !v.cloud_profiles.is_empty()
-        }) {
-            let minutes = vault
-                .prefs
-                .cloud_auto_refresh_interval_minutes
-                .parse::<u64>()
-                .ok()
-                .filter(|m| *m > 0)
-                .unwrap_or(30);
-            subs.push(
-                iced::time::every(std::time::Duration::from_secs(minutes * 60))
-                    .with(vault.id)
-                    .map(|(vault, _)| {
-                        Message::ForVault(vault, Box::new(Message::Cloud(CloudMessage::CloudAutoRefreshTick)))
-                    }),
-            );
-        }
-        // Cloud SSM/ECS idle keepalive. The SSM websocket drops the
-        // session after ~20 min of inactivity, which bites when the user
-        // alt-tabs away and comes back much later. We only mount the
-        // ticker while the window is unfocused (an in-focus session has
-        // the user's own input resetting the idle timer, and resizing a
-        // visible terminal would be jarring) and only when at least one
-        // SSM/ECS tab is open. 4 min comfortably beats the 20 min
-        // default even allowing for a missed tick; users who lowered the
-        // SSM idle timeout below ~5 min would need the server-side
-        // setting raised instead.
-        if !self.cur_focused()
-            && self.tabs.iter().any(|t| t.ssm_keepalive())
-        {
-            subs.push(
-                iced::time::every(std::time::Duration::from_secs(240))
-                    .map(|_| Message::Tabs(TabsMessage::SsmKeepaliveTick)),
-            );
-        }
         // Snapshot-transport auto cadence. The P2P transport runs its
         // own timer inside the engine; the snapshot transports (SFTP,
         // folder, Git, WebDAV) have none, so the cadence lives here.

@@ -57,7 +57,6 @@ mod dispatch_mcp_sudo;
 mod dispatch_sync;
 mod dispatch_proxy_identity;
 mod dispatch_relay_deploy;
-mod dispatch_cloud;
 mod dispatch_plugins;
 mod dispatch_port_forwards;
 mod dispatch_session_group;
@@ -112,21 +111,11 @@ mod pane_drop;
 // no user behind them.
 mod proxy_consent;
 mod relay_deploy;
-// Per-cluster kubeconfig files for the managed clusters whose provider
-// returns the credential (ACK, TKE) instead of writing ~/.kube/config.
-mod kubeconfig_file;
-// Cloud-provider plugin subsystem. Inert until the cloud dispatch
-// path is rewired onto it in a later PR, the `allow` keeps the
-// clippy `-D warnings` gate green while the infra (and its public
-// re-exports) sit unused.
+// Plugin subsystem (downloaded helper binaries: gif, mcp, relay).
 #[allow(dead_code, unused_imports)]
 mod plugins;
 mod renderer_probe;
 mod root_view;
-// Locates the AWS `session-manager-plugin` system binary. Pure
-// path-finding, no SDK, relocated here from `obsidianssh-cloud-aws` when
-// the AWS provider moved into its plugin subprocess.
-mod session_manager_plugin;
 mod hotkeys;
 mod ansi_render;
 mod session_group_helpers;

@@ -49,7 +49,6 @@ impl ObsidianSsh {
                 | View::Keys
                 | View::Snippets
                 | View::PortForwarding
-                | View::Cloud
                 | View::Proxies
                 | View::KnownHosts
                 | View::History
@@ -315,19 +314,6 @@ impl ObsidianSsh {
                 detected_os.as_deref().map(|os| {
                     crate::os_icon::resolve_icon(Some(os), ObsidianSshColors::t().accent).1
                 })
-            })
-            // Cloud-transport tabs (`ECS · ...`, `SSM · ...`,
-            // `K8s · ...`) don't match any saved Connection by
-            // label, so the per-host color lookup above returns
-            // None and the active-tab gradient falls back to the
-            // global accent. Derive a brand-coloured accent from
-            // the tab label prefix instead so the tab "breathes"
-            // the parent dynamic-group color (AWS orange / K8s
-            // blue / etc.) the same way a per-host accent does.
-            .or_else(|| {
-                crate::os_icon::tab_label_cloud_brand(base_label).map(|brand| {
-                    crate::os_icon::provider_icon(brand, ObsidianSshColors::t().accent).1
-                })
             }) };
         // Tabs always render the badge as a rounded square,
         // independent of the per-host override and the global
@@ -343,8 +329,7 @@ impl ObsidianSsh {
         // placeholders get no dot: the OS badge already says what they
         // are. This used to test `session.is_some()`, which left a
         // split tab's dead focused pane green (only single-pane tabs
-        // get relabeled "(disconnected)") and left a live cloud tab
-        // dotless (its transport is a plugin process, not a handle).
+        // get relabeled "(disconnected)").
         // A mosh session out of touch shares the amber of a dial in
         // flight, and means the same thing to the person looking: it is
         // working on it, and it is not there yet. Amber rather than red
@@ -431,7 +416,7 @@ impl ObsidianSsh {
         // off-by-default setting, so addresses stay out of screenshots
         // unless the user asks for them.
         //
-        // Local shells and ephemeral cloud tabs have no saved
+        // Local shells and ephemeral tabs have no saved
         // connection, so they simply have no address; a renamed tab
         // keeps its rename alone (the user replaced the identity).
         // Resolved through the pane's ORIGIN (id-based), so an OSC

@@ -466,14 +466,10 @@ pub enum View {
     Keys,
     Snippets,
     PortForwarding,
-    /// Cloud-account CRUD. Promoted to a top-level vault surface
-    /// (sub-nav pill / sidebar entry); the Cloud Sync settings block
-    /// stays behind in Settings.
-    Cloud,
     /// Proxy-identity CRUD. Promoted to a top-level vault surface.
     Proxies,
     /// Known-host management. Promoted back to a top-level vault
-    /// surface alongside Cloud / Proxies (was a SettingsSection in
+    /// surface alongside Proxies (was a SettingsSection in
     /// v0.7).
     KnownHosts,
     History,
@@ -490,13 +486,12 @@ pub enum View {
     NetworkTools,
 }
 
-/// One row in the Plugins panel: a cloud-provider plugin and its
-/// install / update state. Cloud providers ship as downloaded
-/// subprocess plugins (see `crate::plugins`); this is the UI-side
+/// One row in the Plugins panel: a downloadable plugin and its
+/// install / update state (see `crate::plugins`); this is the UI-side
 /// view of one.
 #[derive(Debug, Clone)]
 pub struct PluginUiEntry {
-    /// Provider id, matches `CloudProvider::id()` (`"aws"`, ...).
+    /// Plugin id (`"gif"`, `"mcp"`).
     pub provider_id: String,
     /// Human-readable name shown in the panel.
     pub display_name: String,
@@ -550,170 +545,6 @@ pub enum PluginUiStatus {
     Failed(String),
 }
 
-/// Cloud provider picked in the wizard. AWS authenticates via named
-/// profile / access key / SSO; Kubernetes via a kubeconfig; GCP via the
-/// already-authenticated `gcloud` CLI (scoped to an optional project);
-/// Azure via the already-authenticated `az` CLI (scoped to an optional
-/// subscription); Alibaba Cloud and Tencent Cloud via their configured
-/// CLIs (`aliyun` / `tccli`, scoped to an optional profile + region).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum CloudProviderChoice {
-    #[default]
-    Aws,
-    K8s,
-    Gcp,
-    Azure,
-    Aliyun,
-    Tencent,
-}
-
-/// Which kind of `PodSelector` a K8s dynamic group's editor produces.
-/// `Labels` takes a `k=v,k=v` string; the rest take a single resource
-/// name (the resolver expands it to that workload's / pod's selector).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum K8sSelectorKind {
-    #[default]
-    Labels,
-    Deployment,
-    StatefulSet,
-    Name,
-}
-
-impl K8sSelectorKind {
-    pub const ALL: [K8sSelectorKind; 4] = [
-        K8sSelectorKind::Labels,
-        K8sSelectorKind::Deployment,
-        K8sSelectorKind::StatefulSet,
-        K8sSelectorKind::Name,
-    ];
-}
-
-impl std::fmt::Display for K8sSelectorKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match self {
-            K8sSelectorKind::Labels => "Labels",
-            K8sSelectorKind::Deployment => "Deployment",
-            K8sSelectorKind::StatefulSet => "StatefulSet",
-            K8sSelectorKind::Name => "Pod name",
-        })
-    }
-}
-
-impl CloudProviderChoice {
-    pub fn id(self) -> &'static str {
-        match self {
-            Self::Aws => "aws",
-            Self::K8s => "k8s",
-            Self::Gcp => "gcp",
-            Self::Azure => "azure",
-            Self::Aliyun => "aliyun",
-            Self::Tencent => "tencent",
-        }
-    }
-
-    pub fn from_id(s: &str) -> Self {
-        match s {
-            "k8s" => Self::K8s,
-            "gcp" => Self::Gcp,
-            "azure" => Self::Azure,
-            "aliyun" => Self::Aliyun,
-            "tencent" => Self::Tencent,
-            _ => Self::Aws,
-        }
-    }
-}
-
-/// Auth strategy chosen in the wizard. Only `Profile` is implemented in
-/// v0.6 PR 3; the other variants render disabled with a hint and route
-/// to `CloudError::Unsupported` if somehow selected.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum CloudAuthChoice {
-    #[default]
-    Profile,
-    AccessKey,
-    Sso,
-    Kubeconfig,
-    /// GCP: the ambient `gcloud` login (`gcloud auth login`); no secret
-    /// stored, just an optional project scope.
-    GcloudCli,
-    /// Azure: the ambient `az` login (`az login`); no secret stored, just
-    /// an optional subscription scope.
-    AzCli,
-    /// Alibaba Cloud: the `aliyun` CLI's own configuration (`aliyun
-    /// configure`); no secret stored, just an optional profile + region.
-    AliyunCli,
-    /// Tencent Cloud: the `tccli` CLI's own configuration (`tccli
-    /// configure`); no secret stored, just an optional profile + region.
-    TccliCli,
-}
-
-impl CloudAuthChoice {
-    pub fn id(self) -> &'static str {
-        match self {
-            Self::Profile => "profile",
-            Self::AccessKey => "access_key",
-            Self::Sso => "sso",
-            Self::Kubeconfig => "kubeconfig",
-            Self::GcloudCli => "gcloud",
-            Self::AzCli => "az",
-            Self::AliyunCli => "aliyun_cli",
-            Self::TccliCli => "tccli",
-        }
-    }
-
-    pub fn from_id(s: &str) -> Self {
-        match s {
-            "access_key" => Self::AccessKey,
-            "sso" => Self::Sso,
-            "kubeconfig" => Self::Kubeconfig,
-            "gcloud" => Self::GcloudCli,
-            "az" => Self::AzCli,
-            "aliyun_cli" => Self::AliyunCli,
-            "tccli" => Self::TccliCli,
-            _ => Self::Profile,
-        }
-    }
-}
-
-/// Live state of the "Test credentials" button in the wizard.
-#[derive(Debug, Clone, Default)]
-pub enum CloudTestState {
-    #[default]
-    Idle,
-    Running,
-    Ok,
-    Failed(String),
-}
-
-/// State of the wizard's "Discover & pick" panel, owns the in-flight
-/// or completed discovery result so the user can scroll/select without
-/// re-hitting the cloud.
-#[derive(Debug, Clone, Default)]
-pub enum CloudDiscoverState {
-    #[default]
-    Idle,
-    Running,
-    Loaded(obsidianssh_cloud::DiscoveryResult),
-    Failed(String),
-}
-
-
-/// Per-dynamic-group resolve state. Lives in a `HashMap<group_id, _>`
-/// on `Obsidian SSH` so opening one group doesn't blow away another's
-/// cached resolve. TTL handling lives on the call site.
-#[derive(Debug, Clone)]
-pub enum DynamicGroupState {
-    Loading,
-    Loaded {
-        hosts: Vec<obsidianssh_cloud::DiscoveredHost>,
-        // When this list was fetched. `OpenGroup` compares against
-        // `Utc::now()` and re-resolves past the cache TTL so a recycled
-        // ECS task doesn't sit as a dead row until a manual Refresh.
-        fetched_at: chrono::DateTime<chrono::Utc>,
-    },
-    Failed(String),
-}
-
 /// One mDNS-discovered peer the user could pair with. Lives in
 /// `Obsidian SSH.sync_discovered`, deduped by `device_id`, rebuilt as
 /// `SyncEngineEvent::PeerDiscovered` arrives.
@@ -764,14 +595,8 @@ pub(crate) enum SettingsSection {
     Shortcuts,
     Security,
     Sync,
-    /// Cloud Sync preferences (auto-refresh interval, orphan
-    /// auto-archive). The cloud *account* CRUD moved to the top-level
-    /// `View::Cloud` surface; this section keeps only the sync knobs.
-    Cloud,
-    /// Cloud provider plugins management: install, update, uninstall
-    /// the subprocess plugins each cloud provider runs as. Sits next
-    /// to `Cloud` because every cloud account here needs a matching
-    /// plugin to actually function.
+    /// Plugins management: install, update, uninstall the optional
+    /// downloaded plugins.
     Plugins,
     /// Troubleshooting surface: the debug-logging file toggle and the
     /// environment report to paste into GitHub issues. Sits between the
@@ -797,7 +622,6 @@ impl SettingsSection {
             SettingsSection::Shortcuts => "settings-shortcuts-scroll",
             SettingsSection::Security => "settings-security-scroll",
             SettingsSection::Sync => "settings-sync-scroll",
-            SettingsSection::Cloud => "settings-cloud-scroll",
             SettingsSection::Plugins => "settings-plugins-scroll",
             SettingsSection::Advanced => "settings-advanced-scroll",
             SettingsSection::About => "settings-about-scroll",

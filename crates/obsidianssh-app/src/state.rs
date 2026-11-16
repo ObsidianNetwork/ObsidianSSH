@@ -35,7 +35,6 @@ mod chat_ui;
 mod dash_select;
 mod hover;
 mod panels;
-mod cloud_discover;
 mod snippet_form;
 mod keys_ui;
 mod sftp_chrome;
@@ -65,7 +64,6 @@ pub(crate) use chat_ui::ChatUi;
 pub(crate) use dash_select::{CardDrag, DashSelection, SelectionScope};
 pub(crate) use hover::HoverState;
 pub(crate) use panels::PanelsOpen;
-pub(crate) use cloud_discover::CloudDiscoverUi;
 pub(crate) use snippet_form::{SnippetForm, StepForm, StepKind};
 pub(crate) use keys_ui::KeysUi;
 pub(crate) use sftp_chrome::SftpChrome;
@@ -333,18 +331,6 @@ pub(crate) struct ErrorDialogAction {
     pub danger: bool,
 }
 
-/// Armed when the user asked to reconnect an ECS Exec session whose
-/// task is gone while the dynamic group is still resolving. Once
-/// `DynamicGroupResolved` lands for `group_id`, the handler picks the
-/// running task (preferring `fallback_task_id` when it survived) and
-/// connects.
-#[derive(Debug, Clone)]
-pub(crate) struct PendingEcsAutoConnect {
-    pub group_id: Uuid,
-    pub container: String,
-    pub fallback_task_id: String,
-}
-
 
 // ---------------------------------------------------------------------------
 // Quick connect (ad-hoc hosts, never persisted)
@@ -503,8 +489,6 @@ pub(crate) const TAB_JUMP_SEARCH_ID: &str = "tab-jump-search";
 /// chevron lands focus here, so typing filters at once.
 pub(crate) const GROUP_PICKER_SEARCH_ID: &str = "group-picker-search";
 
-/// The cloud import dialog's group picker search, same contract.
-pub(crate) const CLOUD_GROUP_PICKER_SEARCH_ID: &str = "cloud-group-picker-search";
 
 /// Internal message type for SSH connection streams.
 pub(crate) enum SshStreamMsg {

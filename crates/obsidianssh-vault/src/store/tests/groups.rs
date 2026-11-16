@@ -100,49 +100,6 @@ fn group_has_timestamps() {
 }
 
 
-#[test]
-fn group_cloud_query_round_trip() {
-    use obsidianssh_core::models::cloud::{
-        CloudQuery, CloudQueryKind, ConnectionTemplate, TransportKind,
-    };
-
-    let vault = unlocked_vault();
-    let profile_id = uuid::Uuid::new_v4();
-    let mut g = Group::new("payments / api");
-    g.cloud_query = Some(CloudQuery {
-        profile_id,
-        kind: CloudQueryKind::EcsTasks {
-            cluster: "payments-cluster".into(),
-            service: "api-svc".into(),
-            container: "api".into(),
-        },
-        template: ConnectionTemplate {
-            username: None,
-            initial_command: Some("exec bash".into()),
-            transport: TransportKind::EcsExec,
-            key_id: None,
-            identity_id: None,
-            terminal_theme: None,
-        },
-    });
-    vault.save_group(&g).unwrap();
-
-    let listed = vault.list_groups().unwrap();
-    let back = listed.iter().find(|gg| gg.id == g.id).unwrap();
-    let q = back.cloud_query.as_ref().expect("cloud_query preserved");
-    assert_eq!(q.profile_id, profile_id);
-    assert_eq!(q.template.transport, TransportKind::EcsExec);
-    assert_eq!(q.template.initial_command.as_deref(), Some("exec bash"));
-    match &q.kind {
-        CloudQueryKind::EcsTasks { cluster, service, container } => {
-            assert_eq!(cluster, "payments-cluster");
-            assert_eq!(service, "api-svc");
-            assert_eq!(container, "api");
-        }
-        _ => panic!("wrong kind variant"),
-    }
-}
-
 // ── Sync device identity persistence ─────────────────────────────
 //
 // The blob layout is opaque to the vault (obsidianssh-sync owns it).

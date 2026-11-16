@@ -294,9 +294,6 @@ impl ObsidianSsh {
             }
         }
         self.adjust_last_terminal_tab_after_remove(src_idx);
-        if self.pin_next_plugin_tab == Some(drag.from_id) {
-            self.pin_next_plugin_tab = None;
-        }
         if self.hybrid_sftp_owner == Some(drag.from_id) {
             self.hybrid_sftp_owner = None;
             self.sftp = crate::state::SftpState::default();

@@ -1107,11 +1107,11 @@ fn import_target_folder_does_not_reparent_a_known_host() {
     assert_eq!(conns[0].group_id, None, "the file's own placement wins for a known host");
 }
 
-/// A target the store does not have, or a dynamic group, is ignored:
+/// A target the store does not have is ignored:
 /// the rows land at the root rather than behind a parent that would
 /// hide them.
 #[test]
-fn import_target_folder_must_be_an_existing_manual_group() {
+fn import_target_folder_must_be_an_existing_group() {
     use crate::portable::{export_vault, import_vault, ExportFilter, ExportOptions, ExportSelection};
 
     let source = unlocked_vault();
@@ -1127,25 +1127,4 @@ fn import_target_folder_must_be_an_existing_manual_group() {
     import_vault(&target, &data, "pw", &ExportSelection::all(), Some(uuid::Uuid::new_v4())).unwrap();
     assert_eq!(target.list_connections().unwrap()[0].group_id, None);
 
-    let target = unlocked_vault();
-    let mut dynamic = Group::new("EC2");
-    dynamic.cloud_query = Some(obsidianssh_core::models::cloud::CloudQuery {
-        profile_id: uuid::Uuid::new_v4(),
-        kind: obsidianssh_core::models::cloud::CloudQueryKind::EcsTasks {
-            cluster: "c".into(),
-            service: "s".into(),
-            container: "api".into(),
-        },
-        template: obsidianssh_core::models::cloud::ConnectionTemplate {
-            username: None,
-            initial_command: None,
-            transport: obsidianssh_core::models::cloud::TransportKind::EcsExec,
-            key_id: None,
-            identity_id: None,
-            terminal_theme: None,
-        },
-    });
-    target.save_group(&dynamic).unwrap();
-    import_vault(&target, &data, "pw", &ExportSelection::all(), Some(dynamic.id)).unwrap();
-    assert_eq!(target.list_connections().unwrap()[0].group_id, None);
 }

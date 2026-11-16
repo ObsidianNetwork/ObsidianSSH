@@ -112,7 +112,7 @@ impl ObsidianSsh {
             return Task::none();
         };
         let owns_pty = pane.terminal.lock().is_ok_and(|t| t.pty.is_some());
-        if owns_pty && !pane.plugin_backed {
+        if owns_pty {
             // Local shell: no remote author, no callback to tunnel.
             return self.launch_link(url);
         }

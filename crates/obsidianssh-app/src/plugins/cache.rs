@@ -7,9 +7,9 @@
 //!
 //! ```text
 //! ~/.obsidianssh/plugins/
-//!   aws/
-//!     0.3.1/obsidianssh-cloud-aws-plugin
-//!     0.4.2/obsidianssh-cloud-aws-plugin
+//!   gif/
+//!     0.3.1/obsidianssh-gif
+//!     0.4.2/obsidianssh-gif
 //!     current                       <- text file: "0.4.2"
 //!     manifest.json                 <- last seen, for offline use
 //! ```
@@ -87,16 +87,11 @@ pub fn version_dir(provider_id: &str, version: &str) -> Result<PathBuf, PluginEr
 
 /// Conventional binary file name inside a version directory. The
 /// `.exe` suffix on Windows is what `Command::spawn` needs to find
-/// the executable. Cloud plugins follow the
-/// `obsidianssh-cloud-{id}-plugin` shape; MCP is special-cased because
-/// the binary predates the plugin model and external MCP clients
-/// (Claude Desktop / Code) spawn it by its original name.
+/// the executable. Plugins follow the `obsidianssh-{id}` shape (MCP's
+/// name matters most: external MCP clients (Claude Desktop / Code)
+/// spawn it by that name).
 pub fn binary_name(provider_id: &str) -> String {
-    let base = match provider_id {
-        "mcp" => "obsidianssh-mcp".to_string(),
-        "gif" => "obsidianssh-gif".to_string(),
-        id => format!("obsidianssh-cloud-{id}-plugin"),
-    };
+    let base = format!("obsidianssh-{provider_id}");
     if cfg!(windows) {
         format!("{base}.exe")
     } else {
@@ -237,11 +232,11 @@ mod tests {
 
     #[test]
     fn binary_name_has_platform_suffix() {
-        let name = binary_name("aws");
+        let name = binary_name("gif");
         if cfg!(windows) {
-            assert_eq!(name, "obsidianssh-cloud-aws-plugin.exe");
+            assert_eq!(name, "obsidianssh-gif.exe");
         } else {
-            assert_eq!(name, "obsidianssh-cloud-aws-plugin");
+            assert_eq!(name, "obsidianssh-gif");
         }
     }
 

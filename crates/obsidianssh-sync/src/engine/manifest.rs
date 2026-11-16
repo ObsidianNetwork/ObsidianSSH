@@ -50,7 +50,7 @@ pub(super) fn active_peer_pubkey(
 /// SQLite table behind each syncable entity type, in manifest order.
 /// Drives the lean stamp queries in [`build_manifest`]; the names are
 /// re-validated against a whitelist inside `list_entity_stamps`.
-const STAMP_TABLES: [(EntityType, &str); 11] = [
+const STAMP_TABLES: [(EntityType, &str); 10] = [
     (EntityType::Connection, "connections"),
     (EntityType::SshKey, "keys"),
     (EntityType::Identity, "identities"),
@@ -59,7 +59,6 @@ const STAMP_TABLES: [(EntityType, &str); 11] = [
     (EntityType::Snippet, "snippets"),
     (EntityType::PortForwardRule, "port_forward_rules"),
     (EntityType::KnownHost, "known_hosts"),
-    (EntityType::CloudProfile, "cloud_profiles"),
     (EntityType::SessionGroup, "session_groups"),
     (EntityType::LoginScript, "login_scripts"),
 ];
@@ -208,7 +207,6 @@ pub(crate) fn collect_records(
     let mut snippet_cache = None;
     let mut rule_cache = None;
     let mut known_host_cache = None;
-    let mut cloud_profile_cache = None;
     let mut login_script_cache = None;
 
     // Fill `$cache` from `v.$list()` on first use, then hand back a
@@ -417,24 +415,6 @@ pub(crate) fn collect_records(
                     .get(&delta.entity_id)
                     .and_then(|s| encode!(s, "LoginScript"))
             }
-            EntityType::CloudProfile => {
-                let items = cached!(cloud_profile_cache, list_cloud_profiles);
-                items.get(&delta.entity_id).and_then(|cp| {
-                    let (secret, secret_cleared) = if sync_passwords {
-                        let s = v.get_cloud_profile_secret(&cp.id).ok().flatten();
-                        let cleared = s.is_none();
-                        (s, cleared)
-                    } else {
-                        (None, false)
-                    };
-                    let wrapper = protocol::SyncCloudProfile {
-                        profile: cp.clone(),
-                        secret,
-                        secret_cleared,
-                    };
-                    encode!(wrapper, "CloudProfile")
-                })
-            }
         };
 
         if let Some(data) = payload {
@@ -552,7 +532,6 @@ pub(crate) fn apply_records(
                 EntityType::SessionGroup => v.delete_session_group(&record.entity_id),
                 EntityType::Snippet => v.delete_snippet(&record.entity_id),
                 EntityType::KnownHost => v.delete_known_host(&record.entity_id),
-                EntityType::CloudProfile => v.delete_cloud_profile(&record.entity_id),
                 EntityType::PortForwardRule => {
                     v.delete_port_forward_rule(&record.entity_id)
                 }
@@ -847,18 +826,6 @@ pub(crate) fn apply_records(
                     }
                     Err(e) => tracing::warn!(
                         "sync: bad KnownHost payload for {}: {e}",
-                        record.entity_id
-                    ),
-                }
-            }
-            EntityType::CloudProfile => {
-                match serde_json::from_slice::<protocol::SyncCloudProfile>(&payload) {
-                    Ok(scp) => log_save!(v.save_cloud_profile(
-                        &scp.profile,
-                        secret_arg(&scp.secret, scp.secret_cleared)
-                    )),
-                    Err(e) => tracing::warn!(
-                        "sync: bad CloudProfile payload for {}: {e}",
                         record.entity_id
                     ),
                 }

@@ -481,17 +481,6 @@ pub(crate) struct AppPrefs {
     /// Settings → Connection. Persisted as `defaults_collapsed` so the
     /// choice sticks; the field rows are hidden behind the header when set.
     pub(crate) defaults_collapsed: bool,
-    /// Background refresh of every cloud profile on a fixed interval.
-    /// Off by default; opt-in to avoid surprise API calls.
-    pub(crate) cloud_auto_refresh_enabled: bool,
-    /// Minutes between auto-refresh ticks. Stored as a string to match
-    /// the rest of the int-setting family (`setting_keepalive_interval`,
-    /// etc.) and let the Settings UI accept partial typed input.
-    pub(crate) cloud_auto_refresh_interval_minutes: String,
-    /// When on, the next boot deletes orphaned cloud-imported hosts
-    /// (resource gone upstream) older than `orphan_archive_days`.
-    pub(crate) cloud_auto_archive_orphans: bool,
-    pub(crate) cloud_orphan_archive_days: String,
     pub(crate) scrollback_rows: String,
     /// Characters that terminate a word for double-click selection in the
     /// terminal (the "word delimiters" set). Defaults to
@@ -694,10 +683,6 @@ impl Default for AppPrefs {
             default_encoding: None,
             default_env_vars: Vec::new(),
             defaults_collapsed: false,
-            cloud_auto_refresh_enabled: false,
-            cloud_auto_refresh_interval_minutes: "30".into(),
-            cloud_auto_archive_orphans: false,
-            cloud_orphan_archive_days: "7".into(),
             scrollback_rows: "10000".into(),
             word_delimiters: obsidianssh_terminal::DEFAULT_WORD_DELIMITERS.into(),
             hint_mode: crate::util::HintMode::default(),

@@ -602,7 +602,6 @@ impl ObsidianSsh {
                         3 => Some(View::Snippets),
                         4 => Some(View::PortForwarding),
                         5 => self.logs_surface_visible().then_some(View::History),
-                        6 => Some(View::Cloud),
                         7 => Some(View::Proxies),
                         8 => Some(View::KnownHosts),
                         // Monitoring pill (issue #95): same visibility

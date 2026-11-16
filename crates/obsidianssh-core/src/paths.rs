@@ -160,7 +160,7 @@ pub fn is_portable() -> bool {
 
 /// The portable decision of this process: [`settle_portable`]'s, or the
 /// passive probe's for a process that never settles (`obsidianssh-mcp`, the
-/// cloud plugins, tests).
+/// plugins, tests).
 static PORTABLE: OnceLock<Option<PathBuf>> = OnceLock::new();
 
 /// The portable folder of this process.

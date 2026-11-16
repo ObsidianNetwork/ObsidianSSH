@@ -7,7 +7,6 @@
 //! one reopens as (`PinnedTabSpec`).
 
 use super::super::*;
-use crate::messages::CloudMessage;
 
 /// A terminal tab. Its panes live in an iced `pane_grid::State`, which owns
 /// the split layout (N-way horizontal / vertical splits) and resizing. A
@@ -170,8 +169,7 @@ impl TabPlacement {
 pub(crate) enum ClosedTabSpec {
     /// Everything a pin can describe, reopened through the pin's own
     /// resolution (`spec_open_message`): a saved host by id, a local
-    /// shell by program + args, a cloud session by its group, an SFTP tab
-    /// by both its panes.
+    /// shell by program + args, an SFTP tab by both its panes.
     Pinned(PinnedTabSpec),
     /// A quick-connect host, which no pin can name: the entry lives in
     /// `ObsidianSsh::quick_connects` and `prune_quick_connects` drops it the
@@ -212,9 +210,9 @@ pub(crate) struct ClosedTab {
 /// A Duplicate whose new tab has not been born yet.
 ///
 /// The copy is spawned by re-dispatching the source tab's own open
-/// message (`ConnectSsh` / `OpenLocalShell` / a cloud `relaunch`), and
-/// for cloud tabs that answer lands several updates later, so the
-/// placement has to be remembered rather than applied inline.
+/// message (`ConnectSsh` / `OpenLocalShell` / a `relaunch`), and that
+/// answer can land several updates later, so the placement has to be
+/// remembered rather than applied inline.
 ///
 /// It is deliberately a STRIP placement keyed by tab id, not an index
 /// into `ObsidianSsh::tabs`: `active_tab`, `last_terminal_tab` and
@@ -235,11 +233,10 @@ pub(crate) struct PendingTabPlacement {
 }
 
 impl PendingTabPlacement {
-    /// A duplicate that never produces a tab (the cloud plugin fails to
-    /// start, the PTY refuses to spawn) would otherwise leave this armed
-    /// forever and reposition some unrelated tab opened minutes later.
-    /// Nothing legitimate takes this long: even a cloud session that has
-    /// to download its plugin answers well inside it.
+    /// A duplicate that never produces a tab (the PTY refuses to spawn)
+    /// would otherwise leave this armed forever and reposition some
+    /// unrelated tab opened minutes later. Nothing legitimate takes this
+    /// long.
     const TTL: std::time::Duration = std::time::Duration::from_secs(20);
 
     pub(crate) fn is_expired(&self) -> bool {
@@ -425,7 +422,7 @@ pub(crate) struct ActiveTabRef {
 /// setting and, when restore-on-launch is on, in `open_tabs` (issue
 /// #206); on boot each becomes a dormant tab that reopens on first
 /// select, or in place as the app comes up when the user picked
-/// "connect at launch" (issue #229). Cloud / ephemeral tabs have no
+/// "connect at launch" (issue #229). Ephemeral tabs have no
 /// spec and aren't persisted.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub(crate) enum PinnedTabSpec {
@@ -434,24 +431,6 @@ pub(crate) enum PinnedTabSpec {
     Host { id: Uuid, label: String },
     /// A local shell, reopened with the captured program / args.
     LocalShell { program: String, args: Vec<String>, label: String },
-    /// An ECS Exec session, reopened with `ConnectEcsExecTask` (same
-    /// mechanism the in-session reconnect uses; the task id may have
-    /// recycled, in which case the reconnect re-resolves the group).
-    EcsExec {
-        group_id: Uuid,
-        task_id: String,
-        task_label: String,
-        container: String,
-        label: String,
-    },
-    /// A kubectl exec session, reopened with `ConnectKubectlExecPod`.
-    KubectlExec {
-        group_id: Uuid,
-        namespace: String,
-        pod: String,
-        container: String,
-        label: String,
-    },
     /// A pinned SFTP browser tab. Captures both panes (Local vs which
     /// connection); reopened dormant and re-mounts its remote pane(s) on first
     /// focus.
@@ -491,27 +470,16 @@ impl PinnedTabSpec {
         match self {
             PinnedTabSpec::Host { label, .. } => label,
             PinnedTabSpec::LocalShell { label, .. } => label,
-            PinnedTabSpec::EcsExec { label, .. } => label,
-            PinnedTabSpec::KubectlExec { label, .. } => label,
             PinnedTabSpec::Sftp { label, .. } => label,
         }
     }
 
-    /// Identity key for de-duplicating pins. Ephemeral resource ids
-    /// (ECS task, K8s pod) are excluded on purpose: a recycled task
-    /// produces a spec with a different task_id but it is still the
-    /// same pin, and keeping both is how duplicate chips appear.
+    /// Identity key for de-duplicating pins.
     pub fn dedupe_key(&self) -> String {
         match self {
             PinnedTabSpec::Host { id, .. } => format!("host:{id}"),
             PinnedTabSpec::LocalShell { program, args, label } => {
                 format!("local:{program}:{}:{label}", args.join("\u{1f}"))
-            }
-            PinnedTabSpec::EcsExec { group_id, container, .. } => {
-                format!("ecs:{group_id}:{container}")
-            }
-            PinnedTabSpec::KubectlExec { group_id, namespace, container, .. } => {
-                format!("k8s:{group_id}:{namespace}:{container}")
             }
             PinnedTabSpec::Sftp { left, right, .. } => {
                 let key = |p: &SftpPaneSpec| match p {
@@ -555,8 +523,8 @@ impl TerminalTab {
     /// Everything a tab owns that the pane does not is deliberately
     /// default: the chat, the pin, the reopen spec and the session-group
     /// membership belong to the tab the pane LEFT, not to the pane. What
-    /// describes the pane's own session (its relaunch message, whether
-    /// it is plugin-backed) lives on the pane and arrives with it.
+    /// describes the pane's own session (its relaunch message) lives on
+    /// the pane and arrives with it.
     pub fn adopting(pane: Pane) -> Self {
         let label = pane.label.clone();
         let (pane_grid, focused) = pane_grid::State::new(pane);
@@ -623,7 +591,7 @@ impl TerminalTab {
     }
 
     /// Restore spec for persisting this pinned tab, or `None` if it can't be
-    /// reopened (cloud / ephemeral pane with no stable reference). A dormant
+    /// reopened (ephemeral pane with no stable reference). A dormant
     /// tab keeps the spec it was created with; a live tab derives one from
     /// its focused pane's origin.
     pub fn pin_spec(&self) -> Option<PinnedTabSpec> {
@@ -642,8 +610,8 @@ impl TerminalTab {
         match &self.active().origin {
             PaneOrigin::Host(id) => Some(PinnedTabSpec::Host { id: *id, label: base }),
             // Quick-connect hosts have no stable reference to restore from
-            // (the entry dies with the app), so the pin is session-only,
-            // like SSM tabs. The closed-tab stack reaches them through its
+            // (the entry dies with the app), so the pin is session-only.
+            // The closed-tab stack reaches them through its
             // own arm ([`ClosedTabSpec::QuickHost`]), which is allowed to
             // hold the ephemeral `Connection` because it dies with the
             // session too.
@@ -653,37 +621,7 @@ impl TerminalTab {
                 args: spec.args.clone(),
                 label: spec.label.clone(),
             }),
-            // Cloud exec tabs have no saved Connection, but carry the
-            // relaunch message that recreates them; mirror it into a
-            // serializable spec. SSM (relaunch None) and anything else stay
-            // unpersisted.
-            PaneOrigin::Ephemeral => match self.active().relaunch.as_deref() {
-                Some(crate::messages::Message::Cloud(CloudMessage::ConnectEcsExecTask {
-                    group_id,
-                    task_id,
-                    task_label,
-                    container,
-                })) => Some(PinnedTabSpec::EcsExec {
-                    group_id: *group_id,
-                    task_id: task_id.clone(),
-                    task_label: task_label.clone(),
-                    container: container.clone(),
-                    label: base,
-                }),
-                Some(crate::messages::Message::Cloud(CloudMessage::ConnectKubectlExecPod {
-                    group_id,
-                    namespace,
-                    pod,
-                    container,
-                })) => Some(PinnedTabSpec::KubectlExec {
-                    group_id: *group_id,
-                    namespace: namespace.clone(),
-                    pod: pod.clone(),
-                    container: container.clone(),
-                    label: base,
-                }),
-                _ => None,
-            },
+            PaneOrigin::Ephemeral => None,
         }
     }
 
@@ -777,16 +715,6 @@ impl TerminalTab {
         } else if self.pane_grid.panes.len() > 1 {
             self.pane_grid.maximize(self.focused);
         }
-    }
-
-    /// Whether this tab holds a plugin-backed pane (ECS Exec / SSM
-    /// Session / `kubectl exec`, see `Pane::plugin_backed`), which is
-    /// what decides whether the idle keepalive runs for it. Derived from
-    /// the panes rather than stored: a plugin pane that moves to another
-    /// tab takes the answer with it, and the tab it left stops nudging
-    /// panes that never needed it.
-    pub fn ssm_keepalive(&self) -> bool {
-        self.pane_grid.panes.values().any(|p| p.plugin_backed)
     }
 
     /// Currently focused pane. Falls back to the first pane if `focused`
@@ -1169,23 +1097,6 @@ mod terminal_tab_tests {
 
     fn dummy_terminal() -> Arc<Mutex<TerminalState>> {
         Arc::new(Mutex::new(TerminalState::new_no_pty(80, 24).unwrap()))
-    }
-
-    /// The keepalive is a fact of the plugin PANE. A plugin pane that
-    /// leaves a split takes it into its new tab, and the tab it left
-    /// stops nudging panes that never needed it.
-    #[test]
-    fn a_plugin_pane_takes_the_keepalive_with_it() {
-        let mut tab = TerminalTab::new_single("ssm".into(), dummy_terminal());
-        let plugin = tab.focused;
-        tab.pane_grid.get_mut(plugin).unwrap().plugin_backed = true;
-        let _ssh = split(&mut tab, pane_grid::Axis::Horizontal);
-        assert!(tab.ssm_keepalive(), "a split holding a plugin pane keeps it alive");
-
-        let pane = tab.take_pane(plugin).expect("the plugin pane left");
-        assert!(!tab.ssm_keepalive(), "the tab kept a keepalive for a pane it lost");
-        let own = TerminalTab::adopting(pane);
-        assert!(own.ssm_keepalive(), "the plugin pane lost its keepalive on the way out");
     }
 
     /// A remote pane that died inside a split holds the verdict itself;

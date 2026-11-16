@@ -255,25 +255,10 @@ impl ObsidianSsh {
         }
     }
 
-    /// Replace a terminal tab's id in `tab_order` in place (same position).
-    /// Used when a dormant placeholder is swapped for its freshly-connected
-    /// live tab (new id) so the reopened tab keeps its strip position instead
-    /// of being appended at the end by `reconcile_tab_order`.
-    pub(crate) fn replace_tab_order_id(&mut self, old: uuid::Uuid, new: uuid::Uuid) {
-        for r in self.tab_order.iter_mut() {
-            if let crate::state::TabRef::Terminal(id) = r
-                && *id == old
-            {
-                *id = new;
-                return;
-            }
-        }
-    }
-
     /// Put the reopened tab `new` back at `slot`, the index the dormant
     /// placeholder `old` held before it was dropped.
     ///
-    /// [`Self::replace_tab_order_id`] cannot do this job when the caller
+    /// A rename of the ref in place cannot do this job when the caller
     /// removed the placeholder from `self.tabs` BEFORE dispatching the
     /// reopen: that dispatch is a nested `update`, whose
     /// `reconcile_tab_order` drops refs with no backing tab, so by the
@@ -292,7 +277,7 @@ impl ObsidianSsh {
 
     /// Put the terminal tab `new` into the strip slot the SFTP tab `old`
     /// occupies, for the "Open terminal" morph (H5). Cross-kind, which is
-    /// why it is not [`Self::replace_tab_order_id`].
+    /// why it is not a rename of the ref in place.
     ///
     /// Two things make this more than a rename. The morph dispatches
     /// `ConnectSsh` through `self.update`, and that is the SAME `update`
@@ -710,8 +695,7 @@ mod tests {
 
     #[test]
     fn the_appended_ref_is_dropped_rather_than_duplicated() {
-        // Renaming the old ref in place (what `replace_tab_order_id`
-        // does) would leave two refs carrying one id, which renders as a
+        // Renaming the old ref in place would leave two refs carrying one id, which renders as a
         // duplicate chip.
         let sftp = Uuid::from_u128(3);
         let new = Uuid::from_u128(9);

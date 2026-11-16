@@ -1,6 +1,5 @@
-//! Dashboard main content, the responsive grid of folder cards, host
-//! cards, and dynamic-group cards plus the two early-return paths
-//! (zero connections, dynamic-group view). The biggest chunk of
+//! Dashboard main content, the responsive grid of folder cards and host
+//! cards plus the early-return path (zero connections). The biggest chunk of
 //! `view_dashboard`, lifted here so the orchestrator stays thin.
 //!
 //! Returns the full `main_content` (toolbar + search + status + body).
@@ -15,7 +14,7 @@ use iced::widget::column;
 pub(crate) use uuid::Uuid;
 pub(crate) use iced::{Background, Border, Color, Element, Length, Padding};
 
-pub(crate) use crate::app::{TabsMessage, SshMessage, CloudMessage, NavigationMessage, DashNavItem, Message, ObsidianSsh, SessionGroupMessage, CARD_WIDTH};
+pub(crate) use crate::app::{TabsMessage, SshMessage, NavigationMessage, DashNavItem, Message, ObsidianSsh, SessionGroupMessage, CARD_WIDTH};
 pub(crate) use crate::i18n::t;
 pub(crate) use crate::os_icon::BrandIcon;
 pub(crate) use crate::theme::ObsidianSshColors;
@@ -31,92 +30,6 @@ pub(crate) fn count_leaves(layout: &obsidianssh_core::models::PaneLayout) -> usi
         obsidianssh_core::models::PaneLayout::Leaf(_) => 1,
     }
 }
-
-/// True when group `gid` has any *visible* content once the hosts /
-/// dynamic groups of uninstalled cloud providers are filtered out.
-/// Visible content = a direct connection that isn't from a hidden
-/// provider, or a child group that is itself visible (a non-hidden
-/// dynamic group, or a folder that recurses to visible content). Used
-/// to drop provider folders that go empty after a plugin is removed
-/// while keeping folders that still hold manual or installed-provider
-/// hosts. Memoised; the pre-seeded `false` doubles as cycle guard.
-pub(crate) fn group_has_visible_content(
-    gid: Uuid,
-    groups: &[obsidianssh_core::models::Group],
-    has_visible_conn: &std::collections::HashSet<Uuid>,
-    hidden_profiles: &std::collections::HashSet<Uuid>,
-    memo: &mut std::collections::HashMap<Uuid, bool>,
-) -> bool {
-    if let Some(&v) = memo.get(&gid) {
-        return v;
-    }
-    memo.insert(gid, false);
-    let mut visible = has_visible_conn.contains(&gid);
-    if !visible {
-        for child in groups.iter().filter(|g| g.parent_id == Some(gid)) {
-            let child_visible = if let Some(q) = child.cloud_query.as_ref() {
-                !hidden_profiles.contains(&q.profile_id)
-            } else {
-                group_has_visible_content(
-                    child.id,
-                    groups,
-                    has_visible_conn,
-                    hidden_profiles,
-                    memo,
-                )
-            };
-            if child_visible {
-                visible = true;
-                break;
-            }
-        }
-    }
-    memo.insert(gid, visible);
-    visible
-}
-
-/// Sibling of `group_has_visible_content`: whether the subtree holds
-/// any content from an UNINSTALLED provider (a hidden cloud host or a
-/// hidden dynamic group). Together the two classify "phantom" provider
-/// folders (hidden content, nothing visible). A genuinely empty manual
-/// folder has neither flag, so it is NOT phantom and stays pickable as
-/// a parent even while some plugin is missing. Memoised; the
-/// pre-seeded `false` doubles as cycle guard.
-pub(crate) fn group_has_hidden_content(
-    gid: Uuid,
-    groups: &[obsidianssh_core::models::Group],
-    has_hidden_conn: &std::collections::HashSet<Uuid>,
-    hidden_profiles: &std::collections::HashSet<Uuid>,
-    memo: &mut std::collections::HashMap<Uuid, bool>,
-) -> bool {
-    if let Some(&v) = memo.get(&gid) {
-        return v;
-    }
-    memo.insert(gid, false);
-    let mut hidden = has_hidden_conn.contains(&gid);
-    if !hidden {
-        for child in groups.iter().filter(|g| g.parent_id == Some(gid)) {
-            let child_hidden = if let Some(q) = child.cloud_query.as_ref() {
-                hidden_profiles.contains(&q.profile_id)
-            } else {
-                group_has_hidden_content(
-                    child.id,
-                    groups,
-                    has_hidden_conn,
-                    hidden_profiles,
-                    memo,
-                )
-            };
-            if child_hidden {
-                hidden = true;
-                break;
-            }
-        }
-    }
-    memo.insert(gid, hidden);
-    hidden
-}
-
 
 /// Map (card, accent-colour, nav-item) tuples to renderable cards: apply
 /// the shared `widgets::card_accent_wash` when `glass` is on, then draw
@@ -157,150 +70,44 @@ pub(crate) fn apply_card_wash<'a>(
 
 /// The pre-pass both dashboard host surfaces share (the folder-card
 /// grid and the tree view): one scan over connections + groups per
-/// view call, so the per-card lookups (host / nested counts, brand
-/// inference, provider hiding, filter chips) all hit maps in O(1).
-/// Grew up inside `dashboard_group_cards` and was then copied whole
-/// into the tree - this struct is that copy, deduplicated.
+/// view call, so the per-card lookups (host / nested counts, filter
+/// chips) all hit maps in O(1).
 pub(crate) struct DashGridPrePass {
-    /// Cloud profiles whose provider plugin isn't installed.
-    pub(crate) hidden_profiles: std::collections::HashSet<Uuid>,
-    /// Groups hidden with them: a dynamic group of a hidden profile,
-    /// or a manual folder with no visible content left.
-    pub(crate) hidden_groups: std::collections::HashSet<Uuid>,
-    /// Direct (non-hidden) connections per group.
+    /// Direct connections per group.
     pub(crate) direct_host_count: std::collections::HashMap<Uuid, usize>,
-    /// First cloud_ref profile seen per group (connections order),
-    /// feeding the brand-inference fallback.
-    first_cloud_profile: std::collections::HashMap<Uuid, Uuid>,
-    /// Visible child groups per parent.
+    /// Child groups per parent.
     pub(crate) nested_group_count: std::collections::HashMap<Uuid, usize>,
-    /// First nested cloud-query brand per parent (groups order), the
-    /// primary brand-inference source.
-    child_query_brand: std::collections::HashMap<Uuid, &'static str>,
-    /// Subtree-match set for the cloud-profile filter chip (None when
-    /// the filter is off).
-    pub(crate) cloud_filter_groups: Option<std::collections::HashSet<Uuid>>,
-    /// Same subtree treatment for the tag filter.
+    /// Subtree-match set for the tag filter (None when the filter is off).
     pub(crate) tag_filter_groups: Option<std::collections::HashSet<Uuid>>,
-}
-
-impl DashGridPrePass {
-    /// Brand inference for a manual folder: the first nested
-    /// cloud-query child wins, else the first cloud-imported host.
-    pub(crate) fn infer_brand(&self, app: &ObsidianSsh, gid: &Uuid) -> Option<&'static str> {
-        self.child_query_brand.get(gid).copied().or_else(|| {
-            self.first_cloud_profile.get(gid).and_then(|pid| {
-                app.vaults.cur().cloud_profiles
-                    .iter()
-                    .find(|p| p.id == *pid)
-                    .map(|p| crate::os_icon::provider_brand_key(&p.provider))
-            })
-        })
-    }
 }
 
 impl ObsidianSsh {
     pub(crate) fn dash_grid_pre_pass(&self) -> DashGridPrePass {
-        let hidden_profiles = self.hidden_cloud_profile_ids();
-        let hidden_groups: std::collections::HashSet<Uuid> = if hidden_profiles.is_empty() {
-            std::collections::HashSet::new()
-        } else {
-            let mut has_visible_conn: std::collections::HashSet<Uuid> =
-                std::collections::HashSet::new();
-            for c in &self.vaults.cur().connections {
-                if let Some(gid) = c.group_id
-                    && !c
-                        .cloud_ref
-                        .as_ref()
-                        .is_some_and(|r| hidden_profiles.contains(&r.profile_id))
-                {
-                    has_visible_conn.insert(gid);
-                }
-            }
-            let mut memo: std::collections::HashMap<Uuid, bool> =
-                std::collections::HashMap::new();
-            let mut set: std::collections::HashSet<Uuid> = std::collections::HashSet::new();
-            for g in &self.vaults.cur().groups {
-                let hide = if let Some(q) = g.cloud_query.as_ref() {
-                    hidden_profiles.contains(&q.profile_id)
-                } else {
-                    !group_has_visible_content(
-                        g.id,
-                        &self.vaults.cur().groups,
-                        &has_visible_conn,
-                        &hidden_profiles,
-                        &mut memo,
-                    )
-                };
-                if hide {
-                    set.insert(g.id);
-                }
-            }
-            set
-        };
         let mut direct_host_count: std::collections::HashMap<Uuid, usize> =
-            std::collections::HashMap::new();
-        let mut first_cloud_profile: std::collections::HashMap<Uuid, Uuid> =
             std::collections::HashMap::new();
         for conn in &self.vaults.cur().connections {
             if let Some(cgid) = conn.group_id {
-                // Hidden cloud hosts don't count toward the folder's
-                // host total or its brand inference.
-                if conn
-                    .cloud_ref
-                    .as_ref()
-                    .is_some_and(|r| hidden_profiles.contains(&r.profile_id))
-                {
-                    continue;
-                }
                 *direct_host_count.entry(cgid).or_insert(0) += 1;
-                if let Some(cref) = conn.cloud_ref.as_ref() {
-                    first_cloud_profile.entry(cgid).or_insert(cref.profile_id);
-                }
             }
         }
         let mut nested_group_count: std::collections::HashMap<Uuid, usize> =
             std::collections::HashMap::new();
-        let mut child_query_brand: std::collections::HashMap<Uuid, &'static str> =
-            std::collections::HashMap::new();
         for g in &self.vaults.cur().groups {
             if let Some(pgid) = g.parent_id {
-                // Hidden cloud sub-groups don't count toward the
-                // parent folder's nested-group total.
-                if hidden_groups.contains(&g.id) {
-                    continue;
-                }
                 *nested_group_count.entry(pgid).or_insert(0) += 1;
-                if let Some(q) = g.cloud_query.as_ref() {
-                    child_query_brand.entry(pgid).or_insert(match q.kind {
-                        obsidianssh_core::models::cloud::CloudQueryKind::EcsTasks { .. } => "ecs",
-                        obsidianssh_core::models::cloud::CloudQueryKind::K8sPods { .. } => {
-                            "kubernetes"
-                        }
-                    });
-                }
             }
         }
-        let cloud_filter_groups: Option<std::collections::HashSet<Uuid>> = self.cur_nav()
-            .host_filter_cloud_profile
-            .map(|pid| self.groups_containing_cloud_profile(pid));
         let tag_filter_groups: Option<std::collections::HashSet<Uuid>> =
             self.groups_containing_filtered_tags();
         DashGridPrePass {
-            hidden_profiles,
-            hidden_groups,
             direct_host_count,
-            first_cloud_profile,
             nested_group_count,
-            child_query_brand,
-            cloud_filter_groups,
             tag_filter_groups,
         }
     }
 }
 
 // Card/section view methods, split into sibling files.
-mod cloud;
 mod empty;
 mod group;
 mod host;
@@ -308,53 +115,9 @@ mod session;
 mod tree;
 
 impl ObsidianSsh {
-    /// Build the set of groups whose subtree contains at least one host
-    /// or nested dynamic group whose cloud origin matches `profile_id`.
-    /// Used by the cloud-profile filter chip so a parent folder stays
-    /// visible when only its descendants match. Each match marks its
-    /// whole ancestor chain in one upward walk, so the full set costs
-    /// one pass over connections + groups per view call instead of a
-    /// recursive subtree scan per folder card per frame.
-    pub(crate) fn groups_containing_cloud_profile(
-        &self,
-        profile_id: Uuid,
-    ) -> std::collections::HashSet<Uuid> {
-        let parent_of: std::collections::HashMap<Uuid, Option<Uuid>> =
-            self.vaults.cur().groups.iter().map(|g| (g.id, g.parent_id)).collect();
-        let mut set = std::collections::HashSet::new();
-        // Walk up the parent chain marking every ancestor. The insert
-        // check doubles as cycle protection should upstream data ever
-        // hold a parent loop.
-        let mark_up = |start: Option<Uuid>,
-                       set: &mut std::collections::HashSet<Uuid>| {
-            let mut cur = start;
-            while let Some(g) = cur {
-                if !set.insert(g) {
-                    break;
-                }
-                cur = parent_of.get(&g).copied().flatten();
-            }
-        };
-        for conn in &self.vaults.cur().connections {
-            if conn.cloud_ref.as_ref().map(|r| r.profile_id) == Some(profile_id) {
-                mark_up(conn.group_id, &mut set);
-            }
-        }
-        for g in &self.vaults.cur().groups {
-            if g.cloud_query.as_ref().is_some_and(|q| q.profile_id == profile_id) {
-                // A matching dynamic group makes its *ancestors*
-                // visible; the dynamic card itself renders through the
-                // dedicated dynamic-group pass below.
-                mark_up(g.parent_id, &mut set);
-            }
-        }
-        set
-    }
-
     /// Subtree-match set for the dashboard tag filter: every group
     /// whose descendants include a host carrying at least one selected
-    /// tag (ancestors marked in one upward walk, same approach as
-    /// `groups_containing_cloud_profile`). `None` while the filter is
+    /// tag (ancestors marked in one upward walk). `None` while the filter is
     /// off so callers can skip the check entirely.
     pub(crate) fn groups_containing_filtered_tags(
         &self,
@@ -383,110 +146,26 @@ impl ObsidianSsh {
         Some(set)
     }
 
-    /// Whether the folder the dashboard is inside is a DYNAMIC group: one
-    /// whose contents come from a cloud query rather than from saved
-    /// hosts. Read by the toolbar, which offers a different primary
-    /// action there and no host-selection controls at all - the cards
-    /// inside are resolved cloud tasks, so there is no `Connection` on
-    /// screen to select, move, dial or delete as a batch.
-    pub(crate) fn active_group_is_dynamic(&self) -> bool {
-        self.cur_nav().active_group.is_some_and(|gid| {
-            self.vaults.cur().groups
-                .iter()
-                .any(|g| g.id == gid && g.cloud_query.is_some())
-        })
-    }
-
-    /// Manual group ids eligible for the parent-group pickers (host
-    /// editor combo, Settings default-group). Every manual folder
-    /// qualifies, including empty ones (a freshly created subgroup
-    /// must be a pickable destination before anything lives in it),
-    /// EXCEPT phantom provider folders: folders whose subtree holds
-    /// content from an uninstalled provider plugin and nothing
-    /// visible, which the dashboard hides too. Dynamic `cloud_query`
-    /// groups are excluded outright: they're auto-managed, never
-    /// valid parents.
+    /// Group ids eligible for the parent-group pickers (host editor
+    /// combo, Settings default-group). Every folder qualifies, including
+    /// empty ones (a freshly created subgroup must be a pickable
+    /// destination before anything lives in it).
     pub(crate) fn visible_group_ids(&self) -> std::collections::HashSet<Uuid> {
-        let hidden_profiles = self.hidden_cloud_profile_ids();
-        let mut set: std::collections::HashSet<Uuid> = std::collections::HashSet::new();
-        if hidden_profiles.is_empty() {
-            // Common case: no plugin is missing, so no folder can be
-            // phantom; every manual group is pickable.
-            for g in &self.vaults.cur().groups {
-                if g.cloud_query.is_none() {
-                    set.insert(g.id);
-                }
-            }
-            return set;
-        }
-        let mut has_visible_conn: std::collections::HashSet<Uuid> =
-            std::collections::HashSet::new();
-        let mut has_hidden_conn: std::collections::HashSet<Uuid> =
-            std::collections::HashSet::new();
-        for c in &self.vaults.cur().connections {
-            if let Some(gid) = c.group_id {
-                if c.cloud_ref
-                    .as_ref()
-                    .is_some_and(|r| hidden_profiles.contains(&r.profile_id))
-                {
-                    has_hidden_conn.insert(gid);
-                } else {
-                    has_visible_conn.insert(gid);
-                }
-            }
-        }
-        let mut vis_memo: std::collections::HashMap<Uuid, bool> =
-            std::collections::HashMap::new();
-        let mut hid_memo: std::collections::HashMap<Uuid, bool> =
-            std::collections::HashMap::new();
-        for g in &self.vaults.cur().groups {
-            if g.cloud_query.is_some() {
-                continue;
-            }
-            let visible = group_has_visible_content(
-                g.id,
-                &self.vaults.cur().groups,
-                &has_visible_conn,
-                &hidden_profiles,
-                &mut vis_memo,
-            );
-            let hidden = group_has_hidden_content(
-                g.id,
-                &self.vaults.cur().groups,
-                &has_hidden_conn,
-                &hidden_profiles,
-                &mut hid_memo,
-            );
-            // Phantom = only-hidden content. Empty folders have
-            // neither flag and stay pickable.
-            if visible || !hidden {
-                set.insert(g.id);
-            }
-        }
-        set
+        self.vaults.cur().groups.iter().map(|g| g.id).collect()
     }
-
 
     /// The host cards currently shown on the dashboard, as absolute
     /// indices into `self.vaults.cur().connections`, in display order (group + search +
-    /// cloud-profile filters applied, then the user's sort). Shared by the
+    /// tag filters applied, then the user's sort). Shared by the
     /// grid renderer and the keyboard-selection navigation so Tab / arrows
     /// move through exactly what's on screen.
     pub(crate) fn dashboard_host_order(&self) -> Vec<usize> {
         let at_root = self.cur_nav().active_group.is_none();
         let flatten = self.vaults.cur().flatten_hosts && at_root;
         let search_lower = self.cur_nav().host_search.to_lowercase();
-        let hidden_profiles = self.hidden_cloud_profile_ids();
         let mut host_order: Vec<usize> = (0..self.vaults.cur().connections.len())
             .filter(|&i| {
                 let conn = &self.vaults.cur().connections[i];
-                if conn
-                    .cloud_ref
-                    .as_ref()
-                    .is_some_and(|r| hidden_profiles.contains(&r.profile_id))
-                {
-                    return false;
-                }
                 if let Some(gid) = self.cur_nav().active_group {
                     if conn.group_id != Some(gid) {
                         return false;
@@ -499,11 +178,6 @@ impl ObsidianSsh {
                     self.effective_username(conn).as_deref(),
                     &search_lower,
                 ) {
-                    return false;
-                }
-                if let Some(filter_pid) = self.cur_nav().host_filter_cloud_profile
-                    && conn.cloud_ref.as_ref().map(|r| r.profile_id) != Some(filter_pid)
-                {
                     return false;
                 }
                 if !self.cur_nav().host_filter_tags.is_empty()
@@ -722,21 +396,6 @@ impl ObsidianSsh {
         let at_root = self.cur_nav().active_group.is_none();
         let flatten = self.vaults.cur().flatten_hosts && at_root;
 
-        if let Some(gid) = self.cur_nav().active_group
-            && let Some(group) = self.vaults.cur().groups.iter().find(|g| g.id == gid)
-            && let Some(query) = group.cloud_query.as_ref()
-        {
-            // Clear the grid recording first, then let the dynamic
-            // cloud-group view record its own keyboard rows (connectable
-            // tasks / pods, the failed-state retry) into the cleared
-            // lists via `content_action_slot`. States with nothing
-            // actionable (pending / loading / empty) record nothing, so
-            // the clear stands and stale grid items from the previous
-            // frame can't be activated from inside the group.
-            self.keynav_clear_content();
-            return self.dashboard_cloud_group_view(gid, query);
-        }
-
         // Tree mode builds its own depth-aware walk (grid/tree.rs);
         // the flat collectors stay empty so nothing below double
         // renders.
@@ -752,7 +411,7 @@ impl ObsidianSsh {
         // Re-derived on every view() so resizing the window or toggling
         // the side panel reflows the cards into the new column count.
         let nav_width = self.vault_rail_width();
-        let panel_open = self.vaults.cur().cloud_discover.visible || self.vaults.cur().panels.host_panel;
+        let panel_open = self.vaults.cur().panels.host_panel;
         let panel_width = if panel_open { self.vaults.cur().panel_width } else { 0.0 };
         // A side-docked tab strip (issue #87) narrows the content band
         // like the other grids; without it the math yields one column
@@ -962,88 +621,7 @@ impl ObsidianSsh {
         .id(iced::widget::Id::new("dashboard-grid-scroll"))
         .height(Length::Fill);
 
-        // Cloud-profile filter chip, only rendered while a filter is
-        // active. Sits between search and the grid so the user always
-        // has a visible way to clear it. Picks the brand glyph and
-        // colour from the active profile's provider so AWS reads
-        // orange, K8s blue, etc.
-        let filter_chip: Element<'_, Message> = if let Some(filter_pid) =
-            self.cur_nav().host_filter_cloud_profile
-        {
-            let profile = self.vaults.cur().cloud_profiles.iter().find(|p| p.id == filter_pid);
-            let profile_label = profile.map(|p| p.label.clone()).unwrap_or_default();
-            let provider = profile.map(|p| p.provider.as_str()).unwrap_or("cloud");
-            let brand_key = crate::os_icon::provider_brand_key(provider);
-            let (brand_glyph, brand_color) =
-                crate::os_icon::provider_icon(brand_key, ObsidianSshColors::t().accent);
-            let bg_color = brand_color;
-            let chip = container(
-                dir_row(vec![
-                    brand_glyph.view(12.0, brand_color),
-                    Space::new().width(6).boxed(),
-                    text(crate::i18n::t("host_filter_active"))
-                        .size(11)
-                        .color(ObsidianSshColors::t().text_muted)
-                        .boxed(),
-                    Space::new().width(4).boxed(),
-                    text(profile_label)
-                        .size(11)
-                        .color(ObsidianSshColors::t().text_primary)
-                        .boxed(),
-                    Space::new().width(6).boxed(),
-                    button(
-                        text("\u{00D7}")
-                            .size(13)
-                            .color(ObsidianSshColors::t().text_muted),
-                    )
-                    .on_press(Message::Navigation(NavigationMessage::HostFilterByCloudProfile(None)))
-                    .padding(Padding {
-                        top: 0.0,
-                        right: 6.0,
-                        bottom: 0.0,
-                        left: 6.0,
-                    })
-                    .style(|_, _| button::Style {
-                        background: None,
-                        ..Default::default()
-                    })
-                    .boxed(),
-                ])
-                .align_y(iced::Alignment::Center),
-            )
-            .padding(Padding {
-                top: 4.0,
-                right: 4.0,
-                bottom: 4.0,
-                left: 10.0,
-            })
-            .style(move |_| container::Style {
-                background: Some(Background::Color(Color {
-                    a: 0.12,
-                    ..bg_color
-                })),
-                border: Border {
-                    radius: Radius::from(14.0),
-                    color: Color { a: 0.30, ..bg_color },
-                    width: 1.0,
-                },
-                ..Default::default()
-            });
-            container(chip)
-                .padding(Padding {
-                    top: 0.0,
-                    right: 24.0,
-                    bottom: 8.0,
-                    left: 24.0,
-                })
-                .align_x(dir_align_x())
-                .width(Length::Fill)
-                .boxed()
-        } else {
-            Space::new().boxed()
-        };
-
-        let main_content = column![toolbar, search_bar, filter_chip, status, selection_bar, grid]
+        let main_content = column![toolbar, search_bar, status, selection_bar, grid]
             .width(Length::Fill)
             .height(Length::Fill);
         main_content.boxed()
@@ -1188,141 +766,3 @@ impl ObsidianSsh {
     }
 }
 
-/// Coloured pill rendering a short status string. Background uses the
-/// caller-provided accent (success / warning / error / muted) at low
-/// alpha so the pill reads as a chip on either light or dark surfaces
-/// without fighting the row's own border.
-pub(crate) fn status_pill_widget(label: String, accent: Color) -> Element<'static, Message> {
-    container(text(label).size(10).color(accent))
-        .padding(Padding { top: 2.0, right: 8.0, bottom: 2.0, left: 8.0 })
-        .style(move |_| container::Style {
-            background: Some(Background::Color(Color { a: 0.15, ..accent })),
-            border: Border {
-                radius: Radius::from(6.0),
-                color: Color { a: 0.30, ..accent },
-                width: 1.0,
-            },
-            ..Default::default()
-        })
-        .boxed()
-}
-
-/// Compact "5m ago" / "2h ago" / "3d ago" formatter. Negative or
-/// zero-second deltas collapse to "now" so freshly-started tasks read
-/// cleanly. Values past 30 days fall through to a plain ISO date so
-/// older orphans don't claim impossibly large hour counts.
-pub(crate) fn relative_time_ago(t: chrono::DateTime<chrono::Utc>) -> String {
-    let now = chrono::Utc::now();
-    let delta = now.signed_duration_since(t);
-    let secs = delta.num_seconds();
-    if secs < 5 {
-        return "now".to_string();
-    }
-    if secs < 60 {
-        return format!("{secs}s ago");
-    }
-    let mins = delta.num_minutes();
-    if mins < 60 {
-        return format!("{mins}m ago");
-    }
-    let hours = delta.num_hours();
-    if hours < 48 {
-        return format!("{hours}h ago");
-    }
-    let days = delta.num_days();
-    if days < 30 {
-        return format!("{days}d ago");
-    }
-    // Absolute fallback for old timestamps: show the date in the user's
-    // local timezone, not UTC.
-    t.with_timezone(&chrono::Local).format("%Y-%m-%d").to_string()
-}
-
-#[cfg(test)]
-mod hidden_cloud_tests {
-    //! Folder visibility recursion that drives hiding provider folders
-    //! once their plugin is removed. A folder stays visible while it
-    //! holds any non-hidden content (a manual host or a host/group from
-    //! an installed provider), and goes hidden once every descendant is
-    //! from an uninstalled provider.
-    use super::group_has_visible_content;
-    use obsidianssh_core::models::cloud::{
-        CloudQuery, CloudQueryKind, ConnectionTemplate, TransportKind,
-    };
-    use obsidianssh_core::models::Group;
-    use std::collections::{HashMap, HashSet};
-    use uuid::Uuid;
-
-    fn folder(parent: Option<Uuid>) -> Group {
-        let mut g = Group::new("folder");
-        g.parent_id = parent;
-        g
-    }
-
-    fn dyn_group(parent: Option<Uuid>, profile: Uuid) -> Group {
-        let mut g = Group::new("dyn");
-        g.parent_id = parent;
-        g.cloud_query = Some(CloudQuery {
-            profile_id: profile,
-            kind: CloudQueryKind::EcsTasks {
-                cluster: "c".into(),
-                service: "s".into(),
-                container: String::new(),
-            },
-            template: ConnectionTemplate::new(TransportKind::EcsExec),
-        });
-        g
-    }
-
-    fn visible(gid: Uuid, groups: &[Group], visible_conn: &[Uuid], hidden: &[Uuid]) -> bool {
-        let has_visible_conn: HashSet<Uuid> = visible_conn.iter().copied().collect();
-        let hidden_profiles: HashSet<Uuid> = hidden.iter().copied().collect();
-        let mut memo = HashMap::new();
-        group_has_visible_content(gid, groups, &has_visible_conn, &hidden_profiles, &mut memo)
-    }
-
-    #[test]
-    fn folder_with_only_hidden_dynamic_child_is_hidden() {
-        let p = Uuid::new_v4();
-        let f = folder(None);
-        let groups = vec![f.clone(), dyn_group(Some(f.id), p)];
-        assert!(!visible(f.id, &groups, &[], &[p]));
-    }
-
-    #[test]
-    fn folder_with_installed_dynamic_child_is_visible() {
-        let p = Uuid::new_v4();
-        let f = folder(None);
-        let groups = vec![f.clone(), dyn_group(Some(f.id), p)];
-        // p not in the hidden set => its provider is installed.
-        assert!(visible(f.id, &groups, &[], &[]));
-    }
-
-    #[test]
-    fn folder_with_manual_host_survives_a_hidden_child() {
-        let p = Uuid::new_v4();
-        let f = folder(None);
-        let groups = vec![f.clone(), dyn_group(Some(f.id), p)];
-        // f holds a visible (non-cloud) connection.
-        assert!(visible(f.id, &groups, &[f.id], &[p]));
-    }
-
-    #[test]
-    fn two_level_nest_resolves_through_the_recursion() {
-        let p = Uuid::new_v4();
-        let f = folder(None);
-        let s = folder(Some(f.id));
-        let groups = vec![f.clone(), s.clone(), dyn_group(Some(s.id), p)];
-        assert!(!visible(f.id, &groups, &[], &[p]));
-        assert!(visible(f.id, &groups, &[], &[]));
-    }
-
-    #[test]
-    fn folder_with_no_visible_content_is_hidden() {
-        // Hidden hosts are excluded from `has_visible_conn` upstream, so
-        // a folder whose only host is hidden reaches here with nothing.
-        let f = folder(None);
-        let groups = vec![f.clone()];
-        assert!(!visible(f.id, &groups, &[], &[]));
-    }
-}

@@ -24,7 +24,6 @@ impl ObsidianSsh {
             Modal::ThemePicker => self.vaults.cur().panels.theme_picker,
             Modal::ChainEditor => self.vaults.cur().panels.chain_editor,
             Modal::SessionGroupPanel => self.vaults.cur().panels.session_group_panel,
-            Modal::FolderRename => self.vaults.cur().folder_rename.is_some(),
             Modal::FolderDelete => self.vaults.cur().folder_delete.is_some(),
             Modal::TabRename => self.tab_rename.is_some(),
             Modal::CarefulPaste => self.pending_paste.is_some(),
@@ -50,7 +49,6 @@ impl ObsidianSsh {
             Modal::UiThemeEditor => self.vaults.cur().ui_theme_editor.is_some(),
             Modal::UiThemeImport => self.vaults.cur().panels.ui_theme_import,
             Modal::ShareDialog => self.vaults.cur().panels.share_dialog,
-            Modal::CloudImportConfirm => self.vaults.cur().cloud_import_confirm_visible,
             Modal::ErrorDialog => self.error_dialog.is_some(),
             Modal::ClearHistoryConfirm => self.clear_history_confirm,
             Modal::SshImport => self.vaults.cur().panels.ssh_import_dialog,
@@ -112,7 +110,6 @@ impl ObsidianSsh {
                 self.vaults.cur_mut().panels.session_group_panel = false;
                 self.vaults.cur_mut().session_group_panel_error = None;
             }
-            Modal::FolderRename => self.vaults.cur_mut().folder_rename = None,
             Modal::FolderDelete => self.vaults.cur_mut().folder_delete = None,
             Modal::TabRename => self.tab_rename = None,
             Modal::CarefulPaste => self.pending_paste = None,
@@ -186,10 +183,6 @@ impl ObsidianSsh {
                 self.vaults.cur_mut().share.filter = None;
                 self.vaults.cur_mut().share.status = None;
                 self.vaults.cur_mut().share.suggested_name = None;
-            }
-            Modal::CloudImportConfirm => {
-                self.vaults.cur_mut().cloud_import_confirm_visible = false;
-                self.vaults.cur_mut().cloud_discover.default_group_picker_open = false;
             }
             // Esc on the error dialog is always Dismiss, never the
             // dialog's action (mirrors ErrorDialogDismiss).

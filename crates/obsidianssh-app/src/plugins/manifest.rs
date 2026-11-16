@@ -20,7 +20,7 @@ use super::PluginError;
 /// Parsed contents of a provider's manifest JSON.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PluginManifest {
-    /// Stable provider id, matches `CloudProvider::id()`.
+    /// Stable plugin id (`"gif"`, `"mcp"`).
     pub provider_id: String,
     /// Every published version, newest-last is *not* assumed, the
     /// app sorts explicitly.

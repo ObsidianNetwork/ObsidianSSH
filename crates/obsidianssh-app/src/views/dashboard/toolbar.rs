@@ -1,6 +1,5 @@
 //! Dashboard toolbar, the breadcrumb on the left, and the trailing
-//! action button (`+ host` for manual folders, `⬇ Discover` for
-//! cloud-linked ones, nothing for dynamic groups).
+//! `+ host` action button.
 
 use iced::Widget as _;
 use iced::border::Radius;
@@ -8,7 +7,7 @@ use iced::widget::button::Status as BtnStatus;
 use iced::widget::{button, container, text, MouseArea, Space};
 use iced::{Background, Border, Color, Element, Length, Padding};
 
-use crate::app::{EditorMessage, CloudMessage, NavigationMessage, Message, ObsidianSsh, TabsMessage};
+use crate::app::{EditorMessage, NavigationMessage, Message, ObsidianSsh, TabsMessage};
 use crate::i18n::t;
 use crate::theme::ObsidianSshColors;
 use crate::widgets::dir_row;
@@ -99,13 +98,12 @@ impl ObsidianSsh {
 
         // "+ Host [▾]" split button, primary half opens the manual
         // SSH editor (unchanged), the chevron half opens the add menu
-        // overlay: import a `.obsidianssh` file (vault or shared host) plus
-        // cloud discovery per configured profile. Launching from the
+        // overlay: import a `.obsidianssh` file (vault or shared host),
+        // export, new group. Launching from the
         // Hosts view keeps every "add a host" path in one place (the
         // user naturally goes here to add hosts). Layout mirrors the
         // keychain "+ ADD ▼" split exactly so both toolbars stay
-        // visually consistent. The chevron is always emitted so import
-        // stays reachable even before any cloud profile exists.
+        // visually consistent.
         let rtl = crate::i18n::is_rtl_layout();
         // Pre-compute the rounded-corner radii so the leading half
         // rounds the leading edge and the chevron rounds the trailing
@@ -167,7 +165,7 @@ impl ObsidianSsh {
             .center_y(Length::Fixed(24.0))
             .padding(Padding { top: 0.0, right: 4.0, bottom: 0.0, left: 4.0 }),
         )
-        .on_press(Message::Cloud(CloudMessage::ShowCloudProviderPicker))
+        .on_press(Message::Navigation(NavigationMessage::ShowHostAddMenu))
         .style(move |_, status| {
             let bg = match status {
                 BtnStatus::Hovered => ObsidianSshColors::t().button_bg_hover,
@@ -196,124 +194,19 @@ impl ObsidianSsh {
             self.toolbar_split_btn_bounds.clone(),
         );
 
-        // Context-aware toolbar action: inside a dynamic group there
-        // is no "+ host", tasks come from the cloud resolver. Inside
-        // a provider folder (= a manual folder linked to a cloud
-        // profile via its children's `cloud_ref`/`cloud_query`),
-        // "+ HOST" turns into "+ DISCOVER" so the user lands directly
-        // in the right import flow.
-        // Alongside the element, expose which keynav items the resolved
-        // action contributes (in visual order) so the row assembly can
-        // record exactly what rendered.
+        // Alongside the element, expose which keynav items the action
+        // contributes (in visual order) so the row assembly can record
+        // exactly what rendered.
         let (resolved_action, resolved_items): (
             Element<'_, Message>,
             Vec<crate::keynav::ToolbarItem>,
-        ) = if let Some(gid) = self.cur_nav().active_group {
-            // Is this a dynamic group?
-            let dynamic_query_profile = self
-                .vaults.cur().groups
-                .iter()
-                .find(|g| g.id == gid)
-                .and_then(|g| g.cloud_query.as_ref())
-                .map(|q| q.profile_id);
-            if dynamic_query_profile.is_some() {
-                // Dynamic group → no "+ host" button. Reserve the
-                // same vertical slot the visible button would occupy
-                // so the breadcrumb row keeps its height. Iced's
-                // button widget adds its own DEFAULT_PADDING (5 top
-                // + 5 bottom) on top of the inner container's
-                // `center_y(Length::Fixed(24.0))`, so the rendered
-                // button is 24 + 10 = 34 px tall. Anchoring the
-                // slot to 34 keeps the breadcrumb glyph baseline at
-                // the same y-position across views; iced's Space
-                // also ignores `height` when `width == 0`, so use a
-                // 1 px-wide sliver to actually force the height.
-                (
-                    Space::new()
-                        .width(Length::Fixed(1.0))
-                        .height(Length::Fixed(34.0))
-                        .boxed(),
-                    Vec::new(),
-                )
-            } else {
-                // Manual folder: derive the linked profile from any
-                // child host's cloud_ref or any child dynamic group's
-                // cloud_query.
-                let linked_profile = self
-                    .vaults.cur().connections
-                    .iter()
-                    .filter(|c| c.group_id == Some(gid))
-                    .find_map(|c| c.cloud_ref.as_ref().map(|r| r.profile_id))
-                    .or_else(|| {
-                        self.vaults.cur().groups
-                            .iter()
-                            .filter(|g| g.parent_id == Some(gid))
-                            .find_map(|g| g.cloud_query.as_ref().map(|q| q.profile_id))
-                    });
-                match linked_profile {
-                    Some(pid) => {
-                        let fg = ObsidianSshColors::t().button_text;
-                        let discover: Element<'_, Message> = button(
-                            container(
-                                dir_row(vec![
-                                    iced_fonts::lucide::download()
-                                        .size(13)
-                                        .color(fg)
-                                        .boxed(),
-                                    Space::new().width(4).boxed(),
-                                    text(t("cloud_discover"))
-                                        .size(11)
-                                        .font(iced::Font {
-                                            weight: iced::font::Weight::Bold,
-                                            ..iced::Font::new(crate::theme::SYSTEM_UI_FAMILY)
-                                        })
-                                        .color(fg)
-                                        .boxed(),
-                                ])
-                                .align_y(iced::Alignment::Center),
-                            )
-                            .center_y(Length::Fixed(24.0))
-                            .padding(Padding {
-                                top: 0.0,
-                                right: 14.0,
-                                bottom: 0.0,
-                                left: 14.0,
-                            }),
-                        )
-                        .on_press(Message::Cloud(CloudMessage::ShowCloudDiscover(pid)))
-                        .style(|_, status| {
-                            let bg = match status {
-                                BtnStatus::Hovered => ObsidianSshColors::t().button_bg_hover,
-                                _ => ObsidianSshColors::t().button_bg,
-                            };
-                            button::Style {
-                                background: Some(Background::Color(bg)),
-                                border: Border { radius: Radius::from(6.0), ..Default::default() },
-                                ..Default::default()
-                            }
-                        })
-                        .boxed();
-                        let item = crate::keynav::ToolbarItem::CloudDiscover(pid);
-                        (self.keynav_toolbar_ring(item, discover), vec![item])
-                    }
-                    None => (
-                        action_group,
-                        vec![
-                            crate::keynav::ToolbarItem::Primary,
-                            crate::keynav::ToolbarItem::PrimaryChevron,
-                        ],
-                    ),
-                }
-            }
-        } else {
-            (
-                action_group,
-                vec![
-                    crate::keynav::ToolbarItem::Primary,
-                    crate::keynav::ToolbarItem::PrimaryChevron,
-                ],
-            )
-        };
+        ) = (
+            action_group,
+            vec![
+                crate::keynav::ToolbarItem::Primary,
+                crate::keynav::ToolbarItem::PrimaryChevron,
+            ],
+        );
 
         // Sort dropdown trigger, sits just before the "+ Host" /
         // "+ Discover" action. Glyph reflects the active sort so the
@@ -359,7 +252,7 @@ impl ObsidianSsh {
         // Grid/List toggle, hidden once the window is so narrow that the
         // grid already renders as a single column (list == grid there).
         let nav_width = self.vault_rail_width();
-        let panel_open = self.vaults.cur().cloud_discover.visible || self.vaults.cur().panels.host_panel;
+        let panel_open = self.vaults.cur().panels.host_panel;
         let panel_width = if panel_open { self.vaults.cur().panel_width } else { 0.0 };
         let available = (self.cur_window_size().width
             - nav_width
@@ -395,23 +288,15 @@ impl ObsidianSsh {
         // mode is live. What a click MEANS changes with it, but the change
         // is announced where it acts (the check on every host card, the
         // selection bar above the grid) rather than by the button's shape.
-        //
-        // Hidden inside a dynamic cloud group, where the cards are
-        // resolved tasks and nothing on screen is a saved host to select.
-        let show_multi_select = !self.active_group_is_dynamic();
-        let multi_select_toggle: Element<'_, Message> = if show_multi_select {
-            dir_row(vec![
-                Space::new().width(6).boxed(),
-                self.keynav_toolbar_ring(
-                    crate::keynav::ToolbarItem::MultiSelect,
-                    crate::widgets::host_multi_select_toggle_button(self.cur_nav().dash_multi_select),
-                ),
-            ])
-            .align_y(iced::Alignment::Center)
-            .boxed()
-        } else {
-            Space::new().boxed()
-        };
+        let multi_select_toggle: Element<'_, Message> = dir_row(vec![
+            Space::new().width(6).boxed(),
+            self.keynav_toolbar_ring(
+                crate::keynav::ToolbarItem::MultiSelect,
+                crate::widgets::host_multi_select_toggle_button(self.cur_nav().dash_multi_select),
+            ),
+        ])
+        .align_y(iced::Alignment::Center)
+        .boxed();
 
         // ── Responsive collapse ──
         // #1: search yields before the folder name. #2: but the search
@@ -480,9 +365,7 @@ impl ObsidianSsh {
                 self.keynav_toolbar_record(crate::keynav::ToolbarItem::TagFilter);
             }
             self.keynav_toolbar_record(crate::keynav::ToolbarItem::Sort);
-            if show_multi_select {
-                self.keynav_toolbar_record(crate::keynav::ToolbarItem::MultiSelect);
-            }
+            self.keynav_toolbar_record(crate::keynav::ToolbarItem::MultiSelect);
             for it in &resolved_items {
                 self.keynav_toolbar_record(*it);
             }

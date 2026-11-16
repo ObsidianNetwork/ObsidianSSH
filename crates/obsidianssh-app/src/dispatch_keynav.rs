@@ -16,7 +16,7 @@
 use iced::keyboard;
 use iced::Task;
 
-use crate::app::{SettingsMessage, TabsMessage, EditorMessage, KeysMessage, SshMessage, CloudMessage, HistoryMessage, NavigationMessage, ProxyIdentityMessage, KnownHostMessage, SessionGroupMessage, PortForwardMessage, SnippetMessage, DashNavItem, Message, ObsidianSsh};
+use crate::app::{SettingsMessage, TabsMessage, EditorMessage, KeysMessage, SshMessage, HistoryMessage, NavigationMessage, ProxyIdentityMessage, KnownHostMessage, SessionGroupMessage, PortForwardMessage, SnippetMessage, DashNavItem, Message, ObsidianSsh};
 use crate::keynav::movement::{cycle_zone, grid_move, index_move, linear_move, MoveKey};
 use crate::keynav::{FocusZone, NavItem, ToolbarItem};
 use crate::state::View;
@@ -462,7 +462,7 @@ impl ObsidianSsh {
             && self
                 .vaults.cur().groups
                 .iter()
-                .any(|g| g.id == gid && g.cloud_query.is_none())
+                .any(|g| g.id == gid)
         {
             let rtl = crate::i18n::is_rtl_layout();
             let expand = matches!(named, Named::ArrowRight) != rtl;
@@ -676,22 +676,12 @@ impl ObsidianSsh {
                 let i = self.vaults.cur().session_logs.iter().position(|l| l.id == id)?;
                 Message::History(HistoryMessage::RequestDeleteSessionLog(i))
             }
-            // Cloud accounts and proxy identities delete OUTRIGHT today,
-            // with no confirmation anywhere: their menu row goes straight
-            // to the vault. Binding a key to that would hand the user a
+            // Proxy identities delete OUTRIGHT today, with no
+            // confirmation anywhere: their menu row goes straight to the
+            // vault. Binding a key to that would hand the user a
             // one-keystroke unrecoverable delete, so they get the same
             // confirm as everything else, which also closes the gap for
             // the mouse.
-            NavItem::CloudAccount(id) => {
-                let name = self
-                    .vaults.cur().cloud_profiles
-                    .iter()
-                    .find(|p| p.id == id)
-                    .map(|p| p.label.clone())
-                    .unwrap_or_default();
-                self.confirm_remove(name, Message::Cloud(CloudMessage::DeleteCloudProfile(id)));
-                return Some(Task::none());
-            }
             NavItem::Proxy(id) => {
                 let name = self
                     .vaults.cur().proxy_identities
@@ -742,22 +732,12 @@ impl ObsidianSsh {
         let msg = match item {
             NavItem::Dash(DashNavItem::Host(i)) => Message::Tabs(TabsMessage::ShowCardMenu(i)),
             NavItem::Dash(DashNavItem::Group(gid)) => {
-                // Dynamic (cloud-query) folders carry their own menu.
-                let dynamic = self
-                    .vaults.cur().groups
-                    .iter()
-                    .any(|g| g.id == gid && g.cloud_query.is_some());
-                if dynamic {
-                    Message::Cloud(CloudMessage::ShowDynamicGroupCardMenu(gid))
-                } else {
-                    Message::Tabs(TabsMessage::ShowFolderActions(gid))
-                }
+                Message::Tabs(TabsMessage::ShowFolderActions(gid))
             }
             NavItem::Dash(DashNavItem::SessionGroup(i)) => Message::SessionGroup(SessionGroupMessage::ShowSessionGroupMenu(i)),
             NavItem::Key(i) => Message::Keys(KeysMessage::ShowKeyMenu(i)),
             NavItem::Identity(i) => Message::Keys(KeysMessage::ShowIdentityMenu(i)),
             NavItem::Snippet(i) => Message::Snippet(SnippetMessage::ShowSnippetMenu(i)),
-            NavItem::CloudAccount(id) => Message::Cloud(CloudMessage::ShowCloudCardMenu(id)),
             // Session-log rows carry a kebab menu (Export .cast /
             // transcript / commands / Delete). The row is keyed by uuid;
             // the menu is keyed by the index into `session_logs`, so map
@@ -854,7 +834,7 @@ impl ObsidianSsh {
             // keep the drill into their cloud screen.
             NavItem::Dash(DashNavItem::Group(gid))
                 if self.vaults.cur().prefs.host_view_mode == crate::state::HostViewMode::Tree
-                    && self.vaults.cur().groups.iter().any(|g| g.id == gid && g.cloud_query.is_none()) =>
+                    && self.vaults.cur().groups.iter().any(|g| g.id == gid) =>
             {
                 Message::Ai(crate::app::AiMessage::HostsTreeToggleGroup(gid))
             }
@@ -872,12 +852,11 @@ impl ObsidianSsh {
             }
             NavItem::PortForward(i) => Message::PortForward(PortForwardMessage::EditPortForwardRule(i)),
             NavItem::HistoryLog(id) => Message::History(HistoryMessage::ViewSessionLog(id)),
-            NavItem::CloudAccount(id) => Message::Cloud(CloudMessage::ShowCloudForm(Some(id))),
             NavItem::Proxy(id) => Message::ProxyIdentity(ProxyIdentityMessage::ShowProxyIdentityForm(Some(id))),
             NavItem::KnownHost(i) => Message::KnownHost(KnownHostMessage::RequestDeleteKnownHost(i)),
             NavItem::ContentAction(i) => {
-                // Generic action rows (dynamic cloud-group task list,
-                // the empty dashboard's create/import block) carry
+                // Generic action rows (the empty dashboard's
+                // create/import block) carry
                 // their own recorded `RowAction`. Same verbs as the
                 // Settings rows above: an input row hands the keyboard
                 // to the real text input, everything else dispatches.
@@ -925,8 +904,7 @@ impl ObsidianSsh {
             (View::History, ToolbarItem::SearchContent) => Message::History(HistoryMessage::SearchContentToggled),
             (View::Dashboard, ToolbarItem::Sort) => Message::Navigation(NavigationMessage::ToggleSortMenu(SortMenuKind::Hosts)),
             (View::Dashboard, ToolbarItem::Primary) => Message::Editor(EditorMessage::ShowNewConnection),
-            (View::Dashboard, ToolbarItem::PrimaryChevron) => Message::Cloud(CloudMessage::ShowCloudProviderPicker),
-            (View::Dashboard, ToolbarItem::CloudDiscover(pid)) => Message::Cloud(CloudMessage::ShowCloudDiscover(pid)),
+            (View::Dashboard, ToolbarItem::PrimaryChevron) => Message::Navigation(NavigationMessage::ShowHostAddMenu),
             (View::Dashboard, ToolbarItem::SelectionConnect) => {
                 Message::Tabs(TabsMessage::SelectionConnect)
             }
@@ -947,7 +925,6 @@ impl ObsidianSsh {
             (View::History, ToolbarItem::Primary) => Message::History(HistoryMessage::RequestClearHistory),
             (View::History, ToolbarItem::PagerPrev) => Message::History(HistoryMessage::LogsPagePrev),
             (View::History, ToolbarItem::PagerNext) => Message::History(HistoryMessage::LogsPageNext),
-            (View::Cloud, ToolbarItem::Primary) => Message::Cloud(CloudMessage::ShowCloudForm(None)),
             (View::Proxies, ToolbarItem::Primary) => Message::ProxyIdentity(ProxyIdentityMessage::ShowProxyIdentityForm(None)),
             (View::KnownHosts, ToolbarItem::Primary) => Message::KnownHost(KnownHostMessage::RequestClearAllKnownHosts),
             (_, ToolbarItem::PrivacyReveal) => Message::TogglePrivacyReveal,
@@ -959,7 +936,7 @@ impl ObsidianSsh {
 
     /// Whether the content zone moves linearly (single-column rows).
     /// The dashboard follows its grid/list toggle; the card grids
-    /// (keychain, snippets, port forwards, cloud) are 2-D; History,
+    /// (keychain, snippets, port forwards) are 2-D; History,
     /// Proxies and Known Hosts are true 1-D lists.
     fn content_list_mode(&self) -> bool {
         match self.cur_view() {
@@ -968,7 +945,7 @@ impl ObsidianSsh {
             View::Dashboard => {
                 self.vaults.cur().prefs.host_view_mode != crate::state::HostViewMode::Grid
             }
-            View::Keys | View::Snippets | View::Cloud | View::PortForwarding => false,
+            View::Keys | View::Snippets | View::PortForwarding => false,
             // Settings rows and the remaining vault views are
             // single-column lists.
             _ => true,
@@ -996,7 +973,6 @@ impl ObsidianSsh {
             View::Snippets => ("snippets-grid-scroll", 60.0),
             View::PortForwarding => ("port-forwards-scroll", 64.0),
             View::History => ("history-list-scroll", 52.0),
-            View::Cloud => ("cloud-accounts-scroll", 60.0),
             View::Proxies => ("proxies-list-scroll", 56.0),
             View::KnownHosts => ("known-hosts-scroll", 48.0),
             View::Settings => (self.settings_section.scroll_id(), 52.0),

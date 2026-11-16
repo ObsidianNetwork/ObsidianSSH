@@ -84,8 +84,6 @@ fn every_encrypted_field_survives_master_password_change() {
     let proxy_ident = ProxyIdentity::new("p");
     vault.save_proxy_identity(&proxy_ident, Some("proxy-ident-pw")).unwrap();
 
-    let profile = CloudProfile::new("aws-prod", "aws");
-    vault.save_cloud_profile(&profile, Some("cloud-secret")).unwrap();
 
     let peer_id = Uuid::new_v4();
     vault
@@ -125,10 +123,6 @@ fn every_encrypted_field_survives_master_password_change() {
     assert_eq!(
         vault.get_proxy_identity_password(&proxy_ident.id).unwrap().as_deref(),
         Some("proxy-ident-pw")
-    );
-    assert_eq!(
-        vault.get_cloud_profile_secret(&profile.id).unwrap().as_deref(),
-        Some("cloud-secret")
     );
     assert_eq!(
         vault.get_sync_peer_shared_secret(&peer_id).unwrap().as_deref(),

@@ -3,7 +3,7 @@
 //! `local_terminals`, `appearance`, `terminal_prefs`, `defaults`,
 //! `advanced`, `privacy`); the match below keeps the arms that fit
 //! no family: language + layout, hotkey editing, section switching,
-//! SFTP / cloud / reconnect knobs and the auto-lock idle tick.
+//! SFTP / reconnect knobs and the auto-lock idle tick.
 
 #![allow(clippy::result_large_err)]
 #![allow(clippy::collapsible_if)]
@@ -433,10 +433,6 @@ impl ObsidianSsh {
             | SettingsMessage::SettingToggleSftpEnabled
             | SettingsMessage::SettingKeepaliveChanged(..)
             | SettingsMessage::SettingSshSessionTimeoutChanged(..)
-            | SettingsMessage::SettingCloudAutoRefreshToggle
-            | SettingsMessage::SettingCloudAutoRefreshIntervalChanged(..)
-            | SettingsMessage::SettingCloudAutoArchiveToggle
-            | SettingsMessage::SettingCloudOrphanArchiveDaysChanged(..)
             | SettingsMessage::SettingSftpConcurrencyChanged(..)
             | SettingsMessage::SettingSftpConnectTimeoutChanged(..)
             | SettingsMessage::SettingSftpAuthTimeoutChanged(..)

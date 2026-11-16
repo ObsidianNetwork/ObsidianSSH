@@ -28,8 +28,6 @@ pub enum EditorMessage {
     EditorThemePickerToneChanged(Option<obsidianssh_terminal::ThemeTone>),
     /// Empty string == "inherit the global theme".
     EditorTerminalThemeChanged(String),
-    /// Cloud transport pick (only meaningful when editing a cloud-imported host).
-    EditorCloudTransportChanged(obsidianssh_core::models::cloud::TransportKind),
     /// Per-host initial command, sent as keystrokes after the shell
     /// opens. Empty = none. Useful for hosts that drop into `/bin/sh`
     /// when you really want `bash`.

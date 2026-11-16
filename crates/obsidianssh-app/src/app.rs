@@ -97,7 +97,7 @@ use crate::theme::ObsidianSshColors;
 
 // `Message` lives in its own module; re-export so call sites that
 // import `crate::app::Message` keep working.
-pub use crate::messages::{Message, SettingsMessage, TabsMessage, EditorMessage, KeysMessage, SidebarFilesMessage, MonitorMessage, NetToolsMessage, TmuxMessage, TerminalMessage, SshMessage, CloudMessage, HistoryMessage, McpMessage, NavigationMessage, CommandHistoryMessage, UpdateMessage, ProxyIdentityMessage, PluginMessage, ZmodemMessage, KnownHostMessage, RemoteDesktopMessage, TrayMessage, SessionGroupMessage, PortForwardMessage, VaultMessage, SnippetMessage, AiMessage, OnboardingMessage, PlayerMessage, ShareMessage, SftpMessage, SyncMessage};
+pub use crate::messages::{Message, SettingsMessage, TabsMessage, EditorMessage, KeysMessage, SidebarFilesMessage, MonitorMessage, NetToolsMessage, TmuxMessage, TerminalMessage, SshMessage, HistoryMessage, McpMessage, NavigationMessage, CommandHistoryMessage, UpdateMessage, ProxyIdentityMessage, PluginMessage, ZmodemMessage, KnownHostMessage, RemoteDesktopMessage, TrayMessage, SessionGroupMessage, PortForwardMessage, VaultMessage, SnippetMessage, AiMessage, OnboardingMessage, PlayerMessage, ShareMessage, SftpMessage, SyncMessage};
 
 // Layout constants
 pub(crate) const DEFAULT_TERM_COLS: u32 = 120;
@@ -118,12 +118,6 @@ pub(crate) const CARD_WIDTH: f32 = 280.0;
 // `DashNavItem` moved into the keynav module with the rest of the
 // focus-zone types; re-export so existing call sites keep working.
 pub(crate) use crate::keynav::DashNavItem;
-
-/// Tab-title prefix for SSM-into-EC2 sessions (`format!("{SSM_TAB_PREFIX}{host}")`).
-/// The middle dot is U+00B7 with a space on each side. Shared so the
-/// spawn site and the duplicate-tab strip site can never drift, a
-/// mismatch would silently break duplicating SSM tabs.
-pub(crate) const SSM_TAB_PREFIX: &str = "SSM \u{00b7} ";
 
 /// Fallback monospace font names offered when the system enumeration
 /// returns nothing (boot-time scan still in flight, fontdb error, or
@@ -395,8 +389,7 @@ pub struct ObsidianSsh {
     pub(crate) last_terminal_tab: Option<usize>,
     pub(crate) new_tab_picker_search: String,
     /// When set, the new-tab picker is drilled into this group, showing
-    /// its members (or, for a cloud-query group, its resolved ECS tasks /
-    /// K8s pods) instead of the top-level group + recent list. `None` is
+    /// its members instead of the top-level group + recent list. `None` is
     /// the top level. Reset to `None` whenever the picker opens or closes.
     pub(crate) new_tab_picker_group: Option<Uuid>,
     pub(crate) tab_jump_search: String,
@@ -438,7 +431,7 @@ pub struct ObsidianSsh {
 
     // MODAL FIELDS: the booleans / options below (and others scattered in
     // this struct: ui_theme_editor, show_theme_import, show_share_dialog,
-    // cloud_import_confirm_visible, folder_rename, show_*_picker, ...) each
+    // show_*_picker, ...) each
     // drive a modal overlay and remain the single source of truth for
     // whether that modal is open. They are now enumerated by
     // `crate::state::Modal`: `ObsidianSsh::is_modal_open` / `close_modal`
@@ -769,17 +762,8 @@ pub struct ObsidianSsh {
     /// when it detects that drift.
     pub(crate) window_windowed_pos_prev: Option<Point>,
     /// Whether the OS window currently has focus. Driven by the
-    /// `Focused` / `Unfocused` window events. The cloud SSM/ECS
-    /// keepalive only ticks while this is `false` (the user alt-tabbed
-    /// away), since an active session resets the SSM idle timer on its
-    /// own via the user's input.
+    /// `Focused` / `Unfocused` window events.
     pub(crate) window_focused: bool,
-    /// Terminal size `(cols, rows)` captured the moment the window lost
-    /// focus, used as the anchor the SSM keepalive toggles around (it
-    /// resizes to `rows - 1` and back so each tick produces a real
-    /// SIGWINCH, which is what resets the SSM idle timer). `None` while
-    /// focused.
-    pub(crate) ssm_keepalive_base: Option<(u16, u16)>,
     /// Live keyboard modifier state, updated from `ModifiersChanged`
     /// keyboard events. Used by SFTP click logic for ctrl/shift-click
     /// selection, iced's MouseArea events don't include modifiers.
@@ -843,18 +827,8 @@ pub struct ObsidianSsh {
     /// for it is remote output.
     pub(crate) trigger_confirm: Option<crate::dispatch_terminal::TriggerConfirmCard>,
 
-    pub(crate) cloud_provider_registry: std::sync::Arc<obsidianssh_cloud::CloudProviderRegistry>,
-    /// Concrete plugin providers kept here as well as inside the
-    /// registry, so the install / update path can call
-    /// `PluginProvider::rebind` after `cache::set_current` flips the
-    /// active version. The registry only exposes the `CloudProvider`
-    /// trait surface, which doesn't include rebind on purpose.
-    pub(crate) plugin_providers:
-        std::collections::HashMap<String, std::sync::Arc<crate::plugins::PluginProvider>>,
-
-    // Plugins panel, one row per cloud-provider plugin. Cloud
-    // providers run as downloaded subprocess plugins; this is where
-    // the user installs, updates, pins, and rolls them back.
+    // Plugins panel, one row per known plugin; this is where the
+    // user installs, updates, pins, and rolls them back.
     pub(crate) plugins: Vec<crate::state::PluginUiEntry>,
     /// Global default for plugin auto-update. Per-plugin overrides
     /// live on each `PluginUiEntry`.
@@ -869,8 +843,6 @@ pub struct ObsidianSsh {
     /// path's single source of truth), so free-text "create on save"
     /// is unchanged.
     pub(crate) host_editor_parent_combo_bounds: crate::widgets::BoundsCell,
-    /// Bounds of the dynamic group editor's Parent Group combo row.
-    pub(crate) dynamic_form_parent_combo_bounds: crate::widgets::BoundsCell,
     /// Bounds of the session-group editor's Folder combo row.
     pub(crate) session_group_folder_combo_bounds: crate::widgets::BoundsCell,
     /// Bounds of the manual group editor's Parent Group combo row.
@@ -899,11 +871,6 @@ pub struct ObsidianSsh {
     pub(crate) toolbar_sort_btn_bounds: crate::widgets::BoundsCell,
     /// Bounds of the active toolbar's `…` overflow button, same role.
     pub(crate) toolbar_overflow_btn_bounds: crate::widgets::BoundsCell,
-    /// Per-dynamic-group resolve cache. Populated when the user opens
-    /// the group (or hits Refresh inside it); reused on re-open until
-    /// the user manually refreshes.
-    pub(crate) cloud_dynamic_group_state:
-        std::collections::HashMap<Uuid, crate::state::DynamicGroupState>,
 
     /// Import-UI-theme modal (paste the Obsidian SSH UI theme JSON), mirroring
     /// the terminal scheme import modal above.
@@ -1132,17 +1099,6 @@ pub struct ObsidianSsh {
     /// each tick and only re-writes when it differs so we don't
     /// churn the filesystem ten times a second.
     pub(crate) ipc_state_signature: u64,
-    /// One-shot: set when reopening a *pinned cloud* dormant tab. Because the
-    /// cloud spawn is async (the tab is born later, in `spawn_plugin_tab`),
-    /// the pin intent can't ride the synchronous len-check the host / local
-    /// paths use; this carries it instead and is consumed on the next
-    /// plugin-tab spawn. `Some(dormant_id)` = replace the dormant placeholder
-    /// (found by this id) in place, so its strip chip doesn't blink out during
-    /// the async connect, and inherit its slot + pin.
-    pub(crate) pin_next_plugin_tab: Option<uuid::Uuid>,
-    /// See `state::PendingEcsAutoConnect`: deferred connect-to-current
-    /// ECS task while the dynamic group re-resolves.
-    pub(crate) pending_ecs_autoconnect: Option<crate::state::PendingEcsAutoConnect>,
     /// In-progress tab reorder drag (see `TabDrag`). `None` when not dragging.
     pub(crate) tab_drag: Option<crate::state::TabDrag>,
     /// Which tab a pane being dragged by its header came FROM, and its

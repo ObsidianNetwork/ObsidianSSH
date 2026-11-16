@@ -38,19 +38,14 @@ impl ObsidianSsh {
                     self.panel_nav_clear();
                     let ov = self.vaults.cur_mut();
                     ov.panels.session_group_panel = false;
-                    ov.cloud_form.visible = false;
-                    ov.cloud_dynamic_form.visible = false;
-                    ov.cloud_discover.visible = false;
                 }
             }
             TabsMessage::NewSubgroup(gid) => {
                 self.overlay = None;
-                // Only a manual folder can contain manual children
-                // (dynamic groups derive their contents from the query).
                 let parent_label = self
                     .vaults.cur().groups
                     .iter()
-                    .any(|g| g.id == gid && g.cloud_query.is_none())
+                    .any(|g| g.id == gid)
                     .then(|| obsidianssh_core::models::Group::path_of(&self.vaults.cur().groups, gid));
                 if let Some(parent_label) = parent_label {
                     self.vaults.cur_mut().group_edit = crate::state::GroupEditForm {
@@ -69,9 +64,6 @@ impl ObsidianSsh {
                     self.vaults.cur_mut().editor_form.sweep_secrets();
                     self.panel_nav_clear();
                     self.vaults.cur_mut().panels.session_group_panel = false;
-                    self.vaults.cur_mut().cloud_form.visible = false;
-                    self.vaults.cur_mut().cloud_dynamic_form.visible = false;
-                    self.vaults.cur_mut().cloud_discover.visible = false;
                 }
             }
             TabsMessage::NewGroup => {
@@ -96,9 +88,6 @@ impl ObsidianSsh {
                 self.vaults.cur_mut().editor_form.sweep_secrets();
                 self.panel_nav_clear();
                 self.vaults.cur_mut().panels.session_group_panel = false;
-                self.vaults.cur_mut().cloud_form.visible = false;
-                self.vaults.cur_mut().cloud_dynamic_form.visible = false;
-                self.vaults.cur_mut().cloud_discover.visible = false;
             }
             TabsMessage::GroupEditLabelChanged(v) => {
                 self.vaults.cur_mut().group_edit.label = v;
@@ -165,7 +154,6 @@ impl ObsidianSsh {
                 };
                 self.vaults.cur_mut().icon_picker.hex_input = self.vaults.cur_mut().group_edit.color.clone();
                 self.vaults.cur_mut().icon_picker.for_id = None;
-                self.vaults.cur_mut().icon_picker.for_group_form = false;
                 self.vaults.cur_mut().icon_picker.for_session_group = false;
                 self.vaults.cur_mut().icon_picker.for_group_edit = true;
                 self.vaults.cur_mut().icon_picker.for_local_terminal = false;
@@ -239,9 +227,7 @@ impl ObsidianSsh {
                             .vaults.cur().groups
                             .iter()
                             .find(|g| {
-                                g.cloud_query.is_none()
-                                    && g.parent_id == parent_id
-                                    && g.label == trimmed
+                                g.parent_id == parent_id && g.label == trimmed
                             })
                             .map(|g| g.id);
                         if let Some(gid) = dup {

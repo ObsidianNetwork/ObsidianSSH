@@ -247,7 +247,6 @@ impl ObsidianSsh {
             group: self.cur_nav().active_group,
             search: self.cur_nav().host_search.trim().to_string(),
             view_mode: self.vaults.cur().prefs.host_view_mode,
-            cloud_profile: self.cur_nav().host_filter_cloud_profile,
             tags: self.cur_nav().host_filter_tags.clone(),
         }
     }
@@ -271,7 +270,6 @@ impl ObsidianSsh {
         let current = &self.cur_nav().dash_selection.scope;
         if current.group == self.cur_nav().active_group
             && current.view_mode == self.vaults.cur().prefs.host_view_mode
-            && current.cloud_profile == self.cur_nav().host_filter_cloud_profile
             && (self.cur_nav().dash_multi_select || current.search == self.cur_nav().host_search.trim())
             && current.tags == self.cur_nav().host_filter_tags
         {
@@ -374,7 +372,7 @@ impl ObsidianSsh {
     /// no-op move writes nothing and bumps no `updated_at`.
     pub(crate) fn move_hosts_to_group(&mut self, ids: &[Uuid], target: Option<Uuid>) -> Task<Message> {
         if let Some(gid) = target
-            && !self.vaults.cur().groups.iter().any(|g| g.id == gid && g.cloud_query.is_none())
+            && !self.vaults.cur().groups.iter().any(|g| g.id == gid)
         {
             return Task::none();
         }
@@ -482,9 +480,6 @@ impl ObsidianSsh {
             let open = self.cur_nav().active_group?;
             let parent = self.vaults.cur().groups.iter().find(|g| g.id == open).and_then(|g| g.parent_id);
             return match parent.and_then(|pid| self.vaults.cur().groups.iter().find(|g| g.id == pid)) {
-                // A dynamic parent's contents come from its query: the
-                // drop is refused, never redirected to the top level.
-                Some(p) if p.cloud_query.is_some() => None,
                 Some(p) => Some(Some(p.id)),
                 // No parent, or one that no longer resolves (the
                 // dashboard shows such a folder at the top level).
@@ -494,7 +489,7 @@ impl ObsidianSsh {
         let gid = self.cur_nav().hover.folder_card?;
         self.vaults.cur().groups
             .iter()
-            .any(|g| g.id == gid && g.cloud_query.is_none())
+            .any(|g| g.id == gid)
             .then_some(Some(gid))
     }
 

@@ -1,7 +1,7 @@
 //! `ObsidianSsh::handle_plugins`, the Plugins panel dispatch: install,
 //! update-check, uninstall, and the auto-update toggles.
 //!
-//! Cloud providers run as downloaded subprocess plugins (see
+//! Optional helpers run as downloaded plugins (see
 //! `crate::plugins`). This module owns the UI-side lifecycle: it
 //! drives manifest fetches and downloads through `Task::perform`,
 //! persists the auto-update settings, and keeps the per-provider
@@ -18,31 +18,17 @@ use crate::plugins::cache;
 use crate::state::{PluginUiEntry, PluginUiStatus};
 
 /// Providers the app knows how to surface in the Plugins panel.
-/// `(provider_id, display_name)`. AWS runs as a subprocess spawned
-/// by the app via `PluginProvider`; MCP is also a plugin from a
+/// `(provider_id, display_name)`. MCP is a plugin from a
 /// distribution standpoint (download / verify / cache) but the
 /// binary is spawned by external clients (Claude Desktop, Code),
 /// not the app, see [`crate::mcp_install`].
 const KNOWN_PLUGINS: &[(&str, &str)] = &[
-    ("aws", "Amazon Web Services"),
-    ("k8s", "Kubernetes"),
-    ("gcp", "Google Cloud"),
-    ("azure", "Microsoft Azure"),
-    ("aliyun", "Alibaba Cloud"),
-    ("tencent", "Tencent Cloud"),
     ("mcp", "Obsidian SSH MCP Server"),
     // Distribution-only like MCP, but spawned by the app itself: the
     // History screen's "Export GIF" renders a recording through it
     // (see `crate::gif_export`). No JSON-RPC protocol, just a CLI.
     ("gif", "GIF Export (agg)"),
 ];
-
-/// Provider ids that back a cloud account (i.e. everything in
-/// `KNOWN_PLUGINS` except `mcp`, which external clients spawn). Drives
-/// the Cloud Accounts "no provider installed" explainer and the
-/// hide-on-uninstall display filters.
-pub(crate) const CLOUD_PROVIDER_IDS: &[&str] =
-    &["aws", "k8s", "gcp", "azure", "aliyun", "tencent"];
 
 /// Build the initial `PluginUiEntry` rows from the on-disk cache plus
 /// the per-plugin settings. Called once from `boot::load_data_from_vault`.
@@ -109,19 +95,15 @@ fn detect_status(provider_id: &str) -> PluginUiStatus {
 
 /// True when a freshly-built plugin binary sits next to the app
 /// executable. The rule lives in `plugins`, so the status this file
-/// reports and the binary `PluginProvider::resolve_binary` spawns can
-/// never disagree.
+/// reports and the binary that gets run can never disagree.
 pub(crate) fn dev_binary_present(provider_id: &str) -> bool {
     crate::plugins::dev_binary_present(provider_id)
 }
 
 impl ObsidianSsh {
-    /// True when `provider_id`'s plugin is in a state that can answer
-    /// trait calls right now (`DevBuild` / `Installed` /
-    /// `UpdateAvailable`). Every cloud provider (AWS *and* Kubernetes)
-    /// runs as a subprocess plugin today, so neither is ever "ready"
-    /// without its plugin installed.
-    pub(crate) fn cloud_provider_installed(&self, provider_id: &str) -> bool {
+    /// True when `provider_id`'s plugin is usable right now
+    /// (`DevBuild` / `Installed` / `UpdateAvailable`).
+    pub(crate) fn plugin_installed(&self, provider_id: &str) -> bool {
         self.plugins
             .iter()
             .find(|p| p.provider_id == provider_id)
@@ -133,39 +115,6 @@ impl ObsidianSsh {
                         | PluginUiStatus::UpdateAvailable { .. }
                 )
             })
-    }
-
-    /// True when at least one cloud-provider plugin (aws / k8s) is
-    /// installed. When false the Cloud Accounts panel shows the static
-    /// "install a provider" explainer instead of the list/empty state.
-    pub(crate) fn any_cloud_provider_installed(&self) -> bool {
-        CLOUD_PROVIDER_IDS
-            .iter()
-            .any(|id| self.cloud_provider_installed(id))
-    }
-
-    /// Cloud profile ids whose provider plugin is *not* installed.
-    /// Display-only: the rows stay in the vault and reappear when the
-    /// plugin is reinstalled. Drives hiding of cloud accounts plus the
-    /// hosts / dynamic groups they imported across the UI.
-    pub(crate) fn hidden_cloud_profile_ids(
-        &self,
-    ) -> std::collections::HashSet<uuid::Uuid> {
-        self.vaults.cur().cloud_profiles
-            .iter()
-            .filter(|p| !self.cloud_provider_installed(&p.provider))
-            .map(|p| p.id)
-            .collect()
-    }
-
-    /// True when the provider's plugin is ready. Drives the
-    /// plugin-missing banner + the Test-Credentials gate in the Cloud
-    /// Accounts wizard.
-    pub(crate) fn is_plugin_ready(
-        &self,
-        choice: crate::state::CloudProviderChoice,
-    ) -> bool {
-        self.cloud_provider_installed(choice.id())
     }
 
     /// Plugin tasks that need an unlocked vault: the one-time MCP
@@ -556,7 +505,6 @@ impl ObsidianSsh {
                 // other vaults' variables in the entry are kept as they
                 // are).
                 let secrets = self.mcp_secrets();
-                let rebind_provider = self.plugin_providers.get(&id).cloned();
                 if let Some(entry) =
                     self.plugins.iter_mut().find(|p| p.provider_id == id)
                 {
@@ -594,20 +542,7 @@ impl ObsidianSsh {
                         }
                     };
                 }
-                // Repoint the live PluginProvider at the new binary
-                // and tear down any in-flight subprocess so the next
-                // call respawns from the freshly-installed version.
-                // Without this the host would keep its frozen-at-boot
-                // PathBuf and respawn the previous version (or fail
-                // with BinaryNotFound if pruning removed it).
-                let task = if let Some(provider) = rebind_provider {
-                    Task::perform(
-                        async move { provider.rebind().await },
-                        |()| Message::NoOp,
-                    )
-                } else {
-                    Task::none()
-                };
+                let task = Task::none();
                 // A GIF export that opened this install resumes now
                 // that the binary is in place; an install failure
                 // drops it (the failure is already on the panel row).

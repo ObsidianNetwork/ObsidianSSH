@@ -231,48 +231,6 @@ impl ObsidianSsh {
                 );
         }
 
-        // Plugin providers are kept twice: once as `Arc<dyn CloudProvider>`
-        // inside the registry (used by every CloudProvider call site)
-        // and once as `Arc<PluginProvider>` in `plugin_providers` (so
-        // the install path can call rebind after `cache::set_current`).
-        // Both fields point at the SAME Arc so a rebind through the
-        // concrete map propagates to the registered trait object.
-        let aws_provider =
-            std::sync::Arc::new(crate::plugins::PluginProvider::new("aws"));
-        let k8s_provider =
-            std::sync::Arc::new(crate::plugins::PluginProvider::new("k8s"));
-        let gcp_provider =
-            std::sync::Arc::new(crate::plugins::PluginProvider::new("gcp"));
-        let azure_provider =
-            std::sync::Arc::new(crate::plugins::PluginProvider::new("azure"));
-        let aliyun_provider =
-            std::sync::Arc::new(crate::plugins::PluginProvider::new("aliyun"));
-        let tencent_provider =
-            std::sync::Arc::new(crate::plugins::PluginProvider::new("tencent"));
-        let plugin_providers = {
-            let mut m: std::collections::HashMap<
-                String,
-                std::sync::Arc<crate::plugins::PluginProvider>,
-            > = std::collections::HashMap::new();
-            m.insert("aws".to_string(), aws_provider.clone());
-            m.insert("k8s".to_string(), k8s_provider.clone());
-            m.insert("gcp".to_string(), gcp_provider.clone());
-            m.insert("azure".to_string(), azure_provider.clone());
-            m.insert("aliyun".to_string(), aliyun_provider.clone());
-            m.insert("tencent".to_string(), tencent_provider.clone());
-            m
-        };
-        let cloud_provider_registry = {
-            let mut reg = obsidianssh_cloud::CloudProviderRegistry::new();
-            reg.register(aws_provider.clone());
-            reg.register(k8s_provider.clone());
-            reg.register(gcp_provider.clone());
-            reg.register(azure_provider.clone());
-            reg.register(aliyun_provider.clone());
-            reg.register(tencent_provider.clone());
-            std::sync::Arc::new(reg)
-        };
-
         let (mut app, task) = (
             Self {
                 vaults: crate::vault_slots::VaultSlots::single({
@@ -417,7 +375,6 @@ impl ObsidianSsh {
                 window_windowed_pos: restored_window_pos,
                 window_windowed_pos_prev: restored_window_pos,
                 window_focused: true,
-                ssm_keepalive_base: None,
                 window_maximized: restored_maximized,
                 window_fullscreen: restored_fullscreen,
                 fullscreen_immersive: restored_immersive,
@@ -434,7 +391,6 @@ impl ObsidianSsh {
                 login_script_generation: 0,
                 trigger_confirm: None,
                 host_editor_parent_combo_bounds: crate::widgets::new_bounds_cell(),
-                dynamic_form_parent_combo_bounds: crate::widgets::new_bounds_cell(),
                 session_group_folder_combo_bounds: crate::widgets::new_bounds_cell(),
                 group_edit_parent_combo_bounds: crate::widgets::new_bounds_cell(),
                 plus_btn_bounds: crate::widgets::new_bounds_cell(),
@@ -444,13 +400,6 @@ impl ObsidianSsh {
                 toolbar_split_btn_bounds: crate::widgets::new_bounds_cell(),
                 toolbar_sort_btn_bounds: crate::widgets::new_bounds_cell(),
                 toolbar_overflow_btn_bounds: crate::widgets::new_bounds_cell(),
-                cloud_dynamic_group_state: std::collections::HashMap::new(),
-                // Provider registry seeded once at boot. AWS runs as a
-                // plugin subprocess via `PluginProvider`; K8s lands in
-                // a follow-up PR. The Arc lets us hand the registry to
-                // async tasks without locking.
-                cloud_provider_registry,
-                plugin_providers,
                 // Plugins panel state, the defaults here are replaced
                 // by `load_data_from_vault` once the vault is unlocked
                 // (settings + on-disk plugin cache).
@@ -518,8 +467,6 @@ impl ObsidianSsh {
                 jumplist_window_tagged: false,
                 is_window_hidden: false,
                 ipc_state_signature: 0,
-                pin_next_plugin_tab: None,
-                pending_ecs_autoconnect: None,
                 tab_drag: None,
                 pane_drag_from: None,
                 panel_resize_drag: None,

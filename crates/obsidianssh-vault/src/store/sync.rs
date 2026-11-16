@@ -241,7 +241,7 @@ impl VaultStore {
     ) -> Result<Vec<(Uuid, DateTime<Utc>)>, VaultError> {
         match table {
             "connections" | "keys" | "identities" | "proxy_identities" | "groups"
-            | "snippets" | "port_forward_rules" | "known_hosts" | "cloud_profiles"
+            | "snippets" | "port_forward_rules" | "known_hosts"
             | "session_groups" | "login_scripts" => {}
             other => {
                 return Err(VaultError::Database(format!(

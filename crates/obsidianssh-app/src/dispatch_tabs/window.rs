@@ -425,17 +425,6 @@ impl ObsidianSsh {
                     pane.attention = None;
                 }
             }
-            // Restore any SSM/ECS terminal the keepalive may have
-            // left at `rows - 1` (it nudges and lets the next
-            // draw snap back, but no draw fires while the tab is
-            // off-screen). Explicit so a refocus is always clean.
-            if let Some((cols, rows)) = self.ssm_keepalive_base.take() {
-                for pane in self.plugin_panes() {
-                    if let Ok(mut state) = pane.terminal.lock() {
-                        state.resize(cols, rows);
-                    }
-                }
-            }
             // A notification toast raised while the window was unfocused
             // was left up (`ToastClear` declines while the window is
             // away) so it isn't gone before you look; give it a few
@@ -459,16 +448,6 @@ impl ObsidianSsh {
             // here rather than leave it stranded (which would freeze
             // MRU tracking until the next real Ctrl-release).
             self.commit_tab_cycle();
-            // Anchor the keepalive toggle to the size the window
-            // had when it lost focus. All plugin panes share the
-            // window, so the first one's size is representative.
-            let base = self.plugin_panes().find_map(|p| {
-                p.terminal
-                    .lock()
-                    .ok()
-                    .map(|s| (s.cols(), s.rows()))
-            });
-            self.ssm_keepalive_base = base;
         }
         Task::none()
     }
@@ -585,18 +564,6 @@ impl ObsidianSsh {
         self.close_window_now()
     }
 
-    /// Every plugin-backed pane in every tab (`Pane::plugin_backed`),
-    /// which is the set the idle keepalive nudges. The nudge is a
-    /// resize, so it stays off the SSH and local panes that share a
-    /// split with a plugin one: those have nothing to keep alive and
-    /// would only see their layout twitch.
-    pub(crate) fn plugin_panes(&self) -> impl Iterator<Item = &crate::state::Pane> {
-        self.tabs
-            .iter()
-            .flat_map(|t| t.pane_grid.panes.values())
-            .filter(|p| p.plugin_backed)
-    }
-
     /// Whether the close verb hides the window instead of ending the
     /// process. One owner, because two callers ask it for opposite
     /// reasons a few lines apart: the guard above skips the ask (a
@@ -609,7 +576,7 @@ impl ObsidianSsh {
     }
 
     /// The window close itself, with no prompt: teardown, tray-or-real
-    /// close, plugin drain. Reached directly when the guard is off or
+    /// close. Reached directly when the guard is off or
     /// nothing was live, and from `ConfirmCloseWindow` after the ask.
     fn close_window_now(&mut self) -> Task<Message> {
         // The session-log tail, a debouncing host-editor save and the
@@ -640,12 +607,10 @@ impl ObsidianSsh {
                 })
                 .discard();
         }
-        // Real close (not tray-hide): let the plugin subprocesses flush
-        // before the window closes and the process exits.
         // `iced::exit`, not a window close: the app is a daemon, which
         // outlives its windows, so closing the main one would leave a
         // process with nothing on screen.
-        self.drain_plugins_before_exit().then(|_| iced::exit())
+        iced::exit()
     }
 
     /// Adopt the OS's word on fullscreen (macOS, where it has doors of

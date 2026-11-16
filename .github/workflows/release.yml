@@ -611,7 +611,8 @@ jobs:
             case "$id" in
               mcp) bin=obsidianssh-mcp ;;
               gif) bin=obsidianssh-gif ;;
-              *)   bin="obsidianssh-cloud-$id-plugin" ;;
+              relay) bin=obsidianssh-relay ;;
+              *) echo "Unknown plugin: $id" >&2; exit 1 ;;
             esac
             # The newest version in the catalog: the same pick the app
             # makes for a current build. Its platform rows name the

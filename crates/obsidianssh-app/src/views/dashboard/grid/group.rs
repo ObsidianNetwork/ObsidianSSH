@@ -3,29 +3,22 @@
 use super::*;
 use iced::widget::column;
 impl ObsidianSsh {
-    /// Folder + provider group cards for the dashboard grid.
+    /// Folder cards for the dashboard grid.
     pub(crate) fn dashboard_group_cards(&self) -> Vec<(Element<'_, Message>, Color, DashNavItem)> {
         let search_lower = self.cur_nav().host_search.to_lowercase();
-        // Provider hiding, counts, brand inference and the filter
-        // chips: the shared pre-pass (one scan over connections +
-        // groups per view call; the tree view runs the same one), so
-        // the per-card lookups below all hit maps in O(1).
+        // Counts and the tag filter: the shared pre-pass (one scan over
+        // connections + groups per view call; the tree view runs the
+        // same one), so the per-card lookups below all hit maps in O(1).
         let pre = self.dash_grid_pre_pass();
-        let hidden_profiles = &pre.hidden_profiles;
-        let hidden_groups = &pre.hidden_groups;
         let direct_host_count = &pre.direct_host_count;
         let nested_group_count = &pre.nested_group_count;
-        let cloud_filter_groups = &pre.cloud_filter_groups;
         let tag_filter_groups = &pre.tag_filter_groups;
-        let infer_brand = |gid: &Uuid| pre.infer_brand(self, gid);
         let mut group_cards: Vec<(Element<'_, Message>, Color, DashNavItem)> = Vec::new();
         let group_by_id: std::collections::HashMap<Uuid, _> =
             self.vaults.cur().groups.iter().map(|g| (g.id, g)).collect();
         if self.cur_nav().active_group.is_none() {
-            // Root view: show folder cards for manual groups that have
-            // either direct connections or nested children (e.g. an
-            // AWS profile folder whose only child is an ECS dynamic
-            // sub-group, with no EC2 connection imported alongside).
+            // Root view: show folder cards for groups that have either
+            // direct connections or nested children.
             // Groups nested under a live parent are excluded below:
             // they render inside their parent folder instead.
             let mut shown_groups = std::collections::HashSet::new();
@@ -38,7 +31,6 @@ impl ObsidianSsh {
                 }
             }
             for g in &self.vaults.cur().groups {
-                if g.cloud_query.is_some() { continue }
                 if shown_groups.contains(&g.id) { continue }
                 // Render a manual folder at root when it has nested
                 // children OR when it's an empty container that belongs
@@ -83,23 +75,6 @@ impl ObsidianSsh {
                 },
             );
             for gid in roots_to_render {
-                // Provider folder that went empty after its plugin was
-                // removed (every host / dynamic group inside it is from
-                // an uninstalled provider). Hidden until the plugin is
-                // reinstalled.
-                if hidden_groups.contains(&gid) {
-                    continue;
-                }
-                // Cloud-profile filter, hide folders whose subtree has
-                // no host or dynamic group matching the active profile.
-                // Active filter intentionally hides every manual,
-                // non-cloud folder at root, the chip is the user's
-                // explicit "show me only this provider" lens.
-                if let Some(visible) = cloud_filter_groups.as_ref()
-                    && !visible.contains(&gid)
-                {
-                    continue;
-                }
                 // Tag filter: hide folders whose subtree holds no host
                 // with a selected tag (owner QA: the filter must narrow
                 // the Groups section too, not only the loose hosts).
@@ -152,204 +127,18 @@ impl ObsidianSsh {
                 let count_text =
                     crate::i18n::host_count(direct_hosts + nested_groups);
                 let (element, folder_bg) =
-                    self.manual_folder_card(group, count_text, infer_brand(&gid));
+                    self.manual_folder_card(group, count_text);
                 group_cards.push((element, folder_bg, DashNavItem::Group(gid)));
             }
-
-            // ── Dynamic (cloud-query) groups ──
-            // Manual groups only render above when at least one
-            // Connection points at them. Dynamic groups carry their
-            // contents through `cloud_query` (ECS tasks resolved on
-            // expand) and would otherwise stay invisible. At root we
-            // only show dynamic groups WITHOUT a `parent_id`; nested
-            // ones (auto-imported under their cloud-profile folder)
-            // surface when the user opens that folder, just like
-            // manual nested groups would. Sorted indices keep dynamic
-            // groups interleaved with manual folders by the same rule
-            // (label / created_at) instead of vault-insertion order.
-            // Filter first so the sort only touches the cards that
-            // actually render instead of the whole group list.
-            let mut dyn_group_order: Vec<usize> = (0..self.vaults.cur().groups.len())
-                .filter(|&i| {
-                    let g = &self.vaults.cur().groups[i];
-                    let Some(query) = g.cloud_query.as_ref() else {
-                        return false;
-                    };
-                    g.parent_id.is_none()
-                        // Hidden when the provider plugin isn't installed.
-                        && !hidden_profiles.contains(&query.profile_id)
-                        && (search_lower.is_empty()
-                            || g.label.to_lowercase().contains(&search_lower))
-                        && self.cur_nav()
-                            .host_filter_cloud_profile
-                            .is_none_or(|pid| query.profile_id == pid)
-                })
-                .collect();
-            self.vaults.cur().hosts_sort.sort_items(
-                &mut dyn_group_order,
-                |&i| self.vaults.cur().groups[i].label.clone(),
-                |&i| self.vaults.cur().groups[i].created_at,
-            );
-            for dyn_i in dyn_group_order {
-                let group = &self.vaults.cur().groups[dyn_i];
-                let Some(query) = group.cloud_query.as_ref() else { continue };
-                let gid = group.id;
-                let subtitle = match &query.kind {
-                    obsidianssh_core::models::cloud::CloudQueryKind::EcsTasks {
-                        cluster, ..
-                    } => format!("ECS · {cluster}"),
-                    obsidianssh_core::models::cloud::CloudQueryKind::K8sPods {
-                        context, namespace, ..
-                    } => format!("K8s · {context}/{namespace}"),
-                };
-
-                // Icon precedence (matches manual-folder cards):
-                //   1. Explicit `group.icon` set by the user via the
-                //      dynamic-group editor (Phase 4): wins so a
-                //      renamed/recustomised ECS group reflects the
-                //      user's choice.
-                //   2. Otherwise the query-derived brand (`ecs` for
-                //      ECS tasks, `kubernetes` for K8s pods) so a
-                //      fresh import still shows the right glyph.
-                // Background precedence:
-                //   1. Explicit `group.color` (hex) wins.
-                //   2. Otherwise the icon's brand colour from
-                //      `provider_icon` (orange for ecs/aws, blue for
-                //      kubernetes, ...).
-                let query_brand: &str = match query.kind {
-                    obsidianssh_core::models::cloud::CloudQueryKind::EcsTasks { .. } => "ecs",
-                    obsidianssh_core::models::cloud::CloudQueryKind::K8sPods { .. } => "kubernetes",
-                };
-                let icon_id: &str = group
-                    .icon
-                    .as_deref()
-                    .filter(|s| !s.is_empty())
-                    .unwrap_or(query_brand);
-                let folder_glyph = crate::os_icon::custom_icon_glyph(icon_id);
-                let folder_bg = group
-                    .color
-                    .as_deref()
-                    .and_then(crate::os_icon::parse_hex_color)
-                    .unwrap_or_else(|| {
-                        crate::os_icon::provider_icon(
-                            icon_id,
-                            ObsidianSshColors::t().accent,
-                        )
-                        .1
-                    });
-                // Render via host_icon so the dynamic-group folder
-                // mirrors the global shape preference, same as the
-                // manual-folder card above.
-                let host_style = crate::widgets::resolve_host_icon_style(
-                    None,
-                    &self.vaults.cur().prefs.default_host_icon,
-                );
-                let icon_box = crate::widgets::host_icon(
-                    host_style,
-                    folder_bg,
-                    &group.label,
-                    Some(folder_glyph.view(18.0, Color::WHITE)),
-                    32.0,
-                );
-
-                // Kebab + hover state, same convention as host /
-                // manual-folder cards. Edit + Delete via the overlay
-                // menu wired in `dispatch_cloud`.
-                const DG_DOTS_SLOT_W: f32 = 22.0;
-                let show_dots = self.cur_nav().hover.dynamic_group_card == Some(gid);
-                let dyn_actions_btn: Element<'_, Message> = if show_dots {
-                    crate::widgets::card_kebab_button(
-                        ObsidianSshColors::t().text_muted,
-                        true,
-                        Message::Cloud(CloudMessage::ShowDynamicGroupCardMenu(gid)),
-                    )
-                    .boxed()
-                } else {
-                    // Same trailing chevron affordance as manual folder
-                    // cards (group cards read as "openable" at a glance).
-                    let chevron = if crate::i18n::is_rtl_layout() {
-                        iced_fonts::lucide::chevron_left()
-                    } else {
-                        iced_fonts::lucide::chevron_right()
-                    };
-                    container(chevron.size(14).color(ObsidianSshColors::t().text_muted))
-                        .center_x(Length::Fixed(DG_DOTS_SLOT_W))
-                        .center_y(Length::Fixed(DG_DOTS_SLOT_W))
-                        .boxed()
-                };
-
-                let folder_card = button(
-                    container(
-                        dir_row(vec![
-                            icon_box,
-                            Space::new().width(8).boxed(),
-                            column![
-                                text(group.label.clone())
-                                    .size(13)
-                                    .color(ObsidianSshColors::t().text_primary)
-                                    .wrapping(iced::widget::text::Wrapping::None),
-                                Space::new().height(2),
-                                text(subtitle)
-                                    .size(10)
-                                    .color(ObsidianSshColors::t().text_muted)
-                                    .wrapping(iced::widget::text::Wrapping::None),
-                            ]
-                            .width(Length::Fill)
-                            .align_x(crate::widgets::dir_align_x())
-                            .clip(true)
-                            .boxed(),
-                            dyn_actions_btn,
-                        ])
-                        .align_y(iced::Alignment::Center),
-                    )
-                    .padding(Padding {
-                        top: 8.0,
-                        right: 6.0,
-                        bottom: 8.0,
-                        left: 8.0,
-                    }),
-                )
-                .on_press(Message::Navigation(NavigationMessage::OpenGroup(gid)))
-                .width(Length::Fill)
-                .style(|_, status| {
-                    let (bg, bc, bw) = match status {
-                        BtnStatus::Hovered => (ObsidianSshColors::t().bg_hover, ObsidianSshColors::t().accent, 1.5),
-                        BtnStatus::Pressed => (ObsidianSshColors::t().bg_selected, ObsidianSshColors::t().accent, 2.0),
-                        _ => (ObsidianSshColors::t().bg_surface, ObsidianSshColors::t().border, 1.0),
-                    };
-                    button::Style {
-                        background: Some(Background::Color(bg)),
-                        border: Border {
-                            radius: Radius::from(10.0),
-                            color: bc,
-                            width: bw,
-                        },
-                        ..Default::default()
-                    }
-                });
-
-                let wrapped = MouseArea::new(folder_card)
-                    .on_enter(Message::Cloud(CloudMessage::DynamicGroupCardHovered(gid)))
-                    .on_exit(Message::Cloud(CloudMessage::DynamicGroupCardUnhovered(gid)))
-                    .on_right_press(Message::Cloud(CloudMessage::ShowDynamicGroupCardMenu(gid)));
-                group_cards.push((container(wrapped).width(Length::Fill).clip(true).boxed(), folder_bg, DashNavItem::Group(gid)));
-            }
         } else if let Some(active_gid) = self.cur_nav().active_group {
-            // Inside a folder: manual subgroups render first as folder
-            // cards (same builder as the root pass), then the nested
-            // dynamic groups, mirroring the root view's manual-then-
-            // dynamic order. All manual children render, including
+            // Inside a folder: subgroups render as folder cards (same
+            // builder as the root pass). All children render, including
             // empty ones, so a freshly created subgroup is visible
             // immediately.
             let mut nested_manual_order: Vec<usize> = (0..self.vaults.cur().groups.len())
                 .filter(|&i| {
                     let g = &self.vaults.cur().groups[i];
-                    g.cloud_query.is_none()
-                        && g.parent_id == Some(active_gid)
-                        && !hidden_groups.contains(&g.id)
-                        && cloud_filter_groups
-                            .as_ref()
-                            .is_none_or(|v| v.contains(&g.id))
+                    g.parent_id == Some(active_gid)
                         && tag_filter_groups
                             .as_ref()
                             .is_none_or(|v| v.contains(&g.id))
@@ -372,164 +161,8 @@ impl ObsidianSsh {
                 let count_text =
                     crate::i18n::host_count(direct_hosts + nested_groups);
                 let (element, folder_bg) =
-                    self.manual_folder_card(group, count_text, infer_brand(&gid));
+                    self.manual_folder_card(group, count_text);
                 group_cards.push((element, folder_bg, DashNavItem::Group(gid)));
-            }
-
-            // Nested dynamic groups (e.g.
-            // ECS service / K8s deployment dynamic groups whose
-            // `parent_id` points at this folder). Same card style as
-            // the root pass, just filtered by parent. Same sort rule
-            // too so the nested view stays consistent with the root.
-            // Filter first, same as the root pass, so the sort only
-            // covers the cards that actually render.
-            let mut nested_dyn_order: Vec<usize> = (0..self.vaults.cur().groups.len())
-                .filter(|&i| {
-                    let g = &self.vaults.cur().groups[i];
-                    let Some(query) = g.cloud_query.as_ref() else {
-                        return false;
-                    };
-                    g.parent_id == Some(active_gid)
-                        // Hidden when the provider plugin isn't installed.
-                        && !hidden_profiles.contains(&query.profile_id)
-                        && (search_lower.is_empty()
-                            || g.label.to_lowercase().contains(&search_lower))
-                        && self.cur_nav()
-                            .host_filter_cloud_profile
-                            .is_none_or(|pid| query.profile_id == pid)
-                })
-                .collect();
-            self.vaults.cur().hosts_sort.sort_items(
-                &mut nested_dyn_order,
-                |&i| self.vaults.cur().groups[i].label.clone(),
-                |&i| self.vaults.cur().groups[i].created_at,
-            );
-            for nested_i in nested_dyn_order {
-                let group = &self.vaults.cur().groups[nested_i];
-                let Some(query) = group.cloud_query.as_ref() else { continue };
-                let gid = group.id;
-                let subtitle = match &query.kind {
-                    obsidianssh_core::models::cloud::CloudQueryKind::EcsTasks {
-                        cluster, ..
-                    } => format!("ECS · {cluster}"),
-                    obsidianssh_core::models::cloud::CloudQueryKind::K8sPods {
-                        context, namespace, ..
-                    } => format!("K8s · {context}/{namespace}"),
-                };
-
-                // Mirror the root-level dynamic-group precedence so a
-                // nested ECS group reacts to the user's icon / colour
-                // edits in the Edit Cloud Group panel. Icon falls back
-                // to the query brand (`ecs` / `kubernetes`), colour
-                // falls back to the icon's brand colour. Previously
-                // the nested path looked at `group.icon` alone and
-                // ignored `group.color` entirely, so colour edits
-                // never reached the card.
-                let query_brand: &str = match query.kind {
-                    obsidianssh_core::models::cloud::CloudQueryKind::EcsTasks { .. } => "ecs",
-                    obsidianssh_core::models::cloud::CloudQueryKind::K8sPods { .. } => "kubernetes",
-                };
-                let icon_id: &str = group
-                    .icon
-                    .as_deref()
-                    .filter(|s| !s.is_empty())
-                    .map(|s| s.strip_prefix("si:").unwrap_or(s))
-                    .unwrap_or(query_brand);
-                let folder_glyph = crate::os_icon::custom_icon_glyph(icon_id);
-                let folder_bg = group
-                    .color
-                    .as_deref()
-                    .and_then(crate::os_icon::parse_hex_color)
-                    .unwrap_or_else(|| {
-                        crate::os_icon::provider_icon(
-                            icon_id,
-                            ObsidianSshColors::t().accent,
-                        )
-                        .1
-                    });
-                let host_style = crate::widgets::resolve_host_icon_style(
-                    None,
-                    &self.vaults.cur().prefs.default_host_icon,
-                );
-                let icon_box = crate::widgets::host_icon(
-                    host_style,
-                    folder_bg,
-                    &group.label,
-                    Some(folder_glyph.view(18.0, Color::WHITE)),
-                    32.0,
-                );
-
-                const DG_DOTS_SLOT_W: f32 = 22.0;
-                let show_dots = self.cur_nav().hover.dynamic_group_card == Some(gid);
-                let dyn_actions_btn: Element<'_, Message> = if show_dots {
-                    crate::widgets::card_kebab_button(
-                        ObsidianSshColors::t().text_muted,
-                        true,
-                        Message::Cloud(CloudMessage::ShowDynamicGroupCardMenu(gid)),
-                    )
-                    .boxed()
-                } else {
-                    // Same trailing chevron affordance as manual folder
-                    // cards (group cards read as "openable" at a glance).
-                    let chevron = if crate::i18n::is_rtl_layout() {
-                        iced_fonts::lucide::chevron_left()
-                    } else {
-                        iced_fonts::lucide::chevron_right()
-                    };
-                    container(chevron.size(14).color(ObsidianSshColors::t().text_muted))
-                        .center_x(Length::Fixed(DG_DOTS_SLOT_W))
-                        .center_y(Length::Fixed(DG_DOTS_SLOT_W))
-                        .boxed()
-                };
-
-                let folder_card = button(
-                    container(
-                        dir_row(vec![
-                            icon_box,
-                            Space::new().width(8).boxed(),
-                            column![
-                                text(group.label.clone())
-                                    .size(13)
-                                    .color(ObsidianSshColors::t().text_primary)
-                                    .wrapping(iced::widget::text::Wrapping::None),
-                                Space::new().height(2),
-                                text(subtitle)
-                                    .size(10)
-                                    .color(ObsidianSshColors::t().text_muted)
-                                    .wrapping(iced::widget::text::Wrapping::None),
-                            ]
-                            .width(Length::Fill)
-                            .align_x(crate::widgets::dir_align_x())
-                            .clip(true)
-                            .boxed(),
-                            dyn_actions_btn,
-                        ])
-                        .align_y(iced::Alignment::Center),
-                    )
-                    // Match the host-card padding so dynamic-group
-                    // cards line up at the same height when they sit
-                    // beside hosts in the same grid row.
-                    .padding(Padding { top: 8.0, right: 6.0, bottom: 8.0, left: 2.0 }),
-                )
-                .on_press(Message::Navigation(NavigationMessage::OpenGroup(gid)))
-                .width(Length::Fill)
-                .style(|_, status| {
-                    let (bg, bc, bw) = match status {
-                        BtnStatus::Hovered => (ObsidianSshColors::t().bg_hover, ObsidianSshColors::t().accent, 1.5),
-                        BtnStatus::Pressed => (ObsidianSshColors::t().bg_selected, ObsidianSshColors::t().accent, 2.0),
-                        _ => (ObsidianSshColors::t().bg_surface, ObsidianSshColors::t().border, 1.0),
-                    };
-                    button::Style {
-                        background: Some(Background::Color(bg)),
-                        border: Border { radius: Radius::from(10.0), color: bc, width: bw },
-                        ..Default::default()
-                    }
-                });
-                let wrapped = MouseArea::new(folder_card)
-                    .on_enter(Message::Cloud(CloudMessage::DynamicGroupCardHovered(gid)))
-                    .on_exit(Message::Cloud(CloudMessage::DynamicGroupCardUnhovered(gid)))
-                    .on_right_press(Message::Cloud(CloudMessage::ShowDynamicGroupCardMenu(gid)));
-                group_cards.push((container(wrapped).width(Length::Fill).clip(true).boxed(), folder_bg, DashNavItem::Group(gid)));
             }
         }
         group_cards
@@ -545,20 +178,14 @@ impl ObsidianSsh {
         &'a self,
         group: &'a obsidianssh_core::models::Group,
         count_text: String,
-        inferred_brand: Option<&'static str>,
     ) -> (Element<'a, Message>, Color) {
         let gid = group.id;
         // Folder card icon precedence:
         //   1. Explicit BRAND icon on the group
         //      (`aws`, `kubernetes`, `ubuntu`, etc.).
-        //   2. Inferred brand from children (nested cloud-query group,
-        //      direct connection's `cloud_ref`).
-        //   3. Explicit non-brand icon (Lucide UI placeholder like
-        //      `cloud`, `server`).
-        //   4. Generic Lucide `boxes` cube.
-        // Inference (#2) wins over generic Lucide icons (#3) so a
-        // group containing AWS resources shows the AWS chip even if
-        // the user / legacy data left `icon = "cloud"`.
+        //   2. Explicit non-brand icon (Lucide UI placeholder like
+        //      `server`).
+        //   3. Generic Lucide `boxes` cube.
         // Visual: brand-colour chip with a white glyph on top.
         let explicit_brand = group
             .icon
@@ -567,7 +194,7 @@ impl ObsidianSsh {
             .and_then(crate::os_icon::canonical_brand_id);
 
         let (folder_glyph, folder_bg): (BrandIcon, Color) =
-            if let Some(brand) = explicit_brand.or(inferred_brand) {
+            if let Some(brand) = explicit_brand {
                 let glyph = crate::os_icon::custom_icon_glyph(brand);
                 let bg = group
                     .color

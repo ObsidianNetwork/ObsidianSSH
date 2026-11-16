@@ -25,9 +25,6 @@ impl ObsidianSsh {
                 self.overlay = None;
                 if self.vaults.cur().connections.iter().any(|c| c.id == id) {
                     // Mutually exclusive right-panel slot.
-                    self.vaults.cur_mut().cloud_form.visible = false;
-                    self.vaults.cur_mut().cloud_dynamic_form.visible = false;
-                    self.vaults.cur_mut().cloud_discover.visible = false;
                     self.vaults.cur_mut().panels.session_group_panel = false;
                     self.vaults.cur_mut().group_edit.visible = false;
                     self.vaults.cur_mut().panels.host_panel = true;
@@ -62,9 +59,6 @@ impl ObsidianSsh {
                 };
                 // Mutually exclusive right-panel slot, and the panel lives
                 // on the dashboard (the menu was clicked from a terminal).
-                self.vaults.cur_mut().cloud_form.visible = false;
-                self.vaults.cur_mut().cloud_dynamic_form.visible = false;
-                self.vaults.cur_mut().cloud_discover.visible = false;
                 self.vaults.cur_mut().panels.session_group_panel = false;
                 self.vaults.cur_mut().group_edit.visible = false;
                 self.vaults.cur_mut().panels.host_panel = true;
@@ -293,12 +287,6 @@ impl ObsidianSsh {
                     dup.updated_at = now;
                     // A fresh host has never been used.
                     dup.last_used = None;
-                    // A cloud-imported host is bound to one discovered
-                    // resource; a copy pointing at the same one would be
-                    // clobbered (or orphaned) by the next refresh, and
-                    // `customized_fields` only means anything next to it.
-                    dup.cloud_ref = None;
-                    dup.customized_fields.clear();
                     if let Some(vault) = &self.vaults.cur().store {
                         // Secrets live in their own encrypted columns, so
                         // they are copied explicitly rather than riding
@@ -364,19 +352,6 @@ impl ObsidianSsh {
                             self.vaults.cur_mut().chain_editor_adding = true;
                             self.vaults.cur_mut().chain_editor_search.clear();
                         }
-                    }
-                    P::Cloud => {
-                        // The cloud import lives in its own view; the
-                        // pristine create form has nothing to keep.
-                        self.vaults.cur_mut().panels.host_panel = false;
-                        self.panel_nav_clear();
-                        self.vaults.cur_mut().host_panel_error = None;
-                        self.vaults.cur_mut().editor_form.sweep_secrets();
-                        return self.update(Message::Navigation(
-                            crate::app::NavigationMessage::ChangeView(
-                                crate::state::View::Cloud,
-                            ),
-                        ));
                     }
                 }
             }

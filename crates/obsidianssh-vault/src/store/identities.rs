@@ -13,7 +13,7 @@ impl VaultStore {
     ) -> Result<(), VaultError> {
         let encrypted_pw = match password {
             // Tri-state: empty string clears the password (NULL column),
-            // never an encrypted empty blob (mirrors `save_cloud_profile`).
+            // never an encrypted empty blob.
             Some("") => None,
             Some(pw) => Some(self.encrypt_field(pw)?),
             None => {
@@ -157,7 +157,7 @@ impl VaultStore {
     ) -> Result<(), VaultError> {
         let encrypted_pw = match password {
             // Tri-state: empty string clears the password (NULL column),
-            // never an encrypted empty blob (mirrors `save_cloud_profile`).
+            // never an encrypted empty blob.
             Some("") => None,
             Some(pw) => Some(self.encrypt_field(pw)?),
             None => self

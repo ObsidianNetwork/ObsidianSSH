@@ -87,11 +87,6 @@ pub(crate) struct OpenVault {
     // Created from the host editor (where the user is already looking at
     // the host that needs one) and managed in Settings → Connection.
     pub(crate) login_scripts: Vec<obsidianssh_core::models::LoginScript>,
-    // Cloud Accounts, CloudProfile rows + the wizard form. Wizard is
-    // intentionally minimal in v0.6 PR 3: provider + AWS profile auth
-    // only. Access key + SSO + the discover-and-pick step land in
-    // follow-up PRs once the foundation is exercised.
-    pub(crate) cloud_profiles: Vec<obsidianssh_core::models::cloud_profile::CloudProfile>,
     // Snippets
     pub(crate) snippets: Vec<obsidianssh_core::models::snippet::Snippet>,
     /// User-defined terminal color schemes, shown in the theme pickers
@@ -220,9 +215,6 @@ pub(crate) struct OpenVault {
     pub(crate) session_group_panel_error: Option<String>,
     /// The hosts the open "Move to group" picker will move.
     pub(crate) move_hosts_pending: Vec<uuid::Uuid>,
-    /// Folder rename inline editor, `Some((group_id, current_input))`
-    /// while the modal is open.
-    pub(crate) folder_rename: Option<(Uuid, String)>,
     /// Manual host-group editor side panel (label + icon + color). Open
     /// when `group_edit_visible`; `group_edit_id` is the group being
     /// edited. `group_edit_icon` / `group_edit_color` are empty strings
@@ -251,8 +243,6 @@ pub(crate) struct OpenVault {
     /// not to the user's configuration.
     /// See [`crate::state::PanelsOpen`].
     pub(crate) panels: crate::state::PanelsOpen,
-    /// See [`crate::state::CloudDiscoverUi`].
-    pub(crate) cloud_discover: crate::state::CloudDiscoverUi,
     /// See [`crate::state::SnippetForm`].
     pub(crate) snippet_form: crate::state::SnippetForm,
     /// See [`crate::state::KeysUi`].
@@ -267,9 +257,6 @@ pub(crate) struct OpenVault {
     /// Settings > Terminal: the inline editor for one highlight rule.
     /// The list itself is a preference (`prefs.highlight_rules`).
     pub(crate) highlight_rule_form: crate::state::HighlightRuleForm,
-    /// Transient state for the add/edit cloud-account wizard (covers all
-    /// provider + auth combinations).
-    pub(crate) cloud_form: crate::state::CloudForm,
     /// Native combo_box state for the host editor's Initial Command /
     /// Snippet field. A forced-selection searchable combo: options are
     /// the None / Custom sentinels plus the snippet labels; the picked
@@ -291,15 +278,6 @@ pub(crate) struct OpenVault {
     pub(crate) group_picker_search: String,
     /// Host editor's startup-command source (None / a snippet / custom).
     pub(crate) editor_startup_choice: crate::state::StartupChoice,
-    /// Modal that asks the user to pick the transport for the EC2
-    /// hosts about to be imported. Only opened when there's at
-    /// least one EC2 selected, pure-ECS imports skip straight to
-    /// the import logic since dynamic groups always use ECS Exec.
-    pub(crate) cloud_import_confirm_visible: bool,
-    /// Edit-dynamic-group form. Opened from the ⋮ menu on a dynamic
-    /// group card (root or nested). Edits the `cloud_query.template`
-    /// fields: username, initial_command, transport, key, identity.
-    pub(crate) cloud_dynamic_form: crate::state::CloudDynamicForm,
     pub(crate) ui_theme_import_content: iced::widget::text_editor::Content,
     pub(crate) ui_theme_import_name: String,
     pub(crate) ui_theme_import_error: Option<String>,
@@ -494,7 +472,6 @@ impl OpenVault {
             proxy_identities: Vec::new(),
             login_scripts: Vec::new(),
             snippets: Vec::new(),
-            cloud_profiles: Vec::new(),
             port_forward_rules: Vec::new(),
             known_hosts: Vec::new(),
             logs: Vec::new(),
@@ -528,16 +505,11 @@ impl OpenVault {
             session_group_panel_error: None,
             group_edit: crate::state::GroupEditForm::default(),
             folder_delete: None,
-            folder_rename: None,
             identity_form: crate::state::IdentityForm::default(),
             identity_context_menu: None,
             proxy_identity_form: crate::state::ProxyIdentityForm::default(),
             login_script_form: crate::state::LoginScriptForm::default(),
             highlight_rule_form: crate::state::HighlightRuleForm::default(),
-            cloud_form: crate::state::CloudForm::default(),
-            cloud_dynamic_form: crate::state::CloudDynamicForm::default(),
-            cloud_import_confirm_visible: false,
-            cloud_discover: crate::state::CloudDiscoverUi::default(),
             port_forward_form: crate::state::PortForwardRuleForm::default(),
             port_forward_context_menu: None,
             snippet_form: crate::state::SnippetForm::default(),

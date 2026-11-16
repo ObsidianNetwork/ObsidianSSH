@@ -192,16 +192,14 @@ fn resolve_named<T>(
     }
 }
 
-/// Resolve a folder by breadcrumb path or label among the MANUAL
-/// folders. Never creates one.
+/// Resolve a folder by breadcrumb path or label. Never creates one.
 fn resolve_group(vault: &VaultStore, input: &str) -> Result<Uuid, String> {
     let groups = vault.list_groups().map_err(|e| e.to_string())?;
     // A path is exact; a bare label can name several folders, and the
     // first one found would put the host (and what it inherits) in the
     // wrong one.
-    let manual = || groups.iter().filter(|g| g.cloud_query.is_none());
-    if !manual().any(|g| Group::path_of(&groups, g.id) == input.trim()) {
-        let same_label: Vec<String> = manual()
+    if !groups.iter().any(|g| Group::path_of(&groups, g.id) == input.trim()) {
+        let same_label: Vec<String> = groups.iter()
             .filter(|g| g.label == input.trim())
             .map(|g| Group::path_of(&groups, g.id))
             .collect();
@@ -217,7 +215,6 @@ fn resolve_group(vault: &VaultStore, input: &str) -> Result<Uuid, String> {
     Group::resolve_path_or_label(&groups, input, &HashSet::new()).ok_or_else(|| {
         let mut paths: Vec<String> = groups
             .iter()
-            .filter(|g| g.cloud_query.is_none())
             .map(|g| Group::path_of(&groups, g.id))
             .collect();
         paths.sort_unstable();

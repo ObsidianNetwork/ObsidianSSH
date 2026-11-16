@@ -73,7 +73,7 @@ impl ObsidianSsh {
                 | OC::ToolbarSearch
                 | OC::PasswordSuggest { .. }
                 | OC::HistorySuggest { .. } => return None,
-                OC::GroupPicker(_) | OC::CloudDiscoverGroupPicker => SurfaceFamily::Picker,
+                OC::GroupPicker(_) => SurfaceFamily::Picker,
                 _ => SurfaceFamily::Menu,
             };
             return Some((
@@ -110,7 +110,6 @@ impl ObsidianSsh {
                     | Modal::ClearHistoryConfirm
                     | Modal::SshImport
                     | Modal::ShareDialog
-                    | Modal::CloudImportConfirm
                     // Dial security prompts: the REFUSING button is the
                     // default-ringed action on both, so a stray Enter can
                     // never trust a host key or spawn a command proxy
@@ -214,7 +213,6 @@ impl ObsidianSsh {
             ModalSurface::Modal(
                 Modal::ShareDialog
                     | Modal::SshImport
-                    | Modal::CloudImportConfirm
                     // The snippet-variables prompt is a column of value
                     // text_inputs; the caret must keep Space (and Left/Right)
                     // so typing a value never fires the default Confirm and

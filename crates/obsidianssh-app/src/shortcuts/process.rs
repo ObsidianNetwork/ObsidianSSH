@@ -21,10 +21,6 @@ impl ObsidianSsh {
     /// Never returns on success (`process::exit`). On a spawn failure it
     /// returns so the caller stays running rather than stranding the user
     /// with no window.
-    ///
-    /// The one exit door that cannot drain the plugin subprocesses:
-    /// `process::exit` leaves no runtime to await the drain on. See
-    /// `drain_plugins_before_exit`.
     pub(crate) fn relaunch_self(&mut self) {
         // Geometry BEFORE the spawn, on its own, and it is not a
         // duplicate of the `persist_before_exit` below: the replacement

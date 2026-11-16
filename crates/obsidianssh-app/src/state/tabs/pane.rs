@@ -721,22 +721,9 @@ pub(crate) struct Pane {
     /// that later drops never shows the code of a shell two sessions
     /// ago.
     pub end_verdict: Option<PaneEndVerdict>,
-    /// True when the PTY runs a cloud plugin process (AWS
-    /// `session-manager-plugin` for SSM / ECS Exec, `kubectl exec`): the
-    /// pane carries no `session` handle because its transport IS that
-    /// local process. Two consequences ride on it. The session talks SSM
-    /// over a websocket whose idle timer kills it after ~20 min, so a
-    /// plugin pane gets the resize-based keepalive while the window is
-    /// unfocused (`TerminalTab::ssm_keepalive`); and a pane with a PTY
-    /// but no handle is only LOCAL when this is false. `spawn_plugin_tab`
-    /// is the one site that raises it. A fact of the PANE, not the tab:
-    /// a plugin pane moved into a split of SSH panes keeps it, and the
-    /// tab it left stops having it.
-    pub plugin_backed: bool,
     /// Message that re-creates this pane's session, for Duplicate Tab,
     /// the dormant reopen and the pin spec. Set only where no saved
-    /// `Connection` can be looked up: cloud exec sessions (ECS Exec,
-    /// `kubectl` pod) and quick-connect hosts. Connection-backed panes
+    /// `Connection` can be looked up: quick-connect hosts. Connection-backed panes
     /// leave it `None` and duplicate by host lookup instead. Travels
     /// with the pane, since it describes the pane's own session.
     pub relaunch: Option<Box<crate::messages::Message>>,
@@ -998,7 +985,6 @@ impl Pane {
             origin: PaneOrigin::Ephemeral,
             ended: false,
             end_verdict: None,
-            plugin_backed: false,
             relaunch: None,
             local_generation: 0,
             sync_flush_scheduled: false,

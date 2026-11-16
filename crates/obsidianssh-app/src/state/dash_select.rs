@@ -36,7 +36,6 @@ pub(crate) struct SelectionScope {
     pub(crate) group: Option<Uuid>,
     pub(crate) search: String,
     pub(crate) view_mode: crate::state::HostViewMode,
-    pub(crate) cloud_profile: Option<Uuid>,
     pub(crate) tags: Vec<String>,
 }
 

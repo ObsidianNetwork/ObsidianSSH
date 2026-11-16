@@ -37,7 +37,7 @@ const ROW_H: f32 = 26.0;
 enum TreeLead {
     /// Manual folder: leading chevron mirroring the fold state.
     Fold { expanded: bool },
-    /// Row that opens another screen (dynamic group, session group):
+    /// Row that opens another screen (session group):
     /// leading spacer, trailing drill-in chevron while not hovered.
     Drill,
     /// Host: leading spacer, no idle trailing affordance.
@@ -54,13 +54,7 @@ pub(crate) enum TreeEntry<'a> {
     Folder {
         group: &'a obsidianssh_core::models::Group,
         count_text: String,
-        brand: Option<&'static str>,
         expanded: bool,
-        depth: usize,
-    },
-    Dynamic {
-        group: &'a obsidianssh_core::models::Group,
-        query: &'a obsidianssh_core::models::cloud::CloudQuery,
         depth: usize,
     },
     Session { idx: usize, depth: usize },
@@ -75,13 +69,9 @@ impl ObsidianSsh {
         self.dashboard_tree_entries()
             .into_iter()
             .map(|entry| match entry {
-                TreeEntry::Folder { group, count_text, brand, expanded, depth } => {
+                TreeEntry::Folder { group, count_text, expanded, depth } => {
                     let (el, color) =
-                        self.dash_tree_folder_row(group, count_text, brand, expanded, depth);
-                    (el, color, DashNavItem::Group(group.id))
-                }
-                TreeEntry::Dynamic { group, query, depth } => {
-                    let (el, color) = self.dash_tree_dynamic_group_row(group, query, depth);
+                        self.dash_tree_folder_row(group, count_text, expanded, depth);
                     (el, color, DashNavItem::Group(group.id))
                 }
                 TreeEntry::Session { idx, depth } => {
@@ -117,33 +107,17 @@ impl ObsidianSsh {
     fn dashboard_tree_entries(&self) -> Vec<TreeEntry<'_>> {
         let search_lower = self.cur_nav().host_search.to_lowercase();
         let searching = !search_lower.trim().is_empty();
-        // Provider hiding, counts, brand inference and the filter
-        // chips: the same pre-pass the folder cards run.
+        // Counts and the tag filter: the same pre-pass the folder
+        // cards run.
         let pre = self.dash_grid_pre_pass();
-        let hidden_profiles = &pre.hidden_profiles;
-        let hidden_groups = &pre.hidden_groups;
-        let cloud_filter_groups = &pre.cloud_filter_groups;
         let tag_filter_groups = &pre.tag_filter_groups;
-        let infer_brand = |gid: &Uuid| pre.infer_brand(self, gid);
 
-        // Which host indices pass the non-search filters (provider
-        // hiding, cloud-profile chip, tag filter). The search filter
+        // Which host indices pass the non-search filters (the tag
+        // filter). The search filter
         // is applied in the walk, where a matching ancestor short-
         // circuits it (a folder that matches shows all its children).
         let host_passes = |i: usize| -> bool {
             let conn = &self.vaults.cur().connections[i];
-            if conn
-                .cloud_ref
-                .as_ref()
-                .is_some_and(|r| hidden_profiles.contains(&r.profile_id))
-            {
-                return false;
-            }
-            if let Some(filter_pid) = self.cur_nav().host_filter_cloud_profile
-                && conn.cloud_ref.as_ref().map(|r| r.profile_id) != Some(filter_pid)
-            {
-                return false;
-            }
             if !self.cur_nav().host_filter_tags.is_empty()
                 && !conn.tags.iter().any(|tg| {
                     self.cur_nav().host_filter_tags.iter().any(|f| f.eq_ignore_ascii_case(tg))
@@ -162,9 +136,7 @@ impl ObsidianSsh {
                 )
         };
         let group_passes = |g: &obsidianssh_core::models::Group| -> bool {
-            !hidden_groups.contains(&g.id)
-                && cloud_filter_groups.as_ref().is_none_or(|v| v.contains(&g.id))
-                && tag_filter_groups.as_ref().is_none_or(|v| v.contains(&g.id))
+            tag_filter_groups.as_ref().is_none_or(|v| v.contains(&g.id))
         };
 
         // Search visibility per group is decided BEFORE any card is
@@ -203,7 +175,6 @@ impl ObsidianSsh {
                 &group_passes,
                 &host_passes,
                 &host_search_match,
-                &infer_brand,
                 &pre.direct_host_count,
                 &pre.nested_group_count,
                 &mut visited,
@@ -271,7 +242,6 @@ impl ObsidianSsh {
         group_passes: &dyn Fn(&obsidianssh_core::models::Group) -> bool,
         host_passes: &dyn Fn(usize) -> bool,
         host_search_match: &dyn Fn(usize) -> bool,
-        infer_brand: &dyn Fn(&Uuid) -> Option<&'static str>,
         direct_host_count: &std::collections::HashMap<Uuid, usize>,
         nested_group_count: &std::collections::HashMap<Uuid, usize>,
         visited: &mut std::collections::HashSet<Uuid>,
@@ -293,14 +263,6 @@ impl ObsidianSsh {
         }
         let gid = group.id;
 
-        if let Some(query) = group.cloud_query.as_ref() {
-            // Dynamic (ECS / K8s) groups keep their drill-down: the
-            // dedicated cloud-group screen (task list, refresh,
-            // transport) is richer than inline rows at this scale.
-            rows.push(TreeEntry::Dynamic { group, query, depth });
-            return;
-        }
-
         let expanded = searching || self.hosts_tree_expanded.contains(&gid);
         let direct_hosts = direct_host_count.get(&gid).copied().unwrap_or(0);
         let nested_groups = nested_group_count.get(&gid).copied().unwrap_or(0);
@@ -308,7 +270,6 @@ impl ObsidianSsh {
         rows.push(TreeEntry::Folder {
             group,
             count_text,
-            brand: infer_brand(&gid),
             expanded,
             depth,
         });
@@ -338,7 +299,6 @@ impl ObsidianSsh {
                 group_passes,
                 host_passes,
                 host_search_match,
-                infer_brand,
                 direct_host_count,
                 nested_group_count,
                 visited,
@@ -387,20 +347,19 @@ impl ObsidianSsh {
         &'a self,
         group: &'a obsidianssh_core::models::Group,
         count_text: String,
-        inferred_brand: Option<&'static str>,
         expanded: bool,
         depth: usize,
     ) -> (Element<'a, Message>, Color) {
         let gid = group.id;
         // Same icon precedence as `manual_folder_card`: explicit brand,
-        // inferred brand, explicit non-brand icon, generic cube.
+        // explicit non-brand icon, generic cube.
         let explicit_brand = group
             .icon
             .as_deref()
             .filter(|s| !s.is_empty())
             .and_then(crate::os_icon::canonical_brand_id);
         let (folder_glyph, folder_bg): (BrandIcon, Color) =
-            if let Some(brand) = explicit_brand.or(inferred_brand) {
+            if let Some(brand) = explicit_brand {
                 let glyph = crate::os_icon::custom_icon_glyph(brand);
                 let bg = group
                     .color
@@ -539,84 +498,16 @@ impl ObsidianSsh {
             ROW_ICON,
         );
 
-        // Cloud origin: brand glyph on the subtitle's leading edge,
-        // muted label + orphan pill when the resource is gone -
-        // the same signals as the card, one line tall.
-        let cloud: Option<(&'static str, Color, bool)> = conn.cloud_ref.as_ref().map(|cr| {
-            let provider = self
-                .vaults.cur().cloud_profiles
-                .iter()
-                .find(|p| p.id == cr.profile_id)
-                .map(|p| p.provider.as_str())
-                .unwrap_or("cloud");
-            let brand_key = crate::os_icon::provider_brand_key(provider);
-            let is_orphan = cr.orphaned_at.is_some();
-            let (_g, brand_color) =
-                crate::os_icon::provider_icon(brand_key, ObsidianSshColors::t().accent);
-            let badge = if is_orphan {
-                ObsidianSshColors::t().text_muted
-            } else {
-                brand_color
-            };
-            (brand_key, badge, is_orphan)
-        });
-        let is_orphan = matches!(cloud, Some((_, _, true)));
-        let label_color = if is_orphan {
-            ObsidianSshColors::t().text_muted
-        } else {
-            ObsidianSshColors::t().text_primary
-        };
-        let label_el: Element<'_, Message> = if is_orphan {
-            let muted = ObsidianSshColors::t().text_muted;
-            let pill = container(
-                text(t("host_orphan_label")).size(9).color(muted),
-            )
-            .padding(Padding { top: 1.0, right: 6.0, bottom: 1.0, left: 6.0 })
-            .style(move |_| container::Style {
-                background: Some(Background::Color(Color { a: 0.10, ..muted })),
-                border: Border {
-                    radius: Radius::from(6.0),
-                    color: Color { a: 0.30, ..muted },
-                    width: 1.0,
-                },
-                ..Default::default()
-            });
-            dir_row(vec![
-                text(display_label.clone())
-                    .size(13)
-                    .color(label_color)
-                    .wrapping(iced::widget::text::Wrapping::None)
-                    .boxed(),
-                Space::new().width(6).boxed(),
-                pill.boxed(),
-            ])
-            .align_y(iced::Alignment::Center)
-            .boxed()
-        } else {
-            text(display_label.clone())
-                .size(13)
-                .color(label_color)
-                .wrapping(iced::widget::text::Wrapping::None)
-                .boxed()
-        };
-        let subtitle_el: Element<'_, Message> = match &cloud {
-            Some((brand_key, color, _)) => dir_row(vec![
-                crate::os_icon::custom_icon_glyph(brand_key).view(10.0, *color),
-                Space::new().width(4).boxed(),
-                text(subtitle)
-                    .size(10)
-                    .color(ObsidianSshColors::t().text_muted)
-                    .wrapping(iced::widget::text::Wrapping::None)
-                    .boxed(),
-            ])
-            .align_y(iced::Alignment::Center)
-            .boxed(),
-            None => text(subtitle)
-                .size(10)
-                .color(ObsidianSshColors::t().text_muted)
-                .wrapping(iced::widget::text::Wrapping::None)
-                .boxed(),
-        };
+        let label_el: Element<'_, Message> = text(display_label.clone())
+            .size(13)
+            .color(ObsidianSshColors::t().text_primary)
+            .wrapping(iced::widget::text::Wrapping::None)
+            .boxed();
+        let subtitle_el: Element<'_, Message> = text(subtitle)
+            .size(10)
+            .color(ObsidianSshColors::t().text_muted)
+            .wrapping(iced::widget::text::Wrapping::None)
+            .boxed();
 
         let el = self.dash_tree_row(
             depth,
@@ -693,65 +584,6 @@ impl ObsidianSsh {
             false,
         );
         (el, bg_color)
-    }
-
-    /// A dynamic (cloud-query) group as a dense tree row. Press opens
-    /// the dedicated cloud-group screen, same as the card.
-    fn dash_tree_dynamic_group_row<'a>(
-        &'a self,
-        group: &'a obsidianssh_core::models::Group,
-        query: &'a obsidianssh_core::models::cloud::CloudQuery,
-        depth: usize,
-    ) -> (Element<'a, Message>, Color) {
-        let gid = group.id;
-        let subtitle = match &query.kind {
-            obsidianssh_core::models::cloud::CloudQueryKind::EcsTasks { cluster, .. } => {
-                format!("ECS · {cluster}")
-            }
-            obsidianssh_core::models::cloud::CloudQueryKind::K8sPods {
-                context, namespace, ..
-            } => format!("K8s · {context}/{namespace}"),
-        };
-        let query_brand: &str = match query.kind {
-            obsidianssh_core::models::cloud::CloudQueryKind::EcsTasks { .. } => "ecs",
-            obsidianssh_core::models::cloud::CloudQueryKind::K8sPods { .. } => "kubernetes",
-        };
-        let icon_id: &str =
-            group.icon.as_deref().filter(|s| !s.is_empty()).unwrap_or(query_brand);
-        let folder_glyph = crate::os_icon::custom_icon_glyph(icon_id);
-        let folder_bg = group
-            .color
-            .as_deref()
-            .and_then(crate::os_icon::parse_hex_color)
-            .unwrap_or_else(|| {
-                crate::os_icon::provider_icon(icon_id, ObsidianSshColors::t().accent).1
-            });
-        let icon_box = self.dash_tree_row_icon(folder_bg, &group.label, folder_glyph);
-        let hovered = self.cur_nav().hover.dynamic_group_card == Some(gid);
-        let el = self.dash_tree_row(
-            depth,
-            TreeLead::Drill,
-            icon_box,
-            text(group.label.clone())
-                .size(13)
-                .color(ObsidianSshColors::t().text_primary)
-                .wrapping(iced::widget::text::Wrapping::None)
-                .boxed(),
-            Some(
-                text(subtitle)
-                    .size(10)
-                    .color(ObsidianSshColors::t().text_muted)
-                    .wrapping(iced::widget::text::Wrapping::None)
-                    .boxed(),
-            ),
-            Some(Message::Navigation(NavigationMessage::OpenGroup(gid))),
-            hovered,
-            Message::Cloud(CloudMessage::ShowDynamicGroupCardMenu(gid)),
-            Message::Cloud(CloudMessage::DynamicGroupCardHovered(gid)),
-            Message::Cloud(CloudMessage::DynamicGroupCardUnhovered(gid)),
-            false,
-        );
-        (el, folder_bg)
     }
 
     /// Icon badge for a dense row, honouring the global default shape

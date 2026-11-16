@@ -16,7 +16,7 @@ impl ObsidianSsh {
     /// Synchronous on purpose. The renderer relaunch exits through
     /// `std::process::exit`, which can neither await a `Task` nor run a
     /// destructor, so anything that only works as a task is a step that
-    /// door cannot take (see `drain_plugins_before_exit`).
+    /// door cannot take.
     pub(crate) fn persist_before_exit(&mut self) {
         // Buffered session-log output, trailing partial lines included:
         // the recording is going away with the pane, so there is no
@@ -46,38 +46,6 @@ impl ObsidianSsh {
         crate::remote_desktop::sweep_stale_credentials();
         // A sudo question from `obsidianssh-mcp` nobody can see any more.
         self.mcp_sudo_on_exit();
-    }
-
-    /// Gracefully drain the plugin subprocesses (flush logs / close SDK
-    /// clients on stdin EOF) so they aren't hard-killed with the app.
-    /// Providers drain in parallel and the whole thing is time-bounded,
-    /// so a wedged plugin can't hold the app open. The caller chains its
-    /// own exit verb onto the returned task (`window::close` for the
-    /// close and update doors, `iced::exit()` for the tray's Quit).
-    ///
-    /// Three doors of the four; the renderer relaunch is the exception
-    /// and cannot be fixed by calling this. It leaves through
-    /// `std::process::exit`, so there is no runtime left to await the
-    /// drain, and blocking the UI thread on it would stall the frame
-    /// that is about to spawn the replacement process. The subprocesses
-    /// still see their stdin close when the parent goes, which is the
-    /// same EOF this asks for, minus the wait.
-    pub(crate) fn drain_plugins_before_exit(&self) -> Task<Message> {
-        let providers: Vec<std::sync::Arc<crate::plugins::PluginProvider>> =
-            self.plugin_providers.values().cloned().collect();
-        Task::perform(
-            async move {
-                let drain = futures_util::future::join_all(
-                    providers.iter().map(|p| p.shutdown()),
-                );
-                let _ = tokio::time::timeout(
-                    std::time::Duration::from_millis(2000),
-                    drain,
-                )
-                .await;
-            },
-            |_: ()| Message::NoOp,
-        )
     }
 
     /// Best-effort persist a key/value pair to the vault. Logs failures
@@ -154,7 +122,7 @@ impl ObsidianSsh {
 
     /// Snapshot the currently-pinned tabs (those with a reopenable spec) to
     /// the `pinned_tabs` setting so they reappear, dormant, next launch.
-    /// Cloud / ephemeral pinned tabs have no spec and are skipped.
+    /// Ephemeral pinned tabs have no spec and are skipped.
     pub(crate) fn persist_pinned_tabs(&mut self) {
         self.for_each_open_vault(Self::persist_pinned_tabs_here);
     }
@@ -550,9 +518,8 @@ impl ObsidianSsh {
         // The queue walks the STRIP, pins included: a pin is a restored
         // tab too, and a strip that came back half live would read as
         // half broken. Only what has an in-place dial is queued (a
-        // saved host, a local shell); an SFTP tab re-mounts on focus
-        // and a cloud tab spawns through a plugin into a tab of its
-        // own, so both keep connecting when selected, and the setting's
+        // saved host, a local shell); an SFTP tab re-mounts on focus, so
+        // it keeps connecting when selected, and the setting's
         // description says so.
         if self.launch_dials_wanted() {
             self.vaults.cur_mut().launch_dials = self
@@ -678,7 +645,7 @@ impl ObsidianSsh {
 
 /// Whether a restored spec is one the "connect at launch" queue dials
 /// (a saved host, a local shell). The queue and the hint a chip shows
-/// both ask this, so a cloud or SFTP chip, which keeps connecting on
+/// both ask this, so an SFTP chip, which keeps connecting on
 /// select, never promises a dial that is not coming.
 fn spec_has_in_place_dial(spec: &crate::state::PinnedTabSpec) -> bool {
     matches!(
@@ -701,15 +668,8 @@ mod tests {
             args: vec![],
             label: "sh".into(),
         }));
-        // These keep connecting on select, so their chips must not wear
+        // This keeps connecting on select, so its chip must not wear
         // the "connecting at launch" hint.
-        assert!(!spec_has_in_place_dial(&PinnedTabSpec::KubectlExec {
-            group_id: id,
-            namespace: "ns".into(),
-            pod: "p".into(),
-            container: "c".into(),
-            label: "k".into(),
-        }));
         assert!(!spec_has_in_place_dial(&PinnedTabSpec::Sftp {
             left: SftpPaneSpec::Local,
             right: SftpPaneSpec::Remote(id),

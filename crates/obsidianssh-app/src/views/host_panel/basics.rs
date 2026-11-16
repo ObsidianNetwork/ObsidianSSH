@@ -1,5 +1,5 @@
 //! Host editor: universal Host-card fields (label, parent group, tags,
-//! connection target, protocol / cloud-transport pickers, numeric port).
+//! connection target, protocol picker, numeric port).
 use super::*;
 use iced::widget::column;
 
@@ -274,19 +274,13 @@ impl ObsidianSsh {
 
     pub(super) fn hp_protocol_row(&self) -> Option<Element<'_, Message>> {
         use obsidianssh_core::models::connection::ConnectionProtocol as Proto;
-        // Protocol picker (Connection). A cloud-imported host has its own
-        // transport picker below and is always SSH-family, so the two are
-        // mutually exclusive: hide the protocol picker on cloud hosts.
+        // Protocol picker (Connection).
         //
         // Every protocol is in the ONE picker, remote desktop included.
         // It used to be a separate "Add remote desktop" entry in the add
         // menu, which meant a user looking for RDP opened this list,
         // failed to find it, and concluded the app had none.
-        let protocol_row: Option<Element<'_, Message>> = if self.vaults.cur().editor_form.cloud_transport
-            .is_some()
-        {
-            None
-        } else {
+        let protocol_row: Option<Element<'_, Message>> = {
             let mut options =
                 vec![Proto::Ssh, Proto::Telnet, Proto::Raw, Proto::Serial, Proto::Local];
             // Remote desktop stays behind its opt-in feature flag, so it
@@ -318,52 +312,6 @@ impl ObsidianSsh {
             )
         };
         protocol_row
-    }
-
-    pub(super) fn hp_cloud_transport_row(&self) -> Option<Element<'_, Message>> {
-        // Cloud-managed transport picker (Connection), only when the
-        // connection being edited carries a `cloud_ref` (i.e. it was
-        // imported from a cloud provider). Lets the user flip between
-        // SSH (default) and AWS Instance Connect / SSM transports.
-        // Built here (before the SSH card widgets) so its keyboard row
-        // records in visual order inside the Host card.
-        let cloud_transport_row: Option<Element<'_, Message>> =
-            self.vaults.cur().editor_form.cloud_transport.map(|current| {
-                use obsidianssh_core::models::cloud::TransportKind;
-                let options = vec![
-                    TransportKind::Ssh,
-                    TransportKind::InstanceConnect,
-                    TransportKind::Ssm,
-                ];
-                // Focusable select: Tab reaches it, Enter/Space open it,
-                // the widget owns arrows/Esc while focused (fork support).
-                let picker = self.panel_nav_slot(
-                    crate::keynav::RowAction::input(iced::widget::Id::new(
-                        "editor-pick-cloud-transport",
-                    )),
-                    crate::widgets::INPUT_RADIUS,
-                    pick_list(Some(current), options, |t| match t {
-                        TransportKind::Ssh => "SSH".to_string(),
-                        TransportKind::InstanceConnect => "EC2 Instance Connect".to_string(),
-                        TransportKind::Ssm => "SSM Session".to_string(),
-                        TransportKind::EcsExec => "ECS Exec".to_string(),
-                        TransportKind::KubectlExec => "kubectl exec".to_string(),
-                    })
-                    .on_select(|v| Message::Editor(EditorMessage::EditorCloudTransportChanged(v)))
-                    .id(iced::widget::Id::new("editor-pick-cloud-transport"))
-                    .on_open(Message::Navigation(NavigationMessage::PickOpenChanged(true)))
-                    .on_close(Message::Navigation(NavigationMessage::PickOpenChanged(false)))
-                    .padding(10)
-                    .style(crate::widgets::rounded_pick_list_style)
-                    .boxed(),
-                );
-                column![
-                    text(t("cloud_dynamic_form_transport")).size(12).color(ObsidianSshColors::t().text_muted),
-                    Space::new().height(8),
-                    picker,
-                ].boxed()
-            });
-        cloud_transport_row
     }
 
     pub(super) fn hp_port_input(&self, is_serial: bool) -> Element<'_, Message> {

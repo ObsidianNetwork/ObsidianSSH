@@ -56,15 +56,7 @@ obsidianssh-zmodem = { workspace = true }
 obsidianssh-terminal = { workspace = true }
 obsidianssh-vault = { workspace = true }
 obsidianssh-sync = { workspace = true }
-obsidianssh-cloud = { workspace = true }
 obsidianssh-plugin-protocol = { workspace = true }
-# `obsidianssh-cloud-aws` is intentionally NOT a dependency, the AWS
-# provider (and its ~1.2 GB of aws-sdk codegen) now lives in the
-# `obsidianssh-cloud-aws-plugin` subprocess. The app talks to it over
-# JSON-RPC via `plugins::PluginProvider`.
-# `CloudProvider` is an async trait, the app needs `async-trait` to
-# implement it for `PluginProvider`.
-async-trait = "0.1"
 # Zeroize the decrypted private-key PEM in the agent sign path so the
 # decrypt-per-signature contract leaves no plaintext copy in freed heap.
 zeroize = { workspace = true }

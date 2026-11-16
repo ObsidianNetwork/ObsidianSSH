@@ -73,11 +73,10 @@ pub enum NavigationMessage {
     /// Live filter for the shared group-picker popover.
     GroupPickerSearchChanged(String),
     /// Route a pick into the matching form field and close the
-    /// popover. Existing field-change messages (`EditorGroupChanged`,
-    /// `DynamicGroupFormParentChanged`) still drive the write.
+    /// popover. Existing field-change messages (`EditorGroupChanged`)
+    /// still drive the write.
     GroupPickerPick(crate::state::GroupPickerTarget, String),
-    /// Apply / clear the dashboard cloud-profile filter. Passing None
-    /// clears it; passing Some(pid) restricts the grid to items whose
-    /// cloud origin matches that profile.
-    HostFilterByCloudProfile(Option<Uuid>),
+    /// Open the "+ Host ▾" add menu (import, export, new group) under
+    /// the toolbar split button.
+    ShowHostAddMenu,
 }

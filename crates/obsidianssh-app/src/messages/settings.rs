@@ -551,10 +551,6 @@ pub enum SettingsMessage {
     /// Hover tracking for the per-card remove action.
     LocalTerminalCardHovered(usize),
     LocalTerminalCardUnhovered(usize),
-    SettingCloudAutoRefreshToggle,
-    SettingCloudAutoRefreshIntervalChanged(String),
-    SettingCloudAutoArchiveToggle,
-    SettingCloudOrphanArchiveDaysChanged(String),
     /// A CJK font (Korean / Chinese / Japanese) finished downloading or
     /// was read from cache; `Ok` carries the font bytes to hand to
     /// `iced::font::load`. Carries the language code so the in-memory

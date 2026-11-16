@@ -92,16 +92,13 @@ impl ObsidianSsh {
     /// post-update flush net in `dispatch.rs` watches. The flag alone
     /// is not the answer: the drawer only renders on the Dashboard with
     /// no tab focused, and it sits LAST in the Dashboard's panel chain
-    /// (`views/layout/mod.rs::side_panel_open`), so a cloud panel or a
-    /// group editor opening takes the slot while `host_panel` stays
+    /// (`views/layout/mod.rs::side_panel_open`), so a group editor opening takes the slot while `host_panel` stays
     /// true. Mirrors that chain; a condition added there belongs here.
     pub(crate) fn host_editor_visible(&self) -> bool {
         self.vaults.cur().panels.host_panel
             && self.side_panel_here()
             && self.cur_active_tab().is_none()
             && self.cur_view() == crate::state::View::Dashboard
-            && !self.vaults.cur().cloud_discover.visible
-            && !self.vaults.cur().cloud_dynamic_form.visible
             && !self.vaults.cur().group_edit.visible
     }
 

@@ -13,19 +13,6 @@ members = [
     "crates/obsidianssh-vault",
     "crates/obsidianssh-sync",
     "crates/obsidianssh-relay",
-    "crates/obsidianssh-cloud",
-    "crates/obsidianssh-cloud-aws",
-    "crates/obsidianssh-cloud-aws-plugin",
-    "crates/obsidianssh-cloud-k8s",
-    "crates/obsidianssh-cloud-k8s-plugin",
-    "crates/obsidianssh-cloud-gcp",
-    "crates/obsidianssh-cloud-gcp-plugin",
-    "crates/obsidianssh-cloud-azure",
-    "crates/obsidianssh-cloud-azure-plugin",
-    "crates/obsidianssh-cloud-aliyun",
-    "crates/obsidianssh-cloud-aliyun-plugin",
-    "crates/obsidianssh-cloud-tencent",
-    "crates/obsidianssh-cloud-tencent-plugin",
     "crates/obsidianssh-plugin-protocol",
     "crates/obsidianssh-plugin-signer",
     "crates/obsidianssh-app",
@@ -151,13 +138,6 @@ obsidianssh-zmodem = { path = "crates/obsidianssh-zmodem" }
 obsidianssh-terminal = { path = "crates/obsidianssh-terminal" }
 obsidianssh-vault = { path = "crates/obsidianssh-vault" }
 obsidianssh-sync = { path = "crates/obsidianssh-sync" }
-obsidianssh-cloud = { path = "crates/obsidianssh-cloud" }
-obsidianssh-cloud-aws = { path = "crates/obsidianssh-cloud-aws" }
-obsidianssh-cloud-k8s = { path = "crates/obsidianssh-cloud-k8s" }
-obsidianssh-cloud-gcp = { path = "crates/obsidianssh-cloud-gcp" }
-obsidianssh-cloud-azure = { path = "crates/obsidianssh-cloud-azure" }
-obsidianssh-cloud-aliyun = { path = "crates/obsidianssh-cloud-aliyun" }
-obsidianssh-cloud-tencent = { path = "crates/obsidianssh-cloud-tencent" }
 obsidianssh-plugin-protocol = { path = "crates/obsidianssh-plugin-protocol" }
 
 [profile.dev]

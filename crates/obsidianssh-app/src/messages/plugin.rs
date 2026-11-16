@@ -1,4 +1,4 @@
-//! Cloud-provider plugin install / update / uninstall lifecycle, wrapped by [`crate::messages::Message::Plugin`]. Handled by `ObsidianSsh::handle_plugins`.
+//! Plugin install / update / uninstall lifecycle, wrapped by [`crate::messages::Message::Plugin`]. Handled by `ObsidianSsh::handle_plugins`.
 
 #[derive(Debug, Clone)]
 pub enum PluginMessage {

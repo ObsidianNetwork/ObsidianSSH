@@ -457,7 +457,7 @@ impl ObsidianSsh {
         // the hide-to-tray persisted geometry, so this writes the final
         // state along with the two flushes.
         self.persist_before_exit();
-        self.drain_plugins_before_exit().then(|_| iced::exit())
+        iced::exit()
     }
 
     /// Rebuild the Windows taskbar JumpList's recent-hosts category when

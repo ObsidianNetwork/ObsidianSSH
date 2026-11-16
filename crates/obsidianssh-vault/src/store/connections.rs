@@ -13,7 +13,7 @@ impl VaultStore {
     ) -> Result<(), VaultError> {
         let encrypted_pw = match password {
             // Tri-state: empty string clears the password (NULL column),
-            // never an encrypted empty blob (mirrors `save_cloud_profile`).
+            // never an encrypted empty blob.
             Some("") => None,
             Some(pw) => Some(self.encrypt_field(pw)?),
             None => {
@@ -131,8 +131,8 @@ impl VaultStore {
             "INSERT OR REPLACE INTO connections
              (id, label, hostname, port, username, auth_method, key_id, group_id,
               jump_chain, proxy, tags, notes, color, password, last_used, created_at, updated_at, identity_id, mcp_enabled, port_forwards,
-              detected_os, custom_icon, custom_color, agent_forwarding, proxy_identity_id, terminal_theme, cloud_ref, initial_command, keepalive_interval, icon_style, customized_fields, env_vars, encoding, session_logging, startup_snippet_id, auto_title, terminal_type, ciphers, kex, macs, host_key_algorithms, privacy_mode, proxy_password, totp_secret, protocol, serial_config, rd_kind, rd_gateway_id, address_family, quirks, rekey_limit_mb, monitor_enabled, sidebar_auto_open, x11_forwarding, sftp_initial_path, mac_address, login_script, target_password, terminal_appearance, highlight_rules, monitor_disks, use_disk_key, identity_file, telnet_config, local_config, mosh_config, zmodem_drops, ambiguous_width, agent_key)
-             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26,?27,?28,?29,?30,?31,?32,?33,?34,?35,?36,?37,?38,?39,?40,?41,?42,?43,?44,?45,?46,?47,?48,?49,?50,?51,?52,?53,?54,?55,?56,?57,?58,?59,?60,?61,?62,?63,?64,?65,?66,?67,?68,?69)",
+              detected_os, custom_icon, custom_color, agent_forwarding, proxy_identity_id, terminal_theme, initial_command, keepalive_interval, icon_style, env_vars, encoding, session_logging, startup_snippet_id, auto_title, terminal_type, ciphers, kex, macs, host_key_algorithms, privacy_mode, proxy_password, totp_secret, protocol, serial_config, rd_kind, rd_gateway_id, address_family, quirks, rekey_limit_mb, monitor_enabled, sidebar_auto_open, x11_forwarding, sftp_initial_path, mac_address, login_script, target_password, terminal_appearance, highlight_rules, monitor_disks, use_disk_key, identity_file, telnet_config, local_config, mosh_config, zmodem_drops, ambiguous_width, agent_key)
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26,?27,?28,?29,?30,?31,?32,?33,?34,?35,?36,?37,?38,?39,?40,?41,?42,?43,?44,?45,?46,?47,?48,?49,?50,?51,?52,?53,?54,?55,?56,?57,?58,?59,?60,?61,?62,?63,?64,?65,?66,?67)",
             params![
                 conn.id.to_string(),
                 conn.label,
@@ -163,15 +163,9 @@ impl VaultStore {
                 conn.agent_forwarding as i32,
                 conn.proxy_identity_id.map(|u| u.to_string()),
                 conn.terminal_theme,
-                conn.cloud_ref.as_ref().map(|r| serde_json::to_string(r).unwrap_or_default()),
                 conn.initial_command,
                 conn.keepalive_interval,
                 conn.icon_style,
-                if conn.customized_fields.is_empty() {
-                    None
-                } else {
-                    Some(serde_json::to_string(&conn.customized_fields).unwrap_or_default())
-                },
                 if conn.env_vars.is_empty() { None } else { Some(serde_json::to_string(&conn.env_vars).unwrap_or_default()) },
                 conn.encoding,
                 conn.session_logging.map(|b| b as i32),
@@ -246,12 +240,12 @@ impl VaultStore {
         let query = match mcp_filter {
             Some(true) => {
                 "SELECT id, label, hostname, port, username, auth_method, key_id, group_id,
-                        jump_chain, proxy, tags, notes, color, last_used, created_at, updated_at, identity_id, mcp_enabled, port_forwards, detected_os, custom_icon, custom_color, agent_forwarding, proxy_identity_id, terminal_theme, cloud_ref, initial_command, keepalive_interval, icon_style, customized_fields, env_vars, encoding, session_logging, startup_snippet_id, auto_title, terminal_type, ciphers, kex, macs, host_key_algorithms, privacy_mode, protocol, serial_config, rd_kind, rd_gateway_id, address_family, quirks, rekey_limit_mb, monitor_enabled, sidebar_auto_open, x11_forwarding, sftp_initial_path, mac_address, login_script, terminal_appearance, highlight_rules, monitor_disks, use_disk_key, identity_file, telnet_config, local_config, mosh_config, zmodem_drops, ambiguous_width, agent_key
+                        jump_chain, proxy, tags, notes, color, last_used, created_at, updated_at, identity_id, mcp_enabled, port_forwards, detected_os, custom_icon, custom_color, agent_forwarding, proxy_identity_id, terminal_theme, initial_command, keepalive_interval, icon_style, env_vars, encoding, session_logging, startup_snippet_id, auto_title, terminal_type, ciphers, kex, macs, host_key_algorithms, privacy_mode, protocol, serial_config, rd_kind, rd_gateway_id, address_family, quirks, rekey_limit_mb, monitor_enabled, sidebar_auto_open, x11_forwarding, sftp_initial_path, mac_address, login_script, terminal_appearance, highlight_rules, monitor_disks, use_disk_key, identity_file, telnet_config, local_config, mosh_config, zmodem_drops, ambiguous_width, agent_key
                  FROM connections WHERE mcp_enabled = 1 AND (protocol IS NULL OR protocol = 'ssh') ORDER BY label"
             }
             _ => {
                 "SELECT id, label, hostname, port, username, auth_method, key_id, group_id,
-                        jump_chain, proxy, tags, notes, color, last_used, created_at, updated_at, identity_id, mcp_enabled, port_forwards, detected_os, custom_icon, custom_color, agent_forwarding, proxy_identity_id, terminal_theme, cloud_ref, initial_command, keepalive_interval, icon_style, customized_fields, env_vars, encoding, session_logging, startup_snippet_id, auto_title, terminal_type, ciphers, kex, macs, host_key_algorithms, privacy_mode, protocol, serial_config, rd_kind, rd_gateway_id, address_family, quirks, rekey_limit_mb, monitor_enabled, sidebar_auto_open, x11_forwarding, sftp_initial_path, mac_address, login_script, terminal_appearance, highlight_rules, monitor_disks, use_disk_key, identity_file, telnet_config, local_config, mosh_config, zmodem_drops, ambiguous_width, agent_key
+                        jump_chain, proxy, tags, notes, color, last_used, created_at, updated_at, identity_id, mcp_enabled, port_forwards, detected_os, custom_icon, custom_color, agent_forwarding, proxy_identity_id, terminal_theme, initial_command, keepalive_interval, icon_style, env_vars, encoding, session_logging, startup_snippet_id, auto_title, terminal_type, ciphers, kex, macs, host_key_algorithms, privacy_mode, protocol, serial_config, rd_kind, rd_gateway_id, address_family, quirks, rekey_limit_mb, monitor_enabled, sidebar_auto_open, x11_forwarding, sftp_initial_path, mac_address, login_script, terminal_appearance, highlight_rules, monitor_disks, use_disk_key, identity_file, telnet_config, local_config, mosh_config, zmodem_drops, ambiguous_width, agent_key
                  FROM connections ORDER BY label"
             }
         };
@@ -273,7 +267,7 @@ impl VaultStore {
 
                 // NULL (pre-Telnet rows) and any unknown value read as
                 // SSH, the only protocol those rows could have meant.
-                let protocol = match row.get::<_, Option<String>>(41).ok().flatten().as_deref() {
+                let protocol = match row.get::<_, Option<String>>(39).ok().flatten().as_deref() {
                     Some("telnet") => ConnectionProtocol::Telnet,
                     Some("raw") => ConnectionProtocol::Raw,
                     Some("serial") => ConnectionProtocol::Serial,
@@ -284,7 +278,7 @@ impl VaultStore {
                 // Serial params JSON (NULL / malformed -> None; the
                 // connect path falls back to SerialParams::default()).
                 let serial = row
-                    .get::<_, Option<String>>(42)
+                    .get::<_, Option<String>>(40)
                     .ok()
                     .flatten()
                     .and_then(|s| serde_json::from_str(&s).ok());
@@ -293,7 +287,7 @@ impl VaultStore {
                 // an unreadable column must never be a session that
                 // skips certificate checks.
                 let telnet = row
-                    .get::<_, Option<String>>(59)
+                    .get::<_, Option<String>>(57)
                     .ok()
                     .flatten()
                     .and_then(|s| serde_json::from_str(&s).ok());
@@ -302,38 +296,38 @@ impl VaultStore {
                 // never decode into a session carried somewhere the
                 // user did not ask for.
                 let mosh = row
-                    .get::<_, Option<String>>(61)
+                    .get::<_, Option<String>>(59)
                     .ok()
                     .flatten()
                     .and_then(|s| serde_json::from_str(&s).ok());
                 // Local-shell settings JSON (NULL / malformed -> None,
                 // which spawns the user's default shell).
                 let local = row
-                    .get::<_, Option<String>>(60)
+                    .get::<_, Option<String>>(58)
                     .ok()
                     .flatten()
                     .and_then(|s| serde_json::from_str(&s).ok());
                 // Remote-desktop kind (NULL / unknown -> RDP) + optional
                 // SSH gateway id.
-                let rd_kind = match row.get::<_, Option<String>>(43).ok().flatten().as_deref() {
+                let rd_kind = match row.get::<_, Option<String>>(41).ok().flatten().as_deref() {
                     Some("vnc") => RemoteDesktopKind::Vnc,
                     _ => RemoteDesktopKind::Rdp,
                 };
                 let rd_gateway_id = row
-                    .get::<_, Option<String>>(44)
+                    .get::<_, Option<String>>(42)
                     .ok()
                     .flatten()
                     .and_then(|s| Uuid::parse_str(&s).ok());
                 // Address-family preference (NULL / unknown -> Auto).
                 let address_family =
-                    match row.get::<_, Option<String>>(45).ok().flatten().as_deref() {
+                    match row.get::<_, Option<String>>(43).ok().flatten().as_deref() {
                         Some("v4") => AddressFamily::V4,
                         Some("v6") => AddressFamily::V6,
                         _ => AddressFamily::Auto,
                     };
                 // Ambiguous width (NULL / unknown -> Auto).
                 let ambiguous_width =
-                    match row.get::<_, Option<String>>(63).ok().flatten().as_deref() {
+                    match row.get::<_, Option<String>>(61).ok().flatten().as_deref() {
                         Some("narrow") => AmbiguousWidth::Narrow,
                         Some("wide") => AmbiguousWidth::Wide,
                         _ => AmbiguousWidth::Auto,
@@ -343,7 +337,7 @@ impl VaultStore {
                 // whole row: a host that cannot be listed is worse than
                 // one whose bastion script needs re-picking.
                 let login_script: Option<serde_json::Value> = row
-                    .get::<_, Option<String>>(53)
+                    .get::<_, Option<String>>(51)
                     .ok()
                     .flatten()
                     .and_then(|s| serde_json::from_str(&s).ok());
@@ -368,7 +362,7 @@ impl VaultStore {
                         .get::<_, Option<String>>(6)?
                         .and_then(|s| Uuid::parse_str(&s).ok()),
                     agent_key: row
-                        .get::<_, Option<String>>(64)
+                        .get::<_, Option<String>>(62)
                         .ok()
                         .flatten()
                         .filter(|s| !s.trim().is_empty()),
@@ -396,10 +390,10 @@ impl VaultStore {
                         .and_then(|s| serde_json::from_str(&s).ok())
                         .unwrap_or_default(),
                     env_vars: row
-                        .get::<_, Option<String>>(30)?
+                        .get::<_, Option<String>>(28)?
                         .and_then(|s| serde_json::from_str(&s).ok())
                         .unwrap_or_default(),
-                    encoding: row.get::<_, Option<String>>(31)?,
+                    encoding: row.get::<_, Option<String>>(29)?,
                     mcp_enabled: row.get::<_, Option<i32>>(17)?.unwrap_or(1) != 0,
                     last_used: row
                         .get::<_, Option<String>>(13)?
@@ -434,90 +428,79 @@ impl VaultStore {
                         .get::<_, Option<String>>(24)
                         .ok()
                         .flatten(),
-                    cloud_ref: row
-                        .get::<_, Option<String>>(25)
-                        .ok()
-                        .flatten()
-                        .and_then(|s| serde_json::from_str::<CloudRef>(&s).ok()),
                     initial_command: row
-                        .get::<_, Option<String>>(26)
+                        .get::<_, Option<String>>(25)
                         .ok()
                         .flatten(),
                     keepalive_interval: row
-                        .get::<_, Option<i64>>(27)
+                        .get::<_, Option<i64>>(26)
                         .ok()
                         .flatten()
                         .and_then(|v| u32::try_from(v).ok()),
-                    icon_style: row.get::<_, Option<String>>(28).ok().flatten(),
-                    customized_fields: row
-                        .get::<_, Option<String>>(29)
-                        .ok()
-                        .flatten()
-                        .and_then(|s| serde_json::from_str(&s).ok())
-                        .unwrap_or_default(),
+                    icon_style: row.get::<_, Option<String>>(27).ok().flatten(),
                     session_logging: row
-                        .get::<_, Option<i64>>(32)
+                        .get::<_, Option<i64>>(30)
                         .ok()
                         .flatten()
                         .map(|n| n != 0),
                     startup_snippet_id: row
-                        .get::<_, Option<String>>(33)
+                        .get::<_, Option<String>>(31)
                         .ok()
                         .flatten()
                         .and_then(|s| Uuid::parse_str(&s).ok()),
                     auto_title: row
-                        .get::<_, Option<i64>>(34)
+                        .get::<_, Option<i64>>(32)
                         .ok()
                         .flatten()
                         .map(|n| n != 0),
-                    terminal_type: row.get::<_, Option<String>>(35).ok().flatten(),
+                    terminal_type: row.get::<_, Option<String>>(33).ok().flatten(),
                     ciphers: row
-                        .get::<_, Option<String>>(36)
+                        .get::<_, Option<String>>(34)
                         .ok()
                         .flatten()
                         .and_then(|s| serde_json::from_str(&s).ok()),
                     kex: row
-                        .get::<_, Option<String>>(37)
+                        .get::<_, Option<String>>(35)
                         .ok()
                         .flatten()
                         .and_then(|s| serde_json::from_str(&s).ok()),
                     macs: row
-                        .get::<_, Option<String>>(38)
+                        .get::<_, Option<String>>(36)
                         .ok()
                         .flatten()
                         .and_then(|s| serde_json::from_str(&s).ok()),
                     host_key_algorithms: row
-                        .get::<_, Option<String>>(39)
+                        .get::<_, Option<String>>(37)
                         .ok()
                         .flatten()
                         .and_then(|s| serde_json::from_str(&s).ok()),
                     privacy_mode: row
-                        .get::<_, Option<i64>>(40)
+                        .get::<_, Option<i64>>(38)
                         .ok()
                         .flatten()
                         .map(|n| n != 0),
                     quirks: row
-                        .get::<_, Option<String>>(46)
+                        .get::<_, Option<String>>(44)
                         .ok()
                         .flatten()
                         .and_then(|s| serde_json::from_str(&s).ok()),
                     rekey_limit_mb: row
-                        .get::<_, Option<i64>>(47)
+                        .get::<_, Option<i64>>(45)
                         .ok()
                         .flatten()
                         .and_then(|v| u32::try_from(v).ok()),
                     monitor_enabled: row
-                        .get::<_, Option<i32>>(48)
+                        .get::<_, Option<i32>>(46)
                         .unwrap_or(None)
                         .unwrap_or(0)
                         != 0,
                     sidebar_auto_open: row
-                        .get::<_, Option<i64>>(49)
+                        .get::<_, Option<i64>>(47)
                         .ok()
                         .flatten()
                         .map(|n| n != 0),
                     x11_forwarding: row
-                        .get::<_, Option<i32>>(50)
+                        .get::<_, Option<i32>>(48)
                         .unwrap_or(None)
                         .unwrap_or(0)
                         != 0,
@@ -525,24 +508,24 @@ impl VaultStore {
                     // the editor must mean the login directory, not a mount
                     // attempt on "".
                     sftp_initial_path: row
-                        .get::<_, Option<String>>(51)
+                        .get::<_, Option<String>>(49)
                         .ok()
                         .flatten()
                         .filter(|s| !s.trim().is_empty()),
                     // Blank reads as "no MAC" for the same reason: an
                     // emptied editor field must hide the card action.
                     mac_address: row
-                        .get::<_, Option<String>>(52)
+                        .get::<_, Option<String>>(50)
                         .ok()
                         .flatten()
                         .filter(|s| !s.trim().is_empty()),
                     terminal_appearance: row
-                        .get::<_, Option<String>>(54)
+                        .get::<_, Option<String>>(52)
                         .ok()
                         .flatten()
                         .and_then(|s| serde_json::from_str(&s).ok()),
                     highlight_rules: row
-                        .get::<_, Option<String>>(55)
+                        .get::<_, Option<String>>(53)
                         .ok()
                         .flatten()
                         .and_then(|s| serde_json::from_str(&s).ok()),
@@ -550,26 +533,26 @@ impl VaultStore {
                     // and must survive as `Some(vec![])`, so the parse
                     // failure fallback is the only path back to Auto.
                     monitor_disks: row
-                        .get::<_, Option<String>>(56)
+                        .get::<_, Option<String>>(54)
                         .ok()
                         .flatten()
                         .and_then(|s| serde_json::from_str(&s).ok()),
                     use_disk_key: row
-                        .get::<_, Option<i32>>(57)
+                        .get::<_, Option<i32>>(55)
                         .unwrap_or(None)
                         .unwrap_or(0)
                         != 0,
                     // Blank reads as "no explicit path", so the scan of
                     // the default names is what an emptied field means.
                     identity_file: row
-                        .get::<_, Option<String>>(58)
+                        .get::<_, Option<String>>(56)
                         .ok()
                         .flatten()
                         .filter(|s| !s.trim().is_empty()),
                     // NULL (a row from before the migration) reads as
                     // off, the standard drop routing.
                     zmodem_drops: row
-                        .get::<_, Option<i32>>(62)
+                        .get::<_, Option<i32>>(60)
                         .unwrap_or(None)
                         .unwrap_or(0)
                         != 0,

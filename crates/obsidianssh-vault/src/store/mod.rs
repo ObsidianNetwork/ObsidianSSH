@@ -9,8 +9,6 @@ use rusqlite::{params, Connection as SqliteConn};
 use zeroize::{Zeroize, Zeroizing};
 use uuid::Uuid;
 
-pub(crate) use obsidianssh_core::models::cloud::{CloudQuery, CloudRef};
-pub(crate) use obsidianssh_core::models::cloud_profile::CloudProfile;
 pub(crate) use obsidianssh_core::models::custom_terminal_theme::CustomTerminalTheme;
 pub(crate) use obsidianssh_core::models::custom_ui_theme::CustomUiTheme;
 pub(crate) use obsidianssh_core::models::connection::{
@@ -498,7 +496,6 @@ pub struct VaultStore {
 
 
 mod chat;
-mod cloud;
 mod command_history;
 mod connections;
 mod forwarding;
@@ -1165,7 +1162,6 @@ impl VaultStore {
             ("keys", "id", "private_key"),
             ("identities", "id", "password"),
             ("proxy_identities", "id", "password"),
-            ("cloud_profiles", "id", "secret"),
             ("sync_peers", "peer_id", "shared_secret"),
         ] {
             self.convert_blob_column(table, id_col, col, dec, enc, lenient)?;

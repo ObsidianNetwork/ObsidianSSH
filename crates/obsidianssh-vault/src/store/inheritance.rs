@@ -10,10 +10,7 @@
 //!
 //! Nothing here is stored. The chain is walked live on every read, so
 //! editing a group is immediately true for every host inside it and
-//! there is no copied value to go stale (the `customized_fields`
-//! machinery on cloud reimport is the opposite trade, and deliberately
-//! so: that one preserves what a user typed against a REMOTE source of
-//! truth).
+//! there is no copied value to go stale.
 
 use super::*;
 use obsidianssh_core::models::connection::{Connection, EnvVar, ProxyConfig};

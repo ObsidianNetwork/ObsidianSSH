@@ -8,7 +8,7 @@
 
 use iced::Task;
 
-use crate::app::{CloudMessage, NavigationMessage, Message, ObsidianSsh};
+use crate::app::{NavigationMessage, Message, ObsidianSsh};
 use crate::state::View;
 
 impl ObsidianSsh {
@@ -245,17 +245,6 @@ impl ObsidianSsh {
             NavigationMessage::OpenGroup(gid) => {
                 self.nav.active_group = Some(gid);
                 self.nav.host_search.clear();
-                // Auto-trigger resolve when the user opens a dynamic
-                // group, saves an extra click. Re-resolve when there's
-                // no cache yet, or when the cached list has gone stale
-                // (older than the TTL): cloud resources like ECS tasks
-                // recycle, and a stale list means clicking a dead task
-                // fails until a manual Refresh. A still-`Loading` or
-                // `Failed` cache is left alone (don't restart in-flight
-                // resolves; let the user retry a failure explicitly).
-                if self.dynamic_group_needs_resolve(gid) {
-                    return self.handle_cloud(CloudMessage::DynamicGroupResolve(gid));
-                }
             }
             NavigationMessage::HostSearchChanged(v) => {
                 // An emptied box ends the ad-hoc target it described, so
@@ -272,11 +261,28 @@ impl ObsidianSsh {
                 // still connects the top result while a search is active.
                 self.keynav.focus = None;
             }
-            NavigationMessage::HostFilterByCloudProfile(maybe_pid) => {
-                self.nav.host_filter_cloud_profile = maybe_pid;
-                // Filter changed the visible set; drop the keyboard
-                // selection so Enter can't connect a now-hidden host.
-                self.keynav.focus = None;
+            NavigationMessage::ShowHostAddMenu => {
+                use crate::state::{OverlayContent, OverlayState};
+                // Anchor below the "+ Host [▾]" split button, on its
+                // real drawn bounds. The panel width only feeds the
+                // pre-first-draw fallback.
+                let panel_width = if self.vaults.cur().panels.host_panel {
+                    self.vaults.cur().panel_width
+                } else {
+                    0.0
+                };
+                // Must match `overlay_menu_width` for HostAddMenu.
+                let menu_width = 210.0;
+                let (x, y) = self.toolbar_menu_anchor(
+                    &self.toolbar_split_btn_bounds,
+                    menu_width,
+                    panel_width,
+                );
+                self.overlay = Some(OverlayState {
+                    content: OverlayContent::HostAddMenu,
+                    x,
+                    y,
+                });
             }
             // (helpers for the tag filter live below the handler impl)
             NavigationMessage::ShowHostTagFilterMenu => {
@@ -327,7 +333,8 @@ impl ObsidianSsh {
                     }
                     None => self.nav.host_filter_tags.push(tag),
                 }
-                // Same reasoning as the cloud-profile filter above.
+                // The visible set changed; drop the keyboard selection so
+                // Enter can't connect a now-hidden host.
                 self.keynav.focus = None;
             }
             NavigationMessage::ClearHostTagFilter => {
@@ -345,9 +352,6 @@ impl ObsidianSsh {
                     self.overlay = None;
                 } else {
                     let bounds = match target {
-                        GroupPickerTarget::DynamicFormParent => {
-                            self.dynamic_form_parent_combo_bounds.get()
-                        }
                         GroupPickerTarget::SessionGroupFolder => {
                             self.session_group_folder_combo_bounds.get()
                         }
@@ -392,9 +396,6 @@ impl ObsidianSsh {
             NavigationMessage::GroupPickerPick(target, label) => {
                 use crate::state::{GroupPickerTarget, OverlayContent};
                 match target {
-                    GroupPickerTarget::DynamicFormParent => {
-                        self.vaults.cur_mut().cloud_dynamic_form.parent_label = label;
-                    }
                     GroupPickerTarget::SessionGroupFolder => {
                         self.vaults.cur_mut().editor_session_group.group_name = label;
                     }

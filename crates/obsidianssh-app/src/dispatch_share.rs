@@ -275,7 +275,7 @@ impl ObsidianSsh {
                 self.vaults.cur_mut().import_target_group = self.cur_nav().active_group.filter(|gid| {
                     self.vaults.cur().groups
                         .iter()
-                        .any(|g| g.id == *gid && g.cloud_query.is_none())
+                        .any(|g| g.id == *gid)
                 });
                 self.vaults.cur_mut().panels.import_hub = true;
             }
@@ -1085,7 +1085,7 @@ impl ObsidianSsh {
         self.vaults.cur().import_target_group.filter(|gid| {
             self.vaults.cur().groups
                 .iter()
-                .any(|g| g.id == *gid && g.cloud_query.is_none())
+                .any(|g| g.id == *gid)
         })
     }
 
@@ -1604,7 +1604,6 @@ fn import_summary(result: &obsidianssh_vault::ImportResult) -> String {
         (result.groups_added, "cat_groups"),
         (result.identities_added + result.identities_updated, "cat_identities"),
         (result.proxy_identities_added + result.proxy_identities_updated, "cat_proxies"),
-        (result.cloud_profiles_added + result.cloud_profiles_updated, "cat_cloud_profiles"),
         (result.snippets_added, "cat_snippets"),
         (result.known_hosts_added, "cat_known_hosts"),
         (result.port_forward_rules_added, "cat_port_forwards"),

@@ -2,9 +2,6 @@
 //! end to end: the file goes through the same reader the import hub
 //! uses, then through the planner.
 
-use obsidianssh_core::models::cloud::{
-    CloudQuery, CloudQueryKind, CloudRef, CloudResourceType, ConnectionTemplate, TransportKind,
-};
 use obsidianssh_core::models::connection::{AuthMethod, Connection, ConnectionProtocol};
 use obsidianssh_core::models::key::KeyAlgorithm;
 use obsidianssh_core::models::{Group, Identity, SshKey};
@@ -311,26 +308,15 @@ fn the_folder_column_places_the_host_instead_of_riding_its_notes() {
 }
 
 #[test]
-fn a_folder_name_two_folders_carry_and_a_dynamic_folder_are_refused() {
+fn a_folder_name_two_folders_carry_is_refused() {
     let mut v = Vault::default();
     let prod = v.folder("Prod", None);
     let staging = v.folder("Staging", None);
     v.folder("Web", Some(&prod));
     v.folder("Web", Some(&staging));
-    let mut cloud = Group::new("AWS");
-    cloud.cloud_query = Some(CloudQuery {
-        profile_id: uuid::Uuid::new_v4(),
-        kind: CloudQueryKind::EcsTasks {
-            cluster: "c".into(),
-            service: "s".into(),
-            container: String::new(),
-        },
-        template: ConnectionTemplate::new(TransportKind::EcsExec),
-    });
-    v.groups.push(cloud);
-    let import = v.import("name,host,folder\na,a.corp,Web\nb,b.corp,AWS\nc,c.corp,AWS / Sub\n");
+    let import = v.import("name,host,folder\na,a.corp,Web\n");
     assert!(import.hosts.is_empty());
-    assert_eq!(import.skipped.len(), 3, "{:?}", import.skipped);
+    assert_eq!(import.skipped.len(), 1, "{:?}", import.skipped);
 }
 
 #[test]
@@ -417,24 +403,6 @@ fn a_blank_password_cell_never_clears_the_stored_one() {
     let typed = v.import(&format!("id,password\n{},s3cret\n", known.id));
     assert_eq!(typed.hosts[0].password.as_deref(), Some("s3cret"));
     assert_eq!(changes(&typed.hosts[0].op), vec!["password"]);
-}
-
-#[test]
-fn a_cloud_host_remembers_what_the_import_changed() {
-    let mut v = Vault::default();
-    let mut known = Connection::new("i-0abc", "10.0.0.7");
-    known.cloud_ref = Some(CloudRef {
-        profile_id: uuid::Uuid::new_v4(),
-        resource_type: CloudResourceType::Ec2,
-        resource_id: "i-0abc".into(),
-        region: None,
-        transport_pref: TransportKind::EcsExec,
-        auto_refresh_hostname: false,
-        orphaned_at: None,
-    });
-    v.connections.push(known.clone());
-    let import = v.import(&format!("id,label\n{},web\n", known.id));
-    assert_eq!(import.hosts[0].conn.customized_fields, vec!["label".to_string()]);
 }
 
 #[test]

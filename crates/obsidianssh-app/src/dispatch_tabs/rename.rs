@@ -89,38 +89,7 @@ impl ObsidianSsh {
                     y: anchor.1,
                 });
             }
-            TabsMessage::StartRenameFolder(gid) => {
-                self.overlay = None;
-                let current = self
-                    .vaults.cur().groups
-                    .iter()
-                    .find(|g| g.id == gid)
-                    .map(|g| g.label.clone())
-                    .unwrap_or_default();
-                self.vaults.cur_mut().folder_rename = Some((gid, current));
-            }
-            TabsMessage::FolderRenameInput(val) => {
-                if let Some((_, ref mut buf)) = self.vaults.cur_mut().folder_rename {
-                    *buf = val;
-                }
-            }
-            TabsMessage::ConfirmRenameFolder => {
-                if let Some((gid, new_label)) = self.vaults.cur_mut().folder_rename.take() {
-                    let trimmed = new_label.trim();
-                    let ov = self.vaults.cur_mut();
-                    if !trimmed.is_empty()
-                        && let Some(group) = ov.groups.iter_mut().find(|g| g.id == gid)
-                    {
-                        group.label = trimmed.to_string();
-                        group.updated_at = chrono::Utc::now();
-                        if let Some(vault) = &ov.store {
-                            let _ = vault.save_group(group);
-                        }
-                    }
-                }
-            }
             TabsMessage::CancelFolderModal => {
-                self.vaults.cur_mut().folder_rename = None;
                 self.close_modal(crate::state::Modal::FolderDelete);
             }
             // Routed here by the parent; anything else is a

@@ -349,7 +349,6 @@ fn rebuild_kind_label(kind: obsidianssh_vault::DataKind) -> &'static str {
         K::KnownHosts => "known_hosts",
         K::ApprovedProxyCommands => "rebuild_kind_approved_proxies",
         K::LoginScripts => "login_scripts",
-        K::CloudAccounts => "cloud_accounts",
         K::Recordings => "rebuild_kind_recordings",
         K::ConnectionLog => "rebuild_kind_connection_log",
         K::CommandHistory => "tab_tip_history",

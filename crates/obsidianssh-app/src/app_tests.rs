@@ -449,7 +449,6 @@ fn a_pane_broken_out_keeps_what_it_owns() {
     });
     // What describes the pane's OWN session rides on the pane.
     pane.relaunch = Some(Box::new(crate::app::Message::NoOp));
-    pane.plugin_backed = true;
 
     let tab = TerminalTab::adopting(pane);
     assert_eq!(tab.pane_count(), 1);
@@ -472,7 +471,6 @@ fn a_pane_broken_out_keeps_what_it_owns() {
         tab.active().relaunch.is_some(),
         "the pane's relaunch message stayed behind",
     );
-    assert!(tab.ssm_keepalive(), "the plugin fact stayed behind");
     assert!(tab.session_group_id.is_none(), "group membership followed a pane out");
     assert!(!tab.broadcast, "broadcast followed a pane into a tab of one");
 }

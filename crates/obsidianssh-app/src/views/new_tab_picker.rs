@@ -1,10 +1,8 @@
 //! New-tab picker, centered modal overlay with a search bar and a
 //! drill-down list: top level shows groups (folders) + the recent
 //! connections, and clicking a group drills into it. Manual groups reveal
-//! their sub-groups and member connections; cloud-query groups (ECS / K8s)
-//! resolve their live resources on enter so the user can pick a task / pod
-//! to exec into. Triggered from the `+` button in the tab bar, or from a
-//! pane split (which targets an SSH-only pane, so cloud groups are hidden).
+//! their sub-groups and member connections. Triggered from the `+` button
+//! in the tab bar, or from a pane split.
 //!
 //! Visually modeled on Termius' "New Tab" screen: big rounded search at the
 //! top, then a grouped list with host-icon badges and a "Personal / Group"
@@ -18,9 +16,8 @@ use iced::{Background, Border, Color, Element, Length, Padding};
 
 use obsidianssh_core::models::Group;
 
-use crate::app::{SftpMessage, TabsMessage, SshMessage, CloudMessage, Message, ObsidianSsh};
+use crate::app::{SftpMessage, TabsMessage, SshMessage, Message, ObsidianSsh};
 use crate::i18n::t;
-use crate::state::DynamicGroupState;
 use crate::theme::ObsidianSshColors;
 use crate::widgets::{dir_align_x, dir_row};
 
@@ -98,9 +95,7 @@ impl ObsidianSsh {
             search_block = search_block.push(ctrl_k_overlay.boxed());
         }
 
-        // Split panes are SSH-only (ECS Exec / kubectl exec open full tabs),
-        // so when the picker is filling a pane we hide every cloud-query
-        // group and never surface a path to an ECS task / K8s pod.
+        // Split panes are SSH-only, so a pane fill hides the SFTP entry.
         let filling_pane = self.pending_pane_split.is_some();
         let needle = self.new_tab_picker_search.to_lowercase();
 
@@ -111,7 +106,7 @@ impl ObsidianSsh {
             .and_then(|gid| self.vaults.cur().groups.iter().find(|g| g.id == gid));
 
         let list_inner: Vec<Element<'_, Message>> = match drilled {
-            Some(group) => self.picker_group_rows(group, &needle, filling_pane),
+            Some(group) => self.picker_group_rows(group, &needle),
             None => self.picker_top_level_rows(&needle, filling_pane),
         };
 
@@ -159,8 +154,7 @@ impl ObsidianSsh {
     }
 
     /// Top-level rows: a "Groups" section (root groups as drillable
-    /// folders) followed by the flat "Recent connections" list. Cloud-query
-    /// groups are hidden while filling a pane.
+    /// folders) followed by the flat "Recent connections" list.
     fn picker_top_level_rows(
         &self,
         needle: &str,
@@ -226,16 +220,11 @@ impl ObsidianSsh {
         // drills into their parent, mirroring the dashboard hierarchy.
         let mut group_rows: Vec<Element<'_, Message>> = Vec::new();
         for g in self.vaults.cur().groups.iter().filter(|g| g.parent_id.is_none()) {
-            if filling_pane && g.cloud_query.is_some() {
-                continue;
-            }
-            // Hide empty manual folders (no hosts, no sub-groups): there's
+            // Hide empty folders (no hosts, no sub-groups): there's
             // nothing to open inside, so they'd just be dead rows. Mirrors
             // the dashboard, which only renders a root folder with a direct
-            // connection or a sub-group. Cloud-query groups always show:
-            // they resolve their hosts dynamically and carry an ECS/K8S tag
-            // instead of a count.
-            if g.cloud_query.is_none() && self.picker_group_child_count(g.id) == 0 {
+            // connection or a sub-group.
+            if self.picker_group_child_count(g.id) == 0 {
                 continue;
             }
             if !needle.is_empty() && !g.label.to_lowercase().contains(needle) {
@@ -284,14 +273,12 @@ impl ObsidianSsh {
         rows
     }
 
-    /// Rows for a drilled-into group: a back header, then either the
-    /// group's sub-groups + member connections (manual group) or its
-    /// resolved cloud resources (ECS tasks / K8s pods).
+    /// Rows for a drilled-into group: a back header, then the group's
+    /// sub-groups + member connections.
     fn picker_group_rows<'a>(
         &'a self,
         group: &'a Group,
         needle: &str,
-        filling_pane: bool,
     ) -> Vec<Element<'a, Message>> {
         let mut rows: Vec<Element<'a, Message>> = vec![self.modal_nav_slot(
             crate::keynav::RowAction::activate(Message::Tabs(TabsMessage::NewTabPickerBack)),
@@ -301,19 +288,11 @@ impl ObsidianSsh {
         )];
         rows.push(Space::new().height(8).boxed());
 
-        if group.cloud_query.is_some() {
-            rows.extend(self.picker_cloud_resource_rows(group, needle));
-            return rows;
-        }
-
-        // Manual group: sub-groups first, then member connections.
+        // Sub-groups first, then member connections.
         let mut any = false;
         for g in self.vaults.cur().groups.iter().filter(|g| g.parent_id == Some(group.id)) {
-            if filling_pane && g.cloud_query.is_some() {
-                continue;
-            }
             // Same empty-folder hiding as the top level (see there).
-            if g.cloud_query.is_none() && self.picker_group_child_count(g.id) == 0 {
+            if self.picker_group_child_count(g.id) == 0 {
                 continue;
             }
             if !needle.is_empty() && !g.label.to_lowercase().contains(needle) {
@@ -351,138 +330,6 @@ impl ObsidianSsh {
         rows
     }
 
-    /// Rows for a cloud-query group, driven off the per-group resolve cache.
-    /// Renders all four `DynamicGroupState` cases (incl. the not-yet-resolved
-    /// `None`) so the picker never looks dead mid-fetch, plus a retry button
-    /// on failure.
-    fn picker_cloud_resource_rows<'a>(
-        &'a self,
-        group: &'a Group,
-        needle: &str,
-    ) -> Vec<Element<'a, Message>> {
-        let gid = group.id;
-        // Per-group connect coordinates, derived once. ECS rows carry the
-        // query container as a fallback; K8s rows carry the namespace and
-        // route through `kubectl exec` instead of the ECS Exec transport.
-        let (ecs_container, k8s_namespace) = match group.cloud_query.as_ref().map(|q| &q.kind) {
-            Some(obsidianssh_core::models::cloud::CloudQueryKind::EcsTasks { container, .. }) => {
-                (container.clone(), None)
-            }
-            Some(obsidianssh_core::models::cloud::CloudQueryKind::K8sPods { namespace, .. }) => {
-                (String::new(), Some(namespace.clone()))
-            }
-            None => (String::new(), None),
-        };
-
-        match self.cloud_dynamic_group_state.get(&gid) {
-            None => vec![info_row(t("cloud_dynamic_group_pending"))],
-            Some(DynamicGroupState::Loading) => vec![info_row(t("cloud_discover_running"))],
-            Some(DynamicGroupState::Failed(msg)) => vec![
-                info_row(&format!("{}: {msg}", t("cloud_test_failed"))),
-                Space::new().height(8).boxed(),
-                self.modal_nav_slot(
-                    crate::keynav::RowAction::activate(Message::Cloud(CloudMessage::DynamicGroupResolve(gid))),
-                    6.0,
-                    false,
-                    retry_row(gid),
-                ),
-            ],
-            Some(DynamicGroupState::Loaded { hosts, .. }) => {
-                let mut rows: Vec<Element<'a, Message>> = Vec::new();
-                // Dynamic hosts have no saved Connection (so no per-host
-                // override); the global Privacy Mode default decides and
-                // the display redactor catches address-shaped ids
-                // (issue #78). Filtering and the primary==id comparison
-                // below stay on the RAW strings.
-                let privacy_terms = self.privacy_terms();
-                let redact = |s: &str| {
-                    if self.privacy_global_active() {
-                        crate::widgets::redact_for_display(s, &privacy_terms, self.privacy_classes())
-                    } else {
-                        s.to_string()
-                    }
-                };
-                for h in hosts {
-                    // Primary label: container name when set (ECS task with
-                    // N containers), else the bare resource id.
-                    let primary = match &h.container_name {
-                        Some(name) if !name.is_empty() => name.clone(),
-                        _ => h.resource_id.clone(),
-                    };
-                    if !needle.is_empty()
-                        && !primary.to_lowercase().contains(needle)
-                        && !h.resource_id.to_lowercase().contains(needle)
-                    {
-                        continue;
-                    }
-                    let task_id = h.resource_id.clone();
-                    let task_label = h.label.clone();
-                    let status_upper: Option<String> =
-                        h.status.as_deref().map(|s| s.to_ascii_uppercase());
-                    // Only RUNNING (or unknown) tasks can be exec'd into; a
-                    // PENDING / STOPPED one yields an opaque error on click.
-                    let connectable =
-                        matches!(status_upper.as_deref(), Some("RUNNING") | None);
-                    // Connect message construction mirrors the dashboard grid
-                    // verbatim (the container fallback is subtle): the per-row
-                    // container under a wildcard query, else the query's.
-                    let msg = match &k8s_namespace {
-                        Some(ns) => Message::Cloud(CloudMessage::ConnectKubectlExecPod {
-                            group_id: gid,
-                            namespace: ns.clone(),
-                            pod: task_id.clone(),
-                            container: h.container_name.clone().unwrap_or_default(),
-                        }),
-                        None => Message::Cloud(CloudMessage::ConnectEcsExecTask {
-                            group_id: gid,
-                            task_id: task_id.clone(),
-                            task_label,
-                            container: h
-                                .container_name
-                                .clone()
-                                .unwrap_or_else(|| ecs_container.clone()),
-                        }),
-                    };
-                    // Secondary line shows the task / pod id, but only when
-                    // the primary label isn't already that id (bare resources
-                    // would otherwise print it twice).
-                    let secondary = if primary == h.resource_id {
-                        String::new()
-                    } else {
-                        h.resource_id.clone()
-                    };
-                    let row = resource_row(
-                        msg.clone(),
-                        redact(&primary),
-                        redact(&secondary),
-                        status_upper.as_deref(),
-                        connectable,
-                    );
-                    // Non-connectable tasks stay unrecorded so the
-                    // keyboard never lands on a dead row.
-                    rows.push(if connectable {
-                        self.modal_nav_slot(
-                            crate::keynav::RowAction::activate(msg),
-                            6.0,
-                            false,
-                            row,
-                        )
-                    } else {
-                        row
-                    });
-                }
-                if rows.is_empty() {
-                    rows.push(info_row(if needle.is_empty() {
-                        t("cloud_dynamic_group_no_tasks")
-                    } else {
-                        t("no_matches")
-                    }));
-                }
-                rows
-            }
-        }
-    }
-
     /// Direct child count of a manual folder: its own connections plus its
     /// immediate sub-groups. Drives both the trailing count badge and the
     /// empty-folder hiding, so the number shown always matches whether the
@@ -502,27 +349,14 @@ impl ObsidianSsh {
     }
 
     /// A drillable folder row for `group`, emitting `NewTabPickerOpenGroup`.
-    /// Cloud-query groups get a cloud glyph + a kind tag (ECS / K8S); manual
-    /// groups get a folder glyph + a child count.
+    /// Folder glyph + a child count.
     fn picker_group_row<'a>(&self, group: &'a Group) -> Element<'a, Message> {
-        let is_cloud = group.cloud_query.is_some();
-        let glyph: Element<'a, Message> = if is_cloud {
-            iced_fonts::lucide::cloud()
-                .size(15)
-                .color(ObsidianSshColors::t().accent)
-                .boxed()
-        } else {
-            iced_fonts::lucide::folder()
-                .size(15)
-                .color(ObsidianSshColors::t().accent)
-                .boxed()
-        };
+        let glyph: Element<'a, Message> = iced_fonts::lucide::folder()
+            .size(15)
+            .color(ObsidianSshColors::t().accent)
+            .boxed();
 
-        let subtitle = match group.cloud_query.as_ref().map(|q| &q.kind) {
-            Some(obsidianssh_core::models::cloud::CloudQueryKind::EcsTasks { .. }) => "ECS".to_string(),
-            Some(obsidianssh_core::models::cloud::CloudQueryKind::K8sPods { .. }) => "K8S".to_string(),
-            None => self.picker_group_child_count(group.id).to_string(),
-        };
+        let subtitle = self.picker_group_child_count(group.id).to_string();
 
         // Trailing chevron points into the group; mirror it under RTL.
         let chevron: Element<'a, Message> = if crate::i18n::is_rtl_layout() {
@@ -751,32 +585,6 @@ fn info_row<'a>(msg: &str) -> Element<'a, Message> {
         .boxed()
 }
 
-/// Retry button for a failed cloud resolve. Dispatches `DynamicGroupResolve`
-/// directly (the TTL gate would refuse to restart a `Failed` cache).
-fn retry_row<'a>(gid: uuid::Uuid) -> Element<'a, Message> {
-    let inner = dir_row(vec![
-        iced_fonts::lucide::refresh_cw()
-            .size(13)
-            .color(ObsidianSshColors::t().text_primary)
-            .boxed(),
-        Space::new().width(8).boxed(),
-        text(t("cloud_discover_refresh"))
-            .size(13)
-            .color(ObsidianSshColors::t().text_primary)
-            .boxed(),
-    ])
-    .align_y(iced::Alignment::Center);
-    container(
-        button(container(inner).padding(Padding { top: 8.0, right: 14.0, bottom: 8.0, left: 14.0 }))
-            .on_press(Message::Cloud(CloudMessage::DynamicGroupResolve(gid)))
-            .style(hover_row_style),
-    )
-    .center_x(Length::Fill)
-    .boxed()
-}
-
-/// A live cloud-resource row (ECS task / K8s pod). `on_press` is omitted
-/// when the task isn't connectable, which renders the row inert + muted.
 /// Distinct top row offering an ad-hoc connect for a search input that
 /// parses as `user@host[:port]`. Accent border + zap glyph so it reads
 /// apart from saved hosts; the secondary line spells out that nothing is
@@ -840,96 +648,8 @@ fn quick_connect_row<'a>(conn: obsidianssh_core::models::Connection) -> Element<
     .boxed()
 }
 
-fn resource_row<'a>(
-    msg: Message,
-    primary: String,
-    secondary: String,
-    status_upper: Option<&str>,
-    connectable: bool,
-) -> Element<'a, Message> {
-    let primary_color = if connectable {
-        ObsidianSshColors::t().text_primary
-    } else {
-        ObsidianSshColors::t().text_muted
-    };
-    let mut text_col: Vec<Element<'a, Message>> = vec![text(primary)
-        .size(13)
-        .color(primary_color)
-        .wrapping(iced::widget::text::Wrapping::None)
-        .boxed()];
-    if !secondary.is_empty() {
-        text_col.push(Space::new().height(2).boxed());
-        text_col.push(
-            text(secondary)
-                .size(10)
-                .color(ObsidianSshColors::t().text_muted)
-                .wrapping(iced::widget::text::Wrapping::None)
-                .boxed(),
-        );
-    }
-
-    let status_pill: Element<'a, Message> = match status_upper {
-        Some("RUNNING") => status_pill_widget("RUNNING", ObsidianSshColors::t().success),
-        Some("PENDING") | Some("PROVISIONING") => {
-            status_pill_widget(status_upper.unwrap(), ObsidianSshColors::t().warning)
-        }
-        Some("STOPPED") | Some("DEACTIVATING") => {
-            status_pill_widget(status_upper.unwrap(), ObsidianSshColors::t().error)
-        }
-        Some(other) => status_pill_widget(other, ObsidianSshColors::t().text_muted),
-        None => Space::new().boxed(),
-    };
-
-    button(
-        dir_row(vec![
-            iced_fonts::lucide::container()
-                .size(16)
-                .color(ObsidianSshColors::t().text_muted)
-                .boxed(),
-            Space::new().width(10).boxed(),
-            iced::widget::Column::with_children(text_col)
-                .width(Length::Fill)
-                .align_x(dir_align_x())
-                .clip(true)
-                .boxed(),
-            Space::new().width(10).boxed(),
-            status_pill,
-        ])
-        .align_y(iced::Alignment::Center),
-    )
-    .on_press_maybe(connectable.then_some(msg))
-    .padding(Padding { top: 10.0, right: 12.0, bottom: 10.0, left: 12.0 })
-    .width(Length::Fill)
-    .style(|_, status| {
-        let (bg, bc) = match status {
-            BtnStatus::Hovered => (ObsidianSshColors::t().bg_hover, ObsidianSshColors::t().accent),
-            BtnStatus::Pressed => (ObsidianSshColors::t().bg_selected, ObsidianSshColors::t().accent),
-            BtnStatus::Disabled => (ObsidianSshColors::t().bg_primary, ObsidianSshColors::t().border),
-            _ => (ObsidianSshColors::t().bg_surface, ObsidianSshColors::t().border),
-        };
-        button::Style {
-            background: Some(Background::Color(bg)),
-            border: Border { radius: Radius::from(6.0), color: bc, width: 1.0 },
-            ..Default::default()
-        }
-    })
-    .boxed()
-}
-
-/// Small colour-coded status chip (RUNNING / PENDING / ...).
-fn status_pill_widget<'a>(label: &str, color: Color) -> Element<'a, Message> {
-    container(text(label.to_string()).size(10).color(color))
-        .padding(Padding { top: 2.0, right: 8.0, bottom: 2.0, left: 8.0 })
-        .style(move |_| container::Style {
-            background: Some(Background::Color(ObsidianSshColors::t().bg_hover)),
-            border: Border { radius: Radius::from(4.0), color, width: 1.0 },
-            ..Default::default()
-        })
-        .boxed()
-}
-
-/// Shared button style: transparent until hover, used by group / back /
-/// retry rows that don't carry their own zebra stripe.
+/// Shared button style: transparent until hover, used by group / back
+/// rows that don't carry their own zebra stripe.
 fn hover_row_style(_: &iced::Theme, status: BtnStatus) -> button::Style {
     let bg = match status {
         BtnStatus::Hovered => ObsidianSshColors::t().bg_hover,

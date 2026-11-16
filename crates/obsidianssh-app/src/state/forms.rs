@@ -426,13 +426,6 @@ pub(crate) struct ConnectionForm {
     /// `None` inherits the global setting, `Some(true/false)` forces it on/off
     /// for this host.
     pub auto_title: Option<bool>,
-    /// Cloud-managed transport selection. Only meaningful when the
-    /// connection being edited has a `cloud_ref`, the editor renders
-    /// the picker conditionally. `None` here = "no cloud_ref to
-    /// edit". The actual `cloud_ref.transport_pref` field is
-    /// preserved when the user doesn't touch this picker.
-    pub cloud_transport:
-        Option<obsidianssh_core::models::cloud::TransportKind>,
     /// Per-host icon shape override. `None` falls back to the global
     /// `default_host_icon` setting. Mirrors `Connection.icon_style`.
     pub icon_style: Option<String>,
@@ -498,8 +491,6 @@ pub(crate) enum HostEditorPreset {
     /// Host reached through a jump host: opens the Network section and
     /// (when the vault has candidates) the chain editor's add flow.
     ViaBastion,
-    /// Import from a cloud provider: hands the flow to the Cloud view.
-    Cloud,
 }
 
 impl HostEditorPreset {
@@ -508,7 +499,6 @@ impl HostEditorPreset {
         match self {
             Self::BasicSsh => "preset_basic_ssh",
             Self::ViaBastion => "preset_via_bastion",
-            Self::Cloud => "preset_cloud",
         }
     }
 }
@@ -816,9 +806,6 @@ pub(crate) struct IconPickerState {
     /// Connection the picker edits directly (saves straight to the vault);
     /// `None` when one of the `for_*` deferred-save targets is set.
     pub for_id: Option<Uuid>,
-    /// Route the result into the dynamic-group editor form instead of a
-    /// Connection (deferred save).
-    pub for_group_form: bool,
     /// Route into the session-group editor form (deferred save).
     pub for_session_group: bool,
     /// Route into the manual host-group editor panel (deferred save).
@@ -852,8 +839,7 @@ pub(crate) struct SftpBackupForm {
 }
 
 /// Rename / restyle form for a user group (folder), shown in the group
-/// edit panel. Distinct from the dynamic-group editor ([`CloudDynamicForm`])
-/// which edits cloud-backed groups.
+/// edit panel.
 #[derive(Debug, Clone, Default)]
 pub(crate) struct GroupEditForm {
     /// Whether the edit panel is currently shown.
@@ -864,8 +850,7 @@ pub(crate) struct GroupEditForm {
     pub label: String,
     pub icon: String,
     pub color: String,
-    /// Parent-group combo, label-matched on Save like the dynamic
-    /// group editor's `parent_label`. Empty / unmatched = root.
+    /// Parent-group combo, label-matched on Save. Empty / unmatched = root.
     pub parent_label: String,
     /// Whether the Defaults section is expanded. Collapsed by default:
     /// most groups are just folders, and seven inheritance fields
@@ -889,133 +874,6 @@ pub(crate) struct GroupEditForm {
     /// Environment variables the group contributes, merged by name
     /// with what the host and the other ancestors provide.
     pub env_vars: Vec<obsidianssh_core::models::connection::EnvVar>,
-}
-
-/// Edit form for a dynamic (cloud-backed) group. Opened from the ⋮ menu
-/// on a dynamic group card; edits the `cloud_query.template` (username,
-/// initial_command, transport, key, identity) plus the group's general
-/// fields (label, color, icon, parent) and its cloud source. `is_k8s`
-/// flips the source section between the ECS (`cluster`/`service`/
-/// `container`) and Kubernetes (`k8s_*`) field sets.
-#[derive(Debug, Clone)]
-pub(crate) struct CloudDynamicForm {
-    /// Whether the edit form is currently shown.
-    pub visible: bool,
-    pub group_id: Option<Uuid>,
-    pub username: String,
-    pub initial_command: String,
-    pub transport: obsidianssh_core::models::cloud::TransportKind,
-    /// Selected key label (or `"(none)"`); resolved to a `key_id` on save.
-    pub selected_key: Option<String>,
-    /// Selected identity label (or `"(none)"`); resolved to an `identity_id` on save.
-    pub selected_identity: Option<String>,
-    /// General-section fields, parity with the host editor (rename, color,
-    /// icon, move under any user group). Persisted on Save.
-    pub label: String,
-    pub color: String,
-    pub icon: String,
-    pub parent_label: String,
-    /// Cloud-source fields (ECS variant).
-    pub cluster: String,
-    pub service: String,
-    pub container: String,
-    /// K8s dynamic-group source fields, used when the edited group's query
-    /// is `K8sPods`. The selector value's meaning depends on
-    /// `k8s_selector_kind`: a `k=v,k=v` string for `Labels`, otherwise a
-    /// single resource name.
-    pub is_k8s: bool,
-    pub k8s_context: String,
-    pub namespace: String,
-    pub k8s_selector_kind: K8sSelectorKind,
-    pub k8s_selector_value: String,
-}
-
-impl Default for CloudDynamicForm {
-    fn default() -> Self {
-        Self {
-            visible: false,
-            group_id: None,
-            username: String::new(),
-            initial_command: String::new(),
-            // ECS Exec is the most common dynamic-group transport; the
-            // editor swaps it to KubectlExec when `is_k8s` is set.
-            transport: obsidianssh_core::models::cloud::TransportKind::EcsExec,
-            selected_key: None,
-            selected_identity: None,
-            label: String::new(),
-            color: String::new(),
-            icon: String::new(),
-            parent_label: String::new(),
-            cluster: String::new(),
-            service: String::new(),
-            container: String::new(),
-            is_k8s: false,
-            k8s_context: String::new(),
-            namespace: String::new(),
-            k8s_selector_kind: K8sSelectorKind::Labels,
-            k8s_selector_value: String::new(),
-        }
-    }
-}
-
-/// Add / edit wizard form for a cloud account (`CloudProfile`). Covers
-/// every provider + auth combination (AWS profile / access key / SSO,
-/// Kubernetes kubeconfig); only the fields for the selected
-/// `provider` + `auth_kind` are rendered. The saved profiles live in
-/// `ObsidianSsh::cloud_profiles`; this is wizard state only.
-#[derive(Debug, Clone, Default)]
-pub(crate) struct CloudForm {
-    /// Whether the wizard is currently shown.
-    pub visible: bool,
-    pub label: String,
-    pub provider: CloudProviderChoice,
-    pub auth_kind: CloudAuthChoice,
-    pub aws_profile_name: String,
-    /// Workload regions; the first entry is the default region and the
-    /// full list drives discovery fan-out. Persisted as both `region`
-    /// (= first) and `regions` (= full list) for forward compat.
-    pub aws_regions: Vec<String>,
-    /// Draft text in the region input box, committed to `aws_regions`
-    /// on Enter.
-    pub aws_region_draft: String,
-    /// Access Key auth fields. The secret follows the password-tri-state
-    /// convention (`*_touched` differentiates "leave alone" from
-    /// "explicitly cleared").
-    pub aws_access_key_id: String,
-    pub aws_access_key_secret: String,
-    pub aws_access_key_secret_touched: bool,
-    pub aws_access_key_secret_visible: bool,
-    pub aws_access_key_session_token: String,
-    pub aws_has_existing_secret: bool,
-    /// SSO (IAM Identity Center) auth fields.
-    pub aws_sso_start_url: String,
-    pub aws_sso_region: String,
-    pub aws_sso_account_id: String,
-    pub aws_sso_role_name: String,
-    /// Kubernetes (Kubeconfig) auth fields. Both optional: blank
-    /// kubeconfig = kubectl's default, blank context = current-context.
-    pub kubeconfig_path: String,
-    pub context: String,
-    /// GCP project id to scope discovery to. Optional: blank = whatever
-    /// `gcloud config get-value project` resolves (the active project).
-    pub gcp_project: String,
-    /// Azure subscription id (or name) to scope discovery to. Optional:
-    /// blank = whatever `az account show` resolves (the active
-    /// subscription).
-    pub azure_subscription: String,
-    /// CLI profile + region for the providers driven through a CLI that
-    /// keeps named profiles of its own (`aliyun configure --profile`,
-    /// `tccli configure --profile`). Shared by Alibaba Cloud and Tencent
-    /// Cloud, since only one provider is selected at a time and both
-    /// persist the pair under the same `profile` / `region` config keys.
-    /// Optional: blank profile = the CLI's default, blank region = the
-    /// region that profile is configured with.
-    pub cli_profile: String,
-    pub cli_region: String,
-    /// `Some` when editing an existing profile (update in place).
-    pub editing_id: Option<Uuid>,
-    pub error: Option<String>,
-    pub test_state: CloudTestState,
 }
 
 /// Import / edit form for an SSH key, shown in the keychain key panel.
@@ -1419,7 +1277,6 @@ impl Default for ConnectionForm {
             target_password_rescue: SecretInput::default(),
             login_script_draft: None,
             auto_title: None,
-            cloud_transport: None,
             icon_style: None,
             encoding: None,
             ambiguous_width: Default::default(),

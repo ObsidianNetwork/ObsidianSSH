@@ -304,7 +304,6 @@ impl ObsidianSsh {
             let icon = match preset {
                 P::BasicSsh => iced_fonts::lucide::server(),
                 P::ViaBastion => iced_fonts::lucide::route(),
-                P::Cloud => iced_fonts::lucide::cloud(),
             };
             let msg = Message::Editor(EditorMessage::EditorPresetPicked(preset));
             app.panel_nav_slot(
@@ -353,8 +352,6 @@ impl ObsidianSsh {
                 chip(self, P::BasicSsh),
                 Space::new().width(6).boxed(),
                 chip(self, P::ViaBastion),
-                Space::new().width(6).boxed(),
-                chip(self, P::Cloud),
             ])
             .align_y(iced::Alignment::Center),
         )

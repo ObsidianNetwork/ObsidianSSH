@@ -404,8 +404,6 @@ impl ObsidianSsh {
         self.pending_update = None;
         self.update_ready = None;
         self.persist_before_exit();
-        self.drain_plugins_before_exit().then(|_| {
-            iced::exit()
-        })
+        iced::exit()
     }
 }

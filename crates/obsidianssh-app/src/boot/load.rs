@@ -20,23 +20,14 @@ impl ObsidianSsh {
         // not at the next connect.
         self.refresh_live_pane_quirks();
 
-        // Run cloud-layout migration after the immutable `vault` borrow
-        // ends. Idempotent; only writes rows that need fixing.
-        // Take ownership of the option so we hand the migration a real
-        // borrow without conflicting with `&mut self`. Restored below.
+        // Run the port-forward migration after the immutable `vault`
+        // borrow ends. Take ownership of the option so we hand the
+        // migration a real borrow without conflicting with `&mut self`.
+        // Restored below.
         if let Some(vault) = self.vaults.cur_mut().store.take() {
-            self.migrate_legacy_cloud_layout(&vault);
             self.migrate_port_forwards(&vault);
             self.vaults.cur_mut().store = Some(vault);
         }
-
-        // A managed kubeconfig whose account is gone (deleted here, or
-        // tombstoned by a peer and applied by a sync round, both of which
-        // land in this reload) is a live cluster credential nothing lists
-        // any more. Swept here because every door that can remove an
-        // account passes through this function; a locked vault sweeps
-        // nothing.
-        self.sweep_orphan_kubeconfigs();
 
         // Recreate pinned tabs (dormant; reopen on first select).
         self.restore_pinned_tabs_dormant();
@@ -117,51 +108,20 @@ impl ObsidianSsh {
         }
     }
 
-    /// Auto-archive sweep (uses the previously-loaded orphan setting)
-    /// then the core entity lists: connections, groups (parent repair),
-    /// session groups, keys, identities, proxy identities, cloud profiles.
+    /// The core entity lists: connections, groups (parent repair),
+    /// session groups, keys, identities, proxy identities, login scripts.
     fn load_vault_entities(&mut self) {
         let ov = self.vaults.cur_mut();
         if let Some(vault) = &ov.store {
-            // Auto-archive sweep: when the user has opted into the
-            // cleanup, drop orphan-imported hosts whose `orphaned_at`
-            // is older than the configured threshold. Runs before the
-            // in-memory load so the deleted rows don't briefly appear
-            // and then vanish.
-            if ov.prefs.cloud_auto_archive_orphans {
-                let days = ov
-                    .prefs.cloud_orphan_archive_days
-                    .parse::<i64>()
-                    .ok()
-                    .filter(|d| *d > 0)
-                    .unwrap_or(7);
-                let cutoff = chrono::Utc::now() - chrono::Duration::days(days);
-                if let Ok(existing) = vault.list_connections() {
-                    for c in existing.iter() {
-                        if let Some(cr) = c.cloud_ref.as_ref()
-                            && let Some(orphaned_at) = cr.orphaned_at
-                            && orphaned_at < cutoff
-                        {
-                            let _ = vault.delete_connection(&c.id);
-                        }
-                    }
-                }
-            }
             ov.connections = vault.list_connections().unwrap_or_default();
             ov.connections_with_password = vault
                 .list_connection_ids_with_password()
                 .unwrap_or_default();
             ov.groups = vault.list_groups().unwrap_or_default();
-            // Repair invalid parent links before anything renders. Only a
-            // manual folder is a container: a dynamic (cloud_query) group
-            // resolves its own children and is never opened as a folder,
-            // and a deleted folder leaves its children dangling. In both
-            // cases the child renders nowhere (not at root since it has a
-            // parent, not inside any openable folder) yet still counts as
-            // "imported", so the user sees it vanish but can't re-import.
-            // Re-home each such group on its nearest manual-folder ancestor
-            // (or root) and persist the fix. Idempotent: a no-op once the
-            // hierarchy is clean.
+            // Repair invalid parent links before anything renders: a
+            // deleted folder leaves its children dangling, rendering
+            // nowhere. Re-home each such group on root and persist the fix.
+            // Idempotent: a no-op once the hierarchy is clean.
             repair_group_parents(&mut ov.groups, vault);
             ov.session_groups = vault.list_session_groups().unwrap_or_default();
             ov.keys = vault.list_keys().unwrap_or_default();
@@ -171,10 +131,6 @@ impl ObsidianSsh {
                 .unwrap_or_default();
             ov.proxy_identities = vault.list_proxy_identities().unwrap_or_default();
             ov.login_scripts = vault.list_login_scripts().unwrap_or_default();
-            ov.cloud_profiles = vault.list_cloud_profiles().unwrap_or_default();
-            // A managed kubeconfig names the file in THIS tree (a portable
-            // USB key under another drive letter).
-            crate::kubeconfig_file::follow_tree(&mut ov.cloud_profiles);
         }
     }
 
@@ -1403,18 +1359,6 @@ impl ObsidianSsh {
             }
             if let Ok(Some(v)) = vault.get_setting("pane_end_action") {
                 ov.prefs.pane_end_action = crate::util::PaneEndAction::from_code(&v);
-            }
-            if let Ok(Some(v)) = vault.get_setting("cloud_auto_refresh_enabled") {
-                ov.prefs.cloud_auto_refresh_enabled = v == "true";
-            }
-            if let Ok(Some(v)) = vault.get_setting("cloud_auto_refresh_interval_minutes") {
-                ov.prefs.cloud_auto_refresh_interval_minutes = v;
-            }
-            if let Ok(Some(v)) = vault.get_setting("cloud_auto_archive_orphans") {
-                ov.prefs.cloud_auto_archive_orphans = v == "true";
-            }
-            if let Ok(Some(v)) = vault.get_setting("cloud_orphan_archive_days") {
-                ov.prefs.cloud_orphan_archive_days = v;
             }
             if let Ok(Some(v)) = vault.get_setting("auto_reconnect") {
                 ov.prefs.auto_reconnect = v == "true";

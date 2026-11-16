@@ -440,15 +440,6 @@ impl ObsidianSsh {
             );
         }
 
-        // Cloud import confirmation modal. Always opens on Import (no
-        // ECS-only short-circuit) so the user can set the target
-        // group from the same surface that already gates the
-        // transport choice. Transport row hides itself when the
-        // batch is ECS-only since dynamic groups always run ECS Exec.
-        if self.vaults.cur().cloud_import_confirm_visible {
-            return self.layer_cloud_import_confirm(base, resize_overlay);
-        }
-
         // Snippet-variables prompt: a snippet with `{name}` placeholders
         // parks here so the values are filled before anything reaches
         // the session. Same dialog shell as the careful paste below.
@@ -553,20 +544,6 @@ impl ObsidianSsh {
                     base,
                     self.build_tab_rename_dialog(input),
                     Some(Message::Tabs(TabsMessage::CancelTabRename)),
-                    0.0,
-                ),
-                resize_overlay,
-            );
-        }
-
-        // Folder rename modal, shown after the user picks "Rename" from
-        // the folder context menu.
-        if let Some((_gid, ref input)) = self.vaults.cur().folder_rename {
-            return wrap_with_resize(
-                crate::widgets::modal_overlay(
-                    base,
-                    self.build_folder_rename_dialog(input),
-                    Some(Message::Tabs(TabsMessage::CancelFolderModal)),
                     0.0,
                 ),
                 resize_overlay,

@@ -39,8 +39,6 @@ mod terminal;
 pub use terminal::TerminalMessage;
 mod ssh;
 pub use ssh::SshMessage;
-mod cloud;
-pub use cloud::CloudMessage;
 mod history;
 pub use history::HistoryMessage;
 mod mcp;
@@ -230,8 +228,6 @@ pub enum Message {
     Terminal(TerminalMessage),
     // Zmodem (handle_zmodem)
     Zmodem(ZmodemMessage),
-    // Cloud (handle_cloud)
-    Cloud(CloudMessage),
     // Settings (handle_settings)
     Settings(SettingsMessage),
 
@@ -353,18 +349,9 @@ pub enum Message {
 
     // Proxy Identities (Settings → Proxies)
 
-    // Cloud Accounts
-    // Wired to a future "show password" eye icon next to the secret
-    // input, `text_input.secure(false)` flips when this fires.
-
-    // Cloud Discovery & Import
-
-    // Plugins panel, cloud-provider plugin install / update lifecycle.
+    // Plugins panel, plugin install / update lifecycle.
     // Plugin (handle_plugin)
     Plugin(PluginMessage),
-
-    // Edit dynamic group panel, sets template fields (key, identity,
-    // transport, initial command) on a `Group.cloud_query`.
 
     // Connection identity
 

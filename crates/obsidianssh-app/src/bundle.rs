@@ -9,7 +9,7 @@
 //! obsidianssh[.exe]
 //! offline-bundle              <- marker: offline mode on at first run
 //! plugins/<provider>.json     <- the catalog entry the binary was pulled by
-//! plugins/<binary>            <- obsidianssh-cloud-aws-plugin, obsidianssh-mcp, ...
+//! plugins/<binary>            <- obsidianssh-gif, obsidianssh-mcp, ...
 //! fonts/<file>                <- the CJK faces and the terminal pack
 //! ```
 //!

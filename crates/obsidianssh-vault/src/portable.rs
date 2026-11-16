@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use obsidianssh_core::models::{
-    CloudProfile, Connection, CustomTerminalTheme, Group, Identity, KnownHost, LoginScript,
+    Connection, CustomTerminalTheme, Group, Identity, KnownHost, LoginScript,
     PortForwardRule, ProxyIdentity, SessionGroup, Snippet, SshKey,
 };
 
@@ -35,11 +35,6 @@ struct ExportPayload {
     /// `.obsidianssh` files written before this field existed.
     #[serde(default)]
     proxy_identities: Vec<ExportProxyIdentity>,
-    /// Cloud account profiles referenced from `Connection.cloud_ref` and
-    /// `Group.cloud_query`. Defaults to empty for backwards compat with
-    /// pre-v0.6 export files.
-    #[serde(default)]
-    cloud_profiles: Vec<ExportCloudProfile>,
     snippets: Vec<Snippet>,
     /// Standalone port forward rules. Defaults to empty for backwards compat
     /// with `.obsidianssh` files written before this field existed.
@@ -58,7 +53,7 @@ struct ExportPayload {
     #[serde(default)]
     login_scripts: Vec<LoginScript>,
     /// Portable application preferences (theme, language, terminal +
-    /// SFTP + cloud prefs, AI provider/model/key, …). Device-local and
+    /// SFTP prefs, AI provider/model/key, …). Device-local and
     /// security-sensitive keys are filtered out on the way in and out
     /// (see `is_portable_setting`). The `ai_api_key` value is shipped
     /// **decrypted** here so it round-trips onto the target vault's own
@@ -126,16 +121,6 @@ struct ExportProxyIdentity {
     password: Option<String>,
 }
 
-#[derive(Serialize, Deserialize)]
-struct ExportCloudProfile {
-    #[serde(flatten)]
-    profile: CloudProfile,
-    /// Encrypted-on-disk secret blob (access key secret, kubeconfig
-    /// inline contents, …), round-tripped here so a fresh device picks
-    /// up working cloud credentials. `None` means no secret was set.
-    secret: Option<String>,
-}
-
 // ---------------------------------------------------------------------------
 // Public API types
 // ---------------------------------------------------------------------------
@@ -161,7 +146,6 @@ pub enum ExportCategory {
     Keys,
     Identities,
     ProxyIdentities,
-    CloudProfiles,
     Snippets,
     KnownHosts,
     PortForwardRules,
@@ -172,13 +156,12 @@ pub enum ExportCategory {
 impl ExportCategory {
     /// Every category, in display order. Drives the checkbox lists in
     /// the export / import dialogs and the `all()` / `none()` helpers.
-    pub const ALL: [ExportCategory; 11] = [
+    pub const ALL: [ExportCategory; 10] = [
         ExportCategory::Connections,
         ExportCategory::Groups,
         ExportCategory::Keys,
         ExportCategory::Identities,
         ExportCategory::ProxyIdentities,
-        ExportCategory::CloudProfiles,
         ExportCategory::Snippets,
         ExportCategory::KnownHosts,
         ExportCategory::PortForwardRules,
@@ -196,7 +179,6 @@ pub struct ExportSelection {
     pub keys: bool,
     pub identities: bool,
     pub proxy_identities: bool,
-    pub cloud_profiles: bool,
     pub snippets: bool,
     pub known_hosts: bool,
     pub port_forward_rules: bool,
@@ -214,7 +196,6 @@ impl ExportSelection {
             keys: true,
             identities: true,
             proxy_identities: true,
-            cloud_profiles: true,
             snippets: true,
             known_hosts: true,
             port_forward_rules: true,
@@ -232,7 +213,6 @@ impl ExportSelection {
             keys: false,
             identities: false,
             proxy_identities: false,
-            cloud_profiles: false,
             snippets: false,
             known_hosts: false,
             port_forward_rules: false,
@@ -248,7 +228,6 @@ impl ExportSelection {
             ExportCategory::Keys => self.keys,
             ExportCategory::Identities => self.identities,
             ExportCategory::ProxyIdentities => self.proxy_identities,
-            ExportCategory::CloudProfiles => self.cloud_profiles,
             ExportCategory::Snippets => self.snippets,
             ExportCategory::KnownHosts => self.known_hosts,
             ExportCategory::PortForwardRules => self.port_forward_rules,
@@ -264,7 +243,6 @@ impl ExportSelection {
             ExportCategory::Keys => self.keys = v,
             ExportCategory::Identities => self.identities = v,
             ExportCategory::ProxyIdentities => self.proxy_identities = v,
-            ExportCategory::CloudProfiles => self.cloud_profiles = v,
             ExportCategory::Snippets => self.snippets = v,
             ExportCategory::KnownHosts => self.known_hosts = v,
             ExportCategory::PortForwardRules => self.port_forward_rules = v,
@@ -440,9 +418,6 @@ pub struct ImportResult {
     pub proxy_identities_added: usize,
     pub proxy_identities_updated: usize,
     pub proxy_identities_skipped: usize,
-    pub cloud_profiles_added: usize,
-    pub cloud_profiles_updated: usize,
-    pub cloud_profiles_skipped: usize,
     pub snippets_added: usize,
     pub snippets_skipped: usize,
     pub port_forward_rules_added: usize,
@@ -476,7 +451,6 @@ pub struct ExportSummary {
     pub keys: usize,
     pub identities: usize,
     pub proxy_identities: usize,
-    pub cloud_profiles: usize,
     pub snippets: usize,
     pub known_hosts: usize,
     pub port_forward_rules: usize,
@@ -495,7 +469,6 @@ impl ExportSummary {
             ExportCategory::Keys => self.keys,
             ExportCategory::Identities => self.identities,
             ExportCategory::ProxyIdentities => self.proxy_identities,
-            ExportCategory::CloudProfiles => self.cloud_profiles,
             ExportCategory::Snippets => self.snippets,
             ExportCategory::KnownHosts => self.known_hosts,
             ExportCategory::PortForwardRules => self.port_forward_rules,
@@ -575,7 +548,6 @@ pub fn export_vault(
     let all_keys = store.list_keys()?;
     let all_identities = store.list_identities()?;
     let all_proxy_identities = store.list_proxy_identities()?;
-    let all_cloud_profiles = store.list_cloud_profiles()?;
     let all_snippets = store.list_snippets()?;
     let all_port_forward_rules = store.list_port_forward_rules()?;
     let all_known_hosts = store.list_known_hosts()?;
@@ -768,29 +740,6 @@ pub fn export_vault(
         Vec::new()
     };
 
-    // Cloud profiles referenced from `Connection.cloud_ref` (filtered)
-    // or all of them (full export). The dynamic-group `cloud_query`
-    // path will land in the same dep set in a later PR, for now only
-    // `cloud_ref` is wired.
-    let dep_cloud_profile_ids: Vec<uuid::Uuid> = if is_filtered {
-        filtered_connections
-            .iter()
-            .filter_map(|c| c.cloud_ref.as_ref().map(|r| r.profile_id))
-            .collect()
-    } else {
-        all_cloud_profiles.iter().map(|cp| cp.id).collect()
-    };
-    let mut cloud_profiles = Vec::new();
-    for cp in &all_cloud_profiles {
-        if options.selection.cloud_profiles && (!is_filtered || dep_cloud_profile_ids.contains(&cp.id)) {
-            let secret = store.get_cloud_profile_secret(&cp.id).unwrap_or(None);
-            cloud_profiles.push(ExportCloudProfile {
-                profile: cp.clone(),
-                secret,
-            });
-        }
-    }
-
     // Cross-cutting entities (snippets, port forward rules, known_hosts,
     // session groups, settings) only ship in a full export, and only
     // when their category is checked. Session groups reference hosts
@@ -851,7 +800,6 @@ pub fn export_vault(
         keys,
         identities,
         proxy_identities,
-        cloud_profiles,
         snippets,
         port_forward_rules,
         known_hosts,
@@ -901,7 +849,6 @@ pub fn inspect_export(data: &[u8], password: &str) -> Result<ExportSummary, Vaul
         keys: payload.keys.len(),
         identities: payload.identities.len(),
         proxy_identities: payload.proxy_identities.len(),
-        cloud_profiles: payload.cloud_profiles.len(),
         snippets: payload.snippets.len(),
         known_hosts: payload.known_hosts.len(),
         port_forward_rules: payload.port_forward_rules.len(),
@@ -925,8 +872,7 @@ pub fn inspect_export(data: &[u8], password: &str) -> Result<ExportSummary, Vaul
 /// knows keeps whatever placement the newer copy says, because the
 /// last-writer-wins branch below writes that copy verbatim and a folder
 /// choice made here must not out-rank an edit made elsewhere. The
-/// target is honoured only when it is an existing MANUAL folder: a
-/// dynamic group's contents are derived from its query, and an id the
+/// target is honoured only when it is an existing folder: an id the
 /// store does not have would hide every row behind a dangling parent.
 pub fn import_vault(
     store: &VaultStore,
@@ -961,7 +907,6 @@ pub fn import_vault(
     if !selection.keys { payload.keys.clear(); }
     if !selection.identities { payload.identities.clear(); }
     if !selection.proxy_identities { payload.proxy_identities.clear(); }
-    if !selection.cloud_profiles { payload.cloud_profiles.clear(); }
     if !selection.snippets { payload.snippets.clear(); }
     if !selection.known_hosts { payload.known_hosts.clear(); }
     if !selection.port_forward_rules { payload.port_forward_rules.clear(); }
@@ -982,9 +927,6 @@ pub fn import_vault(
         proxy_identities_added: 0,
         proxy_identities_updated: 0,
         proxy_identities_skipped: 0,
-        cloud_profiles_added: 0,
-        cloud_profiles_updated: 0,
-        cloud_profiles_skipped: 0,
         snippets_added: 0,
         snippets_skipped: 0,
         port_forward_rules_added: 0,
@@ -1009,14 +951,13 @@ pub fn import_vault(
     let existing_keys = store.list_keys()?;
     let existing_identities = store.list_identities()?;
     let existing_proxy_identities = store.list_proxy_identities()?;
-    let existing_cloud_profiles = store.list_cloud_profiles()?;
     let existing_port_forward_rules = store.list_port_forward_rules()?;
     let existing_snippets = store.list_snippets()?;
     let existing_known_hosts = store.list_known_hosts()?;
 
     // Reconcile dangling references before writing anything. A partial
     // selection (or a hand-crafted file) can leave a connection pointing
-    // at a group/key/identity/cloud profile that is being imported by
+    // at a group/key/identity that is being imported by
     // neither this file nor already present in the target. The app's own
     // invariant is that such a reference is NULL, not a dangling id (a
     // deleted parent cascade-NULLs its referrers), and the host list
@@ -1036,8 +977,6 @@ pub fn import_vault(
     let existing_identity_ids: Vec<uuid::Uuid> = existing_identities.iter().map(|i| i.id).collect();
     let payload_pi_ids: Vec<uuid::Uuid> = payload.proxy_identities.iter().map(|p| p.proxy_identity.id).collect();
     let existing_pi_ids: Vec<uuid::Uuid> = existing_proxy_identities.iter().map(|p| p.id).collect();
-    let payload_cp_ids: Vec<uuid::Uuid> = payload.cloud_profiles.iter().map(|c| c.profile.id).collect();
-    let existing_cp_ids: Vec<uuid::Uuid> = existing_cloud_profiles.iter().map(|c| c.id).collect();
 
     for ec in &mut payload.connections {
         let c = &mut ec.connection;
@@ -1058,9 +997,6 @@ pub fn import_vault(
         if c.proxy_identity_id.is_some_and(|id| !will_have(&payload_pi_ids, &existing_pi_ids, &id)) {
             c.proxy_identity_id = None;
         }
-        if c.cloud_ref.as_ref().is_some_and(|r| !will_have(&payload_cp_ids, &existing_cp_ids, &r.profile_id)) {
-            c.cloud_ref = None;
-        }
     }
     // Identities can reference a key; same NULL-if-absent rule.
     for ei in &mut payload.identities {
@@ -1068,15 +1004,10 @@ pub fn import_vault(
             ei.identity.key_id = None;
         }
     }
-    // Groups carry a parent (folder tree) and an optional dynamic cloud
-    // query. A dangling parent hides the group the same way; a dangling
-    // query profile breaks discovery.
+    // A dangling parent hides a group from the folder tree.
     for g in &mut payload.groups {
         if g.parent_id.is_some_and(|id| !will_have(&payload_group_ids, &existing_group_ids, &id)) {
             g.parent_id = None;
-        }
-        if g.cloud_query.as_ref().is_some_and(|q| !will_have(&payload_cp_ids, &existing_cp_ids, &q.profile_id)) {
-            g.cloud_query = None;
         }
     }
     // Session groups live inside a folder by `group_id`.
@@ -1093,7 +1024,7 @@ pub fn import_vault(
     let target_group = target_group.filter(|id| {
         existing_groups
             .iter()
-            .any(|g| g.id == *id && g.cloud_query.is_none())
+            .any(|g| g.id == *id)
     });
     if let Some(target) = target_group {
         // What this pass rewrites is an EDIT made here, so it is stamped
@@ -1210,26 +1141,6 @@ pub fn import_vault(
                 export_pi.password.as_deref(),
             )?;
             result.proxy_identities_added += 1;
-        }
-    }
-
-    // Cloud profiles (LWW by updated_at), must come before connections
-    // so `cloud_ref.profile_id` references resolve once the connections
-    // land in the next loop. Same pattern as proxy identities above.
-    for export_cp in &payload.cloud_profiles {
-        if let Some(existing) = existing_cloud_profiles
-            .iter()
-            .find(|p| p.id == export_cp.profile.id)
-        {
-            if export_cp.profile.updated_at > existing.updated_at {
-                store.save_cloud_profile(&export_cp.profile, export_cp.secret.as_deref())?;
-                result.cloud_profiles_updated += 1;
-            } else {
-                result.cloud_profiles_skipped += 1;
-            }
-        } else {
-            store.save_cloud_profile(&export_cp.profile, export_cp.secret.as_deref())?;
-            result.cloud_profiles_added += 1;
         }
     }
 

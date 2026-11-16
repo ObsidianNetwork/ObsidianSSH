@@ -53,7 +53,7 @@ impl ObsidianSsh {
             | OverlayContent::TabBarActions => 210.0,
             // Fits "Import ~/.ssh/config" / "Export all hosts" and the
             // longer translations of both on one line.
-            OverlayContent::CloudProviderPicker => 210.0,
+            OverlayContent::HostAddMenu => 210.0,
             // A vault name plus its "open in new window" button.
             // "Export transcript (.txt)" + translations on one line,
             // with room for the privacy footer to wrap sanely.
@@ -75,15 +75,8 @@ impl ObsidianSsh {
             OverlayContent::PluginActions(_) => 230.0,
             // "Remove from snippet bar" + translations on one line.
             OverlayContent::SnippetActions(_) => 260.0,
-            OverlayContent::CloudDiscoverGroupPicker => {
-                let b = self.vaults.cur().cloud_discover.default_group_combo_bounds.get();
-                if b.width > 0.0 { b.width } else { 308.0 }
-            }
             OverlayContent::GroupPicker(target) => {
                 let b = match target {
-                    crate::state::GroupPickerTarget::DynamicFormParent => {
-                        self.dynamic_form_parent_combo_bounds.get()
-                    }
                     crate::state::GroupPickerTarget::SessionGroupFolder => {
                         self.session_group_folder_combo_bounds.get()
                     }
@@ -230,7 +223,7 @@ impl ObsidianSsh {
             // pickers always opened near the top, the kebab-anchored
             // "Move to group" one opens wherever the card is, and the
             // flat default let its rows hang past the bottom edge.
-            OverlayContent::GroupPicker(_) | OverlayContent::CloudDiscoverGroupPicker => 9.0,
+            OverlayContent::GroupPicker(_) => 9.0,
             _ => 2.5,
         };
         items * ITEM_H + 10.0
@@ -348,7 +341,6 @@ impl ObsidianSsh {
         if !matches!(
             overlay.content,
             OverlayContent::GroupPicker(_)
-                | OverlayContent::CloudDiscoverGroupPicker
                 | OverlayContent::SplitMenu
         ) {
             self.kn().modal.default.set(Some(0));
@@ -403,9 +395,7 @@ impl ObsidianSsh {
             OverlayContent::PortForwardActions(idx) => self.build_menu_port_forward_actions(*idx),
             OverlayContent::KeychainAdd => self.build_menu_keychain_add(),
             OverlayContent::FolderActions(gid) => self.build_menu_folder_actions(*gid),
-            OverlayContent::DynamicGroupActions(id) => self.build_menu_dynamic_group_actions(*id),
-            OverlayContent::CloudProfileActions(id) => self.build_menu_cloud_profile_actions(*id),
-            OverlayContent::CloudProviderPicker => self.build_menu_cloud_provider_picker(),
+            OverlayContent::HostAddMenu => self.build_menu_host_add(),
             OverlayContent::SidebarFilesRow { path, is_dir } => {
                 self.build_menu_sidebar_files_row(path.clone(), *is_dir)
             }
@@ -426,9 +416,6 @@ impl ObsidianSsh {
             OverlayContent::SplitMenu => self.build_menu_split(),
             OverlayContent::TabBarActions => self.build_menu_tab_bar_actions(),
             OverlayContent::SortMenu(kind) => self.build_menu_sort(*kind),
-            OverlayContent::CloudDiscoverGroupPicker => {
-                self.build_menu_cloud_discover_group_picker(overlay)
-            }
             OverlayContent::GroupPicker(target) => self.build_menu_group_picker(overlay, *target),
             // Rendered above via early return (no popover chrome).
             OverlayContent::ToolbarSearch => Space::new().boxed(),
@@ -762,11 +749,6 @@ impl ObsidianSsh {
             } else {
                 Space::new().boxed()
             },
-            indent(item(
-                "cloud_accounts",
-                Message::Navigation(NavigationMessage::ChangeView(View::Cloud)),
-                self.hotkey_label_for_vault_slot(6)
-            )),
             indent(item(
                 "proxies",
                 Message::Navigation(NavigationMessage::ChangeView(View::Proxies)),

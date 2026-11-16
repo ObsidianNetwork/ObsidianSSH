@@ -91,7 +91,7 @@ impl JsonRpcResponse {
     }
 
     /// Error response carrying a structured `data` payload, used by
-    /// plugins to ship a serialized `CloudError` back to the host.
+    /// plugins to ship structured error details back to the host.
     pub fn error_with_data(id: Value, err: JsonRpcError) -> Self {
         Self {
             jsonrpc: "2.0".into(),
@@ -107,8 +107,7 @@ impl JsonRpcResponse {
 pub struct JsonRpcError {
     pub code: i32,
     pub message: String,
-    /// Structured payload. For provider failures this is the
-    /// serialized `CloudError` (see [`crate::error`]).
+    /// Optional structured error details supplied by the plugin.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub data: Option<Value>,
 }
@@ -126,9 +125,7 @@ pub mod error_codes {
     pub const INVALID_PARAMS: i32 = -32602;
     /// Internal plugin error not attributable to the provider call.
     pub const INTERNAL_ERROR: i32 = -32603;
-    /// The call reached the provider and the provider returned a
-    /// `CloudError`. The `data` field carries the serialized error
-    /// so the host can rebuild the exact variant.
+    /// Plugin operation failed. The `data` field may carry details.
     pub const PROVIDER_ERROR: i32 = -32000;
 }
 
@@ -138,11 +135,11 @@ mod tests {
 
     #[test]
     fn request_roundtrip_omits_none_fields() {
-        let req = JsonRpcRequest::new(7, "provider.discover", serde_json::json!({"a": 1}));
+        let req = JsonRpcRequest::new(7, "plugin.operation", serde_json::json!({"a": 1}));
         let json = serde_json::to_string(&req).unwrap();
         let back: JsonRpcRequest = serde_json::from_str(&json).unwrap();
         assert_eq!(back.jsonrpc, "2.0");
-        assert_eq!(back.method, "provider.discover");
+        assert_eq!(back.method, "plugin.operation");
         assert_eq!(back.id, Some(Value::from(7)));
         assert!(!back.is_notification());
     }

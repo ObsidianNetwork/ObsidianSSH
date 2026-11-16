@@ -59,23 +59,16 @@ impl ObsidianSsh {
                 let toggle = if cols > 1 { Self::TB_ICON + 6.0 } else { 0.0 };
                 // Multi-select mode toggle (issue #230): an icon square
                 // like the view cycler and the sort trigger, plus the 6px
-                // gap before it. Zero inside a dynamic cloud group, where
-                // it isn't rendered at all.
-                let multi_select = if self.active_group_is_dynamic() {
-                    0.0
-                } else {
-                    Self::TB_ICON + 6.0
-                };
+                // gap before it.
+                let multi_select = Self::TB_ICON + 6.0;
                 // Tag-filter icon, present once any host is tagged.
                 let tag_filter = if self.host_tag_filter_available() {
                     Self::TB_ICON + 6.0
                 } else {
                     0.0
                 };
-                // Action button: none inside a dynamic group, "Discover"
-                // inside a cloud-linked folder, else the "+ Host" split.
+                // Action button: the "+ Host" split.
                 let action = match self.cur_nav().active_group {
-                    Some(_) if self.active_group_is_dynamic() => 0.0,
                     Some(_) => 115.0,
                     None => 113.0,
                 };
@@ -96,7 +89,6 @@ impl ObsidianSsh {
                 };
                 tag_filter + Self::TB_ICON + 8.0 + 92.0
             }
-            View::Cloud => 95.0,            // "+ Account"
             View::PortForwarding => 92.0,   // "+ Port Forward"
             View::Proxies => {
                 if self.vaults.cur().proxy_identity_form.visible {
@@ -262,11 +254,6 @@ impl ObsidianSsh {
                     self.cur_nav().history_search.as_str(),
                     |v| Message::Keys(KeysMessage::HistorySearchChanged(v)),
                 ),
-                View::Cloud => (
-                    "search_cloud_accounts",
-                    self.cur_nav().cloud_search.as_str(),
-                    |v| Message::Cloud(CloudMessage::CloudSearchChanged(v)),
-                ),
                 View::Proxies => (
                     "search_proxies",
                     self.cur_nav().proxy_search.as_str(),
@@ -285,7 +272,6 @@ impl ObsidianSsh {
             View::Snippets => "search-snippets",
             View::PortForwarding => "search-port-forwards",
             View::History => "search-history",
-            View::Cloud => "search-cloud",
             View::Proxies => "search-proxies",
             View::Monitoring => "search-monitor",
             _ => "search-vault-subnav",
@@ -637,9 +623,8 @@ impl ObsidianSsh {
         if self.logs_surface_visible() {
             defs.push(("logs", View::History));
         }
-        // Cloud Accounts / Proxies / Known Hosts were Settings sections
-        // in v0.7; they're now first-class vault surfaces.
-        defs.push(("cloud_accounts", View::Cloud));
+        // Proxies / Known Hosts were Settings sections in v0.7; they're
+        // now first-class vault surfaces.
         defs.push(("proxies", View::Proxies));
         defs.push(("known_hosts", View::KnownHosts));
         // Multi-host monitor dashboard (issue #95), a pill by owner

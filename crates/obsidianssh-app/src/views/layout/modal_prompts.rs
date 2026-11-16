@@ -387,42 +387,6 @@ impl ObsidianSsh {
         dialog.boxed()
     }
 
-    /// Content for the folder-rename modal.
-    pub(crate) fn build_folder_rename_dialog<'a>(&'a self, input: &'a str) -> Element<'a, Message> {
-        let dialog = container(
-            column![
-                text(crate::i18n::t("rename_folder"))
-                    .size(16)
-                    .color(ObsidianSshColors::t().text_primary)
-                    .width(Length::Fill)
-                    .align_x(dir_align_x()),
-                Space::new().height(12),
-                text_input(crate::i18n::t("folder_name"), input)
-                    .on_input(|v| Message::Tabs(TabsMessage::FolderRenameInput(v)))
-                    .on_submit(Message::Tabs(TabsMessage::ConfirmRenameFolder))
-                    .padding(10)
-                    .width(Length::Fill)
-                    .style(crate::widgets::rounded_input_style).align_x(dir_align_x()),
-                Space::new().height(12),
-                dir_row(vec![
-                    styled_button(crate::i18n::t("save"), Message::Tabs(TabsMessage::ConfirmRenameFolder), ObsidianSshColors::t().accent),
-                    Space::new().width(8).boxed(),
-                    styled_button(crate::i18n::t("cancel"), Message::Tabs(TabsMessage::CancelFolderModal), ObsidianSshColors::t().text_muted),
-                ]),
-            ]
-            .width(Length::Fill)
-            .align_x(dir_align_x())
-            .padding(24),
-        )
-        .width(Length::Fixed(360.0))
-        .style(|_| container::Style {
-            background: Some(Background::Color(ObsidianSshColors::t().bg_surface)),
-            border: Border { radius: Radius::from(12.0), color: ObsidianSshColors::t().border, width: 1.0 },
-            ..Default::default()
-        });
-        dialog.boxed()
-    }
-
     /// Content for the three-way folder-delete confirmation (keep hosts /
     /// delete with hosts, collapsing to a single action for empty folders).
     pub(crate) fn build_folder_delete_dialog(&self, gid: uuid::Uuid) -> Element<'_, Message> {
@@ -437,7 +401,7 @@ impl ObsidianSsh {
             .iter()
             .filter(|c| c.group_id == Some(gid))
             .count();
-        // Nested groups (manual subgroups or cloud dynamic groups) are
+        // Nested groups are
         // never deleted with the folder, they get promoted one level
         // up; the copy below says so instead of calling the folder
         // "empty".

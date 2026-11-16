@@ -115,24 +115,22 @@ pub enum EntityType {
     /// peer's `sync_passwords` setting is on (off by default); older peers
     /// silently drop the extra fields.
     ProxyIdentity,
-    /// Cloud account credentials referenced from `Connection.cloud_ref` and
-    /// `Group.cloud_query`. The encrypted secret blob travels over the
-    /// wire only when `sync_passwords` is on (same opt-in as proxy /
-    /// identity passwords).
-    CloudProfile,
     /// Standalone port forward rules. No credentials of their own (they
     /// reference a `Connection` by `host_id`), so the bare model travels
     /// over the wire like `Snippet`.
+    #[wincode(tag = 8)]
     PortForwardRule,
     /// Saved split-panel arrangements. No credentials (leaves reference
     /// hosts by id or are local shells), so the bare model travels over the
     /// wire like `Group`.
+    #[wincode(tag = 9)]
     SessionGroup,
     /// Reusable expect/send login automations referenced from
     /// `Connection.login_script_id`. Carries patterns and secret
     /// REFERENCES only (the credential it types lives in the host's
     /// encrypted `target_password`), so the bare model travels over the
     /// wire like `Snippet`, with no `sync_passwords` gate of its own.
+    #[wincode(tag = 10)]
     LoginScript,
 }
 
@@ -146,7 +144,6 @@ impl std::fmt::Display for EntityType {
             Self::Snippet => write!(f, "snippet"),
             Self::KnownHost => write!(f, "known_host"),
             Self::ProxyIdentity => write!(f, "proxy_identity"),
-            Self::CloudProfile => write!(f, "cloud_profile"),
             Self::PortForwardRule => write!(f, "port_forward_rule"),
             Self::SessionGroup => write!(f, "session_group"),
             Self::LoginScript => write!(f, "login_script"),
@@ -158,7 +155,7 @@ impl EntityType {
     /// Every variant, for the round-trip test. Kept honest by
     /// `wire_index` below: a new variant forces an arm there, and the
     /// arm's index forces this list to grow.
-    pub const ALL: [EntityType; 11] = [
+    pub const ALL: [EntityType; 10] = [
         Self::Connection,
         Self::SshKey,
         Self::Identity,
@@ -166,16 +163,15 @@ impl EntityType {
         Self::Snippet,
         Self::KnownHost,
         Self::ProxyIdentity,
-        Self::CloudProfile,
         Self::PortForwardRule,
         Self::SessionGroup,
         Self::LoginScript,
     ];
 
-    /// Position of a variant in [`Self::ALL`]. Exists only so the
+    /// Stable wire tag of a variant. Tag 7 is retired. Exists so the
     /// compiler refuses a new variant that nobody listed: the match is
     /// exhaustive, and `all_covers_every_variant` asserts the mapping
-    /// agrees with the array. Test-only, which is enough: `cargo test`
+    /// agrees with the wire encoding. Test-only: `cargo test`
     /// and `clippy --all-targets` are both CI gates.
     #[cfg(test)]
     fn wire_index(self) -> usize {
@@ -187,7 +183,6 @@ impl EntityType {
             Self::Snippet => 4,
             Self::KnownHost => 5,
             Self::ProxyIdentity => 6,
-            Self::CloudProfile => 7,
             Self::PortForwardRule => 8,
             Self::SessionGroup => 9,
             Self::LoginScript => 10,
@@ -208,7 +203,6 @@ impl EntityType {
             "snippet" => Some(Self::Snippet),
             "known_host" => Some(Self::KnownHost),
             "proxy_identity" => Some(Self::ProxyIdentity),
-            "cloud_profile" => Some(Self::CloudProfile),
             "port_forward_rule" => Some(Self::PortForwardRule),
             "session_group" => Some(Self::SessionGroup),
             "login_script" => Some(Self::LoginScript),
@@ -476,21 +470,6 @@ pub struct SyncProxyIdentity {
     pub password_cleared: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SyncCloudProfile {
-    #[serde(flatten)]
-    pub profile: obsidianssh_core::models::CloudProfile,
-    /// Encrypted secret blob payload (access key secret, kubeconfig
-    /// inline contents, …). Sent only when `sync_passwords` is on; the
-    /// field uses `skip_serializing_if` so older peers see byte-identical
-    /// JSON to the legacy bare-`CloudProfile` payload.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub secret: Option<String>,
-    /// Secret was explicitly removed (propagate the clear).
-    #[serde(default, skip_serializing_if = "is_false")]
-    pub secret_cleared: bool,
-}
-
 /// The wire encoding: bincode 1's layout (little-endian fixed-width
 /// integers, `u64` lengths, `u32` variant tags), which is wincode's default,
 /// with the preallocation cap raised to the largest frame an authenticated
@@ -729,6 +708,7 @@ mod tests {
             assert_eq!(EntityType::from_wire_str(&s), Some(et), "round-trip {s}");
         }
         assert_eq!(EntityType::from_wire_str("unknown_future_type"), None);
+        assert_eq!(EntityType::from_wire_str("cloud_profile"), None);
     }
 
     /// The list above used to be written out by hand at each call site
@@ -739,7 +719,10 @@ mod tests {
     #[test]
     fn all_covers_every_variant() {
         for (i, et) in EntityType::ALL.iter().enumerate() {
-            assert_eq!(et.wire_index(), i, "{et} is in the wrong ALL slot");
+            let tag = i + usize::from(i >= 7);
+            assert_eq!(et.wire_index(), tag, "{et} has the wrong wire tag");
+            let bytes = wincode::config::serialize(et, WIRE).unwrap();
+            assert_eq!(bytes, u32::try_from(tag).unwrap().to_le_bytes());
         }
     }
 
@@ -943,45 +926,6 @@ mod tests {
         assert_eq!(back.password.as_deref(), Some("pi-pw"));
     }
 
-    #[test]
-    fn sync_cloud_profile_round_trip() {
-        let cp = obsidianssh_core::models::CloudProfile::new("aws-prod", "aws");
-        let wrapper = SyncCloudProfile {
-            profile: cp,
-            secret: Some("opaque-secret".into()),
-            secret_cleared: false,
-        };
-        let bytes = serde_json::to_vec(&wrapper).unwrap();
-        let back: SyncCloudProfile = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(back.secret.as_deref(), Some("opaque-secret"));
-        assert_eq!(back.profile.label, "aws-prod");
-    }
-
-    /// Legacy peer that doesn't know about cloud profiles will send a
-    /// bare `CloudProfile` JSON, the wrapper must accept it and resolve
-    /// `secret` to `None`. (Symmetric to the connection / identity tests
-    /// above.)
-    #[test]
-    fn sync_cloud_profile_accepts_legacy_payload() {
-        let cp = obsidianssh_core::models::CloudProfile::new("legacy", "aws");
-        let bare = serde_json::to_vec(&cp).unwrap();
-        let wrapped: SyncCloudProfile = serde_json::from_slice(&bare).unwrap();
-        assert_eq!(wrapped.profile.label, "legacy");
-        assert!(wrapped.secret.is_none());
-    }
-
-    /// When secret is `None` the wire payload must be byte-identical to
-    /// the legacy bare-`CloudProfile` JSON, no `"secret"` key emitted.
-    #[test]
-    fn sync_cloud_profile_omits_secret_when_none() {
-        let cp = obsidianssh_core::models::CloudProfile::new("no-secret", "aws");
-        let wrapper = SyncCloudProfile { profile: cp, secret: None, secret_cleared: false };
-        let json = serde_json::to_string(&wrapper).unwrap();
-        assert!(
-            !json.contains("\"secret\""),
-            "secret field leaked into JSON: {json}"
-        );
-    }
 
     /// `EntityType` rides the message ENVELOPE, and the wire encodes a
     /// variant as a bare u32 index, so a peer that does not know an
@@ -998,7 +942,7 @@ mod tests {
         let bytes = wincode::config::serialize(&EntityType::LoginScript, WIRE).unwrap();
         assert_eq!(bytes, vec![10, 0, 0, 0], "variant index is the wire form");
         let unknown = wincode::config::deserialize::<EntityType, _>(&[
-            u8::try_from(EntityType::ALL.len()).unwrap(),
+            u8::try_from(EntityType::LoginScript.wire_index() + 1).unwrap(),
             0,
             0,
             0,
@@ -1009,7 +953,7 @@ mod tests {
         );
         assert_eq!(
             (EntityType::ALL.len(), PROTOCOL_VERSION),
-            (11, 11),
+            (10, 11),
             "adding an EntityType variant is a wire break: bump PROTOCOL_VERSION \
              (and SNAPSHOT_VERSION in lockstep) and update this pin"
         );

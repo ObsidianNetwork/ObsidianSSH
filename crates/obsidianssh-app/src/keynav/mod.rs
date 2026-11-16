@@ -86,10 +86,6 @@ pub(crate) enum ToolbarItem {
     /// search field (rendered whenever that field is on screen, inline
     /// or in the collapsed-search overlay).
     SearchContent,
-    /// Context-aware dashboard primary inside a provider folder:
-    /// "+ DISCOVER" for the linked cloud profile. Carries the profile
-    /// id so activation needs no re-derivation of the folder link.
-    CloudDiscover(uuid::Uuid),
     /// The dashboard's selection bar (issue #230), shown while the
     /// selection is live or the multi-select mode is on: connect the
     /// batch, move it, delete it, select all, clear.
@@ -129,8 +125,6 @@ pub(crate) enum NavItem {
     PortForward(usize),
     /// History row (session-log id, current page only).
     HistoryLog(uuid::Uuid),
-    /// Cloud-account card (profile id).
-    CloudAccount(uuid::Uuid),
     /// Proxy-identity row.
     Proxy(uuid::Uuid),
     /// Known-host row (index into the rendered list).

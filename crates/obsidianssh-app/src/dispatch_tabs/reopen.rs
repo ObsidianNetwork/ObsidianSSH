@@ -41,12 +41,10 @@ impl ObsidianSsh {
         // re-dialled as a unit.
         let spec = match tab.pin_spec() {
             Some(spec) => ClosedTabSpec::Pinned(spec),
-            // What it declines is quick-connect and SSM, and only the
-            // first of those is recoverable: an ad-hoc host is a
-            // `Connection` living in `quick_connects`, which
-            // `prune_quick_connects` is about to drop, so the snapshot
-            // is taken here and owned by the stack. SSM has nothing to
-            // snapshot (`relaunch: None`).
+            // What it declines is quick-connect, which is recoverable:
+            // an ad-hoc host is a `Connection` living in
+            // `quick_connects`, which `prune_quick_connects` is about to
+            // drop, so the snapshot is taken here and owned by the stack.
             None => match &tab.active().origin {
                 crate::state::PaneOrigin::QuickHost(qid) => {
                     let Some(entry) = self.vaults.cur().quick_connects.get(qid) else { return };
@@ -134,17 +132,12 @@ impl ObsidianSsh {
             if matches!(spec, PinnedTabSpec::Sftp { .. }) {
                 return self.reopen_closed_sftp_tab(spec, entry.after_id);
             }
-            // The async flag is the dormant path's business (it has a
-            // placeholder chip to hold open while a plugin answers);
-            // here the placement below covers both kinds.
-            let (open, _async_spawn) = self.spec_open_message(&spec);
+            let open = self.spec_open_message(&spec);
             let Some(open) = open else { continue };
             // Where the chip goes back, through the one door every new
             // tab walks (`place_new_tab_ref`). It resolves the neighbour
             // fresh, so a neighbour that closed in the meantime degrades
-            // to appending instead of guessing a stale index, and it is
-            // the only placement that also works for the cloud specs,
-            // whose tab arrives several updates later.
+            // to appending instead of guessing a stale index.
             self.arm_reopen_placement(entry.after_id);
             return self.update(open);
         }

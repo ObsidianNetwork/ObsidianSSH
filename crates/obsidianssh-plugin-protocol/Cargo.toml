@@ -7,7 +7,5 @@ authors.workspace = true
 repository.workspace = true
 
 [dependencies]
-obsidianssh-core = { workspace = true }
-obsidianssh-cloud = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

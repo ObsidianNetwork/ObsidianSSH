@@ -18,7 +18,7 @@ mod window;
 
 use iced::Task;
 
-use crate::app::{SettingsMessage, TabsMessage, TerminalMessage, SshMessage, CloudMessage, NavigationMessage, Message, ObsidianSsh};
+use crate::app::{SettingsMessage, TabsMessage, TerminalMessage, SshMessage, NavigationMessage, Message, ObsidianSsh};
 use crate::state::{OverlayContent, OverlayState, View};
 
 /// Smallest gap between two `WindowDrag` / `WindowResizeDrag`
@@ -144,7 +144,6 @@ impl ObsidianSsh {
                 | TabsMessage::DetachTabSftp(..)
                 | TabsMessage::CloseTabSftpSession(..)
                 | TabsMessage::OpenTerminalForSftpTab(..)
-                | TabsMessage::SsmKeepaliveTick
                 | TabsMessage::BusyAnimTick
             ) => self.handle_tabs_strip(m),
             m @ (
@@ -205,9 +204,6 @@ impl ObsidianSsh {
                 | TabsMessage::ConfirmTabRename
                 | TabsMessage::CancelTabRename
                 | TabsMessage::ShowFolderActions(..)
-                | TabsMessage::StartRenameFolder(..)
-                | TabsMessage::FolderRenameInput(..)
-                | TabsMessage::ConfirmRenameFolder
                 | TabsMessage::CancelFolderModal
             ) => self.handle_tabs_rename(m),
             m @ (

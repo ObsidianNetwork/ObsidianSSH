@@ -1029,12 +1029,8 @@ impl ObsidianSsh {
                         // forward rules, the open editor following its
                         // row), never through `load_data_from_vault`,
                         // which also restores tabs and runs migrations.
-                        // A pulled tombstone may also have removed a cloud
-                        // account whose managed kubeconfig is still on
-                        // disk, so the sweep follows.
                         if pulled > 0 {
                             self.reload_after_external_write();
-                            self.sweep_orphan_kubeconfigs();
                         }
                     }
                     SyncEvent::SyncFailed { error, .. } => {

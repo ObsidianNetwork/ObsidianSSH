@@ -200,12 +200,9 @@ impl ObsidianSsh {
                 Some(self.respawn_local_pane(tab_idx, pane_id, &spec))
             }
             // An SFTP tab re-mounts on focus (the swap-on-focus
-            // invariant) and a cloud tab spawns through a plugin into a
-            // tab of its own: neither has an in-place path, so neither
-            // is queued, and this is the compiler asking.
-            crate::state::PinnedTabSpec::EcsExec { .. }
-            | crate::state::PinnedTabSpec::KubectlExec { .. }
-            | crate::state::PinnedTabSpec::Sftp { .. } => None,
+            // invariant): it has no in-place path, so it is not queued,
+            // and this is the compiler asking.
+            crate::state::PinnedTabSpec::Sftp { .. } => None,
         }
     }
 

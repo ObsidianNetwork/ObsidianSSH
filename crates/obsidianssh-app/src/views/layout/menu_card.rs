@@ -127,9 +127,7 @@ impl ObsidianSsh {
 
     /// `dashboard` gates the entries that only make sense on the
     /// dashboard surface: Remove (the tree is navigate-and-connect,
-    /// destruction keeps its confirm over the card list) and
-    /// filter-by-cloud-profile (it drives the dashboard's own filter
-    /// chip).
+    /// destruction keeps its confirm over the card list).
     /// Row count of `build_menu_host_actions_inner` for the SAME host +
     /// surface, feeding `overlay_menu_height`. Kept next to the builder
     /// so a new entry can't ship without its height: the old fixed
@@ -172,9 +170,6 @@ impl ObsidianSsh {
         }
         if dashboard {
             rows += 1.0; // Move to group
-            if conn.and_then(|c| c.cloud_ref.as_ref()).is_some() {
-                rows += 1.0; // Filter by cloud profile
-            }
             rows += 1.0; // Remove / Forget
         }
         rows
@@ -244,13 +239,6 @@ impl ObsidianSsh {
         // Every index-taking action goes through this, so a vanished
         // host cannot dispatch one against a stale position.
         let by_idx = |msg: fn(usize) -> Message| idx.map_or(Message::NoOp, msg);
-        let cloud_profile_id = conn
-            .and_then(|c| c.cloud_ref.as_ref())
-            .map(|r| r.profile_id);
-        let is_orphan = conn
-            .and_then(|c| c.cloud_ref.as_ref())
-            .and_then(|r| r.orphaned_at)
-            .is_some();
         // SSH-only actions (Share + SFTP mount both ride the SSH
         // subsystem) and the URL scheme depend on the protocol.
         use obsidianssh_core::models::connection::ConnectionProtocol;
@@ -332,28 +320,11 @@ impl ObsidianSsh {
                 ObsidianSshColors::t().text_secondary,
             ));
         }
-        if dashboard && let Some(pid) = cloud_profile_id {
-            items = items.push(self.menu_item(
-                iced_fonts::lucide::funnel(),
-                crate::i18n::t("host_filter_by_profile"),
-                Message::Navigation(NavigationMessage::HostFilterByCloudProfile(Some(pid))),
-                ObsidianSshColors::t().text_secondary,
-            ));
-        }
         if !dashboard {
             return items.boxed();
         }
-        // Orphan hosts get a "Forget" label (semantically
-        // closer to "this resource is gone upstream, drop my
-        // local record") instead of the generic "Remove".
-        // Same `DeleteConnection` action under the hood.
-        let (remove_label, remove_icon) = if is_orphan {
-            (crate::i18n::t("host_orphan_forget"), iced_fonts::lucide::eraser())
-        } else {
-            (crate::i18n::t("remove"), iced_fonts::lucide::trash())
-        };
         items
-            .push(self.menu_item(remove_icon, remove_label, by_idx(|i| Message::Editor(EditorMessage::RequestDeleteConnection(i))), ObsidianSshColors::t().error))
+            .push(self.menu_item(iced_fonts::lucide::trash(), crate::i18n::t("remove"), by_idx(|i| Message::Editor(EditorMessage::RequestDeleteConnection(i))), ObsidianSshColors::t().error))
             .boxed()
     }
 
@@ -448,38 +419,10 @@ impl ObsidianSsh {
     }
 
     pub(crate) fn build_menu_folder_actions(&self, gid: uuid::Uuid) -> Element<'_, Message> {
-        // Folders that hold cloud-imported hosts used to hide
-        // their rename / delete actions to protect the
-        // import-by-label dedupe. The decoupling work in v0.7
-        // moved import targets to an explicit picker, so
-        // renaming or moving the auto folder no longer breaks
-        // anything (worst case the next Auto import creates a
-        // sibling). Surface the standard actions instead.
         column![
             self.menu_item(iced_fonts::lucide::pencil(), crate::i18n::t("edit"), Message::Tabs(TabsMessage::EditGroup(gid)), ObsidianSshColors::t().accent),
             self.menu_item(iced_fonts::lucide::folder_plus(), crate::i18n::t("new_subgroup"), Message::Tabs(TabsMessage::NewSubgroup(gid)), ObsidianSshColors::t().text_secondary),
             self.menu_item(iced_fonts::lucide::trash(), crate::i18n::t("delete"), Message::Tabs(TabsMessage::StartDeleteFolder(gid)), ObsidianSshColors::t().error),
-        ].boxed()
-    }
-
-    pub(crate) fn build_menu_dynamic_group_actions(&self, id: uuid::Uuid) -> Element<'_, Message> {
-        column![
-            self.menu_item(iced_fonts::lucide::pencil(), crate::i18n::t("edit"), Message::Cloud(CloudMessage::EditDynamicGroup(id)), ObsidianSshColors::t().accent),
-            // Rename = friendly display label only. The
-            // cloud_query (cluster/service/container) and the
-            // import-dedupe key never look at it, so renaming
-            // is safe and the subtitle keeps surfacing the
-            // original ECS path.
-            self.menu_item(iced_fonts::lucide::text_cursor_input(), crate::i18n::t("rename"), Message::Tabs(TabsMessage::StartRenameFolder(id)), ObsidianSshColors::t().text_secondary),
-            self.menu_item(iced_fonts::lucide::trash(), crate::i18n::t("delete"), Message::Cloud(CloudMessage::DeleteDynamicGroup(id)), ObsidianSshColors::t().error),
-        ].boxed()
-    }
-
-    pub(crate) fn build_menu_cloud_profile_actions(&self, id: uuid::Uuid) -> Element<'_, Message> {
-        column![
-            self.menu_item(iced_fonts::lucide::pencil(), crate::i18n::t("edit"), Message::Cloud(CloudMessage::ShowCloudForm(Some(id))), ObsidianSshColors::t().text_secondary),
-            self.menu_item(iced_fonts::lucide::refresh_cw(), crate::i18n::t("cloud_profile_sync"), Message::Cloud(CloudMessage::CloudProfileSync(id)), ObsidianSshColors::t().accent),
-            self.menu_item(iced_fonts::lucide::trash(), crate::i18n::t("delete"), Message::Cloud(CloudMessage::DeleteCloudProfile(id)), ObsidianSshColors::t().error),
         ].boxed()
     }
 
@@ -541,7 +484,7 @@ impl ObsidianSsh {
         items.boxed()
     }
 
-    pub(crate) fn build_menu_cloud_provider_picker(&self) -> Element<'_, Message> {
+    pub(crate) fn build_menu_host_add(&self) -> Element<'_, Message> {
         // The "+ Host ▾" add menu: one row per entry of the shared add
         // catalog (`views::add_actions`), which the first-run empty
         // state renders as buttons from the same list.

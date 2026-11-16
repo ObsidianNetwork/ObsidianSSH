@@ -173,6 +173,3 @@ fn settings_independent_keys_dont_collide() {
     assert_eq!(vault.get_setting("b").unwrap().as_deref(), Some("2"));
     assert_eq!(vault.get_setting("c").unwrap().as_deref(), Some("3"));
 }
-
-// ── Cloud Profiles ──
-

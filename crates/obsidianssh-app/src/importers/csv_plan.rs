@@ -306,7 +306,6 @@ fn plan_update(
         None => FolderPlan::Keep,
         Some(v) => folder_plan(row, v, known.groups, FolderPlan::Root)?,
     };
-    conn.mark_customized_since(existing);
 
     let mut changes: Vec<&'static str> = Vec::new();
     let mut note = |name: &'static str, differs: bool| {
@@ -392,9 +391,7 @@ fn key_named(row: &SheetRow, name: &str, keys: &[SshKey]) -> Result<Uuid, Refusa
 /// A full path ("Prod / Web", the export's form; "Prod/Web" reads the
 /// same) names a folder from the top. A bare name that is no top-level
 /// folder may name a nested one, when exactly one folder carries it.
-/// A path no folder has is created at the save. A dynamic folder holds
-/// no hosts, so a path into one is refused rather than given a manual
-/// twin.
+/// A path no folder has is created at the save.
 fn folder_plan(row: &SheetRow, cell: &str, groups: &[Group], empty: FolderPlan) -> Result<FolderPlan, Refusal> {
     let raw = cell.trim();
     let normalized = raw
@@ -406,11 +403,10 @@ fn folder_plan(row: &SheetRow, cell: &str, groups: &[Group], empty: FolderPlan) 
     if normalized.is_empty() {
         return Ok(empty);
     }
-    let manual = || groups.iter().filter(|g| g.cloud_query.is_none());
     // The raw form first: a folder whose own name has a `/` in it is
     // found by its path as written.
     for candidate in [raw, normalized.as_str()] {
-        let hits: Vec<Uuid> = manual()
+        let hits: Vec<Uuid> = groups.iter()
             .filter(|g| Group::path_of(groups, g.id) == candidate)
             .map(|g| g.id)
             .collect();
@@ -420,15 +416,8 @@ fn folder_plan(row: &SheetRow, cell: &str, groups: &[Group], empty: FolderPlan) 
             _ => return Err(Refusal::new(row, "import_refused_folder_ambiguous", Some(raw))),
         }
     }
-    let into_dynamic = groups.iter().filter(|g| g.cloud_query.is_some()).any(|g| {
-        let path = Group::path_of(groups, g.id);
-        normalized == path || normalized.starts_with(&format!("{path} / "))
-    });
-    if into_dynamic {
-        return Err(Refusal::new(row, "import_refused_folder_dynamic", Some(raw)));
-    }
     if !normalized.contains(" / ") {
-        let hits: Vec<Uuid> = manual().filter(|g| g.label == normalized).map(|g| g.id).collect();
+        let hits: Vec<Uuid> = groups.iter().filter(|g| g.label == normalized).map(|g| g.id).collect();
         match hits.as_slice() {
             [one] => return Ok(FolderPlan::Existing(*one)),
             [] => {}

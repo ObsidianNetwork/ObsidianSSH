@@ -19,15 +19,6 @@ impl ObsidianSsh {
             // editor form; the form's own Save persists it.
             self.vaults.cur_mut().editor_session_group.icon_style = self.vaults.cur_mut().icon_picker.icon.clone();
             self.vaults.cur_mut().editor_session_group.color = self.vaults.cur_mut().icon_picker.color.clone();
-        } else if self.vaults.cur().icon_picker.for_group_form {
-            // Form-target: flow the choice back to the dynamic
-            // group editor fields. The form's own Save button
-            // persists to the vault, so the icon picker stays
-            // an in-memory editor here.
-            self.vaults.cur_mut().cloud_dynamic_form.icon =
-                self.vaults.cur().icon_picker.icon.clone().unwrap_or_default();
-            self.vaults.cur_mut().cloud_dynamic_form.color =
-                self.vaults.cur().icon_picker.color.clone().unwrap_or_default();
         } else if self.vaults.cur().icon_picker.for_group_edit {
             // Deferred save: flow into the manual group editor; the
             // panel's own Save persists to the vault.
@@ -49,7 +40,6 @@ impl ObsidianSsh {
         }
         self.vaults.cur_mut().panels.icon_picker = false;
         self.vaults.cur_mut().icon_picker.for_id = None;
-        self.vaults.cur_mut().icon_picker.for_group_form = false;
         self.vaults.cur_mut().icon_picker.for_session_group = false;
         self.vaults.cur_mut().icon_picker.for_group_edit = false;
         self.vaults.cur_mut().icon_picker.for_local_terminal = false;
@@ -69,9 +59,6 @@ impl ObsidianSsh {
         } else if self.vaults.cur().icon_picker.for_session_group {
             self.vaults.cur_mut().editor_session_group.icon_style = None;
             self.vaults.cur_mut().editor_session_group.color = None;
-        } else if self.vaults.cur().icon_picker.for_group_form {
-            self.vaults.cur_mut().cloud_dynamic_form.icon = String::new();
-            self.vaults.cur_mut().cloud_dynamic_form.color = String::new();
         } else if self.vaults.cur().icon_picker.for_group_edit {
             self.vaults.cur_mut().group_edit.icon = String::new();
             self.vaults.cur_mut().group_edit.color = String::new();
@@ -86,7 +73,6 @@ impl ObsidianSsh {
         }
         self.vaults.cur_mut().panels.icon_picker = false;
         self.vaults.cur_mut().icon_picker.for_id = None;
-        self.vaults.cur_mut().icon_picker.for_group_form = false;
         self.vaults.cur_mut().icon_picker.for_session_group = false;
         self.vaults.cur_mut().icon_picker.for_group_edit = false;
         self.vaults.cur_mut().icon_picker.for_local_terminal = false;

@@ -1,5 +1,5 @@
 //! One-field settings with no machinery: performance mode, tray
-//! behaviour, SFTP limits, cloud refresh, keepalive.
+//! behaviour, SFTP limits, keepalive.
 //!
 //! Grouped by having nothing to say for themselves. Each writes a field
 //! and persists it; anything that needed more than that is in one of the
@@ -106,49 +106,6 @@ impl ObsidianSsh {
                     self.vaults.cur_mut().prefs.ssh_session_timeout = "1".into();
                 }
                 self.persist_setting("ssh_session_timeout", &self.vaults.cur().prefs.ssh_session_timeout);
-            }
-            SettingsMessage::SettingCloudAutoRefreshToggle => {
-                self.vaults.cur_mut().prefs.cloud_auto_refresh_enabled =
-                    !self.vaults.cur().prefs.cloud_auto_refresh_enabled;
-                self.persist_setting(
-                    "cloud_auto_refresh_enabled",
-                    if self.vaults.cur().prefs.cloud_auto_refresh_enabled { "true" } else { "false" },
-                );
-            }
-            SettingsMessage::SettingCloudAutoRefreshIntervalChanged(val) => {
-                // Floor of 1 minute, ceiling of 1 day. AWS rate limits
-                // are well above a per-minute pace for the discovery
-                // calls we make, but the ceiling is just a sanity cap.
-                self.vaults.cur_mut().prefs.cloud_auto_refresh_interval_minutes =
-                    sanitize_uint(&val, 1_440);
-                if self.vaults.cur().prefs.cloud_auto_refresh_interval_minutes == "0" {
-                    self.vaults.cur_mut().prefs.cloud_auto_refresh_interval_minutes = "1".into();
-                }
-                self.persist_setting(
-                    "cloud_auto_refresh_interval_minutes",
-                    &self.vaults.cur().prefs.cloud_auto_refresh_interval_minutes,
-                );
-            }
-            SettingsMessage::SettingCloudAutoArchiveToggle => {
-                self.vaults.cur_mut().prefs.cloud_auto_archive_orphans =
-                    !self.vaults.cur().prefs.cloud_auto_archive_orphans;
-                self.persist_setting(
-                    "cloud_auto_archive_orphans",
-                    if self.vaults.cur().prefs.cloud_auto_archive_orphans { "true" } else { "false" },
-                );
-            }
-            SettingsMessage::SettingCloudOrphanArchiveDaysChanged(val) => {
-                // Floor of 1 day (an orphan needs at least one full day
-                // to "settle" so a transient AWS API hiccup doesn't
-                // wipe legitimate hosts). Ceiling of one year.
-                self.vaults.cur_mut().prefs.cloud_orphan_archive_days = sanitize_uint(&val, 365);
-                if self.vaults.cur().prefs.cloud_orphan_archive_days == "0" {
-                    self.vaults.cur_mut().prefs.cloud_orphan_archive_days = "1".into();
-                }
-                self.persist_setting(
-                    "cloud_orphan_archive_days",
-                    &self.vaults.cur().prefs.cloud_orphan_archive_days,
-                );
             }
             SettingsMessage::SettingSftpConcurrencyChanged(val) => {
                 // Cap at 8, beyond that the SSH channel multiplexer

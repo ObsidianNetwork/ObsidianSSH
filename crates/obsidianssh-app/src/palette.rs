@@ -202,7 +202,7 @@ impl ObsidianSsh {
         if self.vaults.cur().ai.enabled {
             items.push((t("ai_assistant"), S::AI));
         }
-        if self.cloud_provider_installed("mcp") {
+        if self.plugin_installed("mcp") {
             items.push((t("mcp_server"), S::Mcp));
         }
         if self.vaults.cur().sftp_enabled {
@@ -213,9 +213,6 @@ impl ObsidianSsh {
         }
         if self.vaults.cur().sync.enabled {
             items.push((t("sync"), S::Sync));
-        }
-        if self.any_cloud_provider_installed() {
-            items.push((t("settings_cloud_section"), S::Cloud));
         }
         items.push((t("settings_advanced"), S::Advanced));
         items.push((t("about"), S::About));

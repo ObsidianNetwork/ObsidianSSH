@@ -121,12 +121,6 @@ pub(crate) struct WindowNav {
     pub(crate) hover: crate::state::HoverState,
     pub(crate) active_group: Option<Uuid>,
     pub(crate) host_search: String,
-    /// When set, the dashboard grid hides every host / group whose
-    /// cloud origin doesn't match this profile id. Activated by
-    /// clicking the small provider badge on a cloud-sourced host card,
-    /// cleared from the chip at the top of the grid. None means no
-    /// cloud filter.
-    pub(crate) host_filter_cloud_profile: Option<Uuid>,
     /// Dashboard tag filter: only hosts carrying AT LEAST ONE of these
     /// tags (case-insensitive) are listed, and only groups whose
     /// subtree contains such a host render. In-memory like the search
@@ -150,8 +144,7 @@ pub(crate) struct WindowNav {
     /// each log row.
     pub(crate) history_search: String,
     pub(crate) port_forward_search: String,
-    /// Toolbar search needles for the Cloud Accounts and Proxies views.
-    pub(crate) cloud_search: String,
+    /// Toolbar search needle for the Proxies view.
     pub(crate) proxy_search: String,
     /// Vault Snippets view: the snippet group currently opened as a
     /// folder (dashboard-style drill-in). `None` = root (group cards +

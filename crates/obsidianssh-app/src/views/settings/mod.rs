@@ -57,7 +57,7 @@ impl ObsidianSsh {
             // sequence) and didn't reflect how users actually move
             // through the panel.
             // Core sections, then the "feature plugin" sections (AI /
-            // MCP / SFTP / Sync / SSH Agent / Cloud Sync) which only
+            // MCP / SFTP / Sync / SSH Agent) which only
             // appear once the feature is enabled on the Plugins screen,
             // then About. The
             // enable/disable toggles live on the Plugins screen, not here.
@@ -271,7 +271,6 @@ impl ObsidianSsh {
 
             SettingsSection::Advanced => self.view_settings_advanced(),
             SettingsSection::About => self.view_settings_about(),
-            SettingsSection::Cloud => self.view_cloud_sync_settings(),
             SettingsSection::Plugins => self.view_plugins_panel(),
             SettingsSection::Mcp => self.view_settings_mcp(),
         };
@@ -319,7 +318,6 @@ pub(crate) fn category_label_key(c: obsidianssh_vault::ExportCategory) -> &'stat
         C::Keys => "cat_keys",
         C::Identities => "cat_identities",
         C::ProxyIdentities => "cat_proxies",
-        C::CloudProfiles => "cat_cloud_profiles",
         C::Snippets => "cat_snippets",
         C::KnownHosts => "cat_known_hosts",
         C::PortForwardRules => "cat_port_forwards",
