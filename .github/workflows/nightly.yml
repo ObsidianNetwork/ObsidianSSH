@@ -11,9 +11,7 @@ name: Nightly
 # PERMANENTLY (GitHub reserves a tag ever used by an immutable release,
 # even after the release and tag are deleted and the setting is turned
 # off). Never enable release immutability on this repo while a rolling
-# tag exists, and never reuse the name `nightly` for a tag. The mirror
-# snapshot keeps the `releases/nightly.json` name so pre-rename
-# binaries still find updates through the Auto mirror fallback.
+# tag exists, and never reuse the name `nightly` for a tag.
 
 on:
   push:
@@ -364,15 +362,3 @@ jobs:
             --notes "$NOTES" \
             --target "$GITHUB_SHA" \
             dist/*
-
-  # Sync the published assets + API snapshots to the download mirror
-  # (dl.oryxis.app / dl-cn.oryxis.app), the Auto fallback for networks
-  # where GitHub is blocked (mainland China). Layout contract lives in
-  # publish-mirror.yml and net_mirror.rs.
-  mirror:
-    name: Publish to download mirror
-    needs: [publish]
-    uses: ./.github/workflows/publish-mirror.yml
-    with:
-      tag: nightly-latest
-    secrets: inherit

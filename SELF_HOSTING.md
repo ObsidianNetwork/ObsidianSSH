@@ -76,7 +76,7 @@ docker run -d \
   --restart unless-stopped \
   -p 8080:8080 \
   -e OBSIDIANSSH_RELAY_TOKEN=<long-random-string> \
-  ghcr.io/wilsonglasser/oryxis-relay:latest
+  ghcr.io/obsidiannetwork/obsidianssh-relay:latest
 ```
 
 Behind a reverse proxy (recommended, gives you TLS for free):

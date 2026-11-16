@@ -16,7 +16,6 @@
   <a href="https://github.com/ObsidianNetwork/ObsidianSSH/releases/latest"><img src="https://img.shields.io/github/v/release/ObsidianNetwork/ObsidianSSH?color=green" alt="Release"></a>
   <img src="https://img.shields.io/badge/platforms-linux%20%7C%20macos%20%7C%20windows-blue" alt="Platforms">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue" alt="License"></a>
-  <a href="https://github.com/ObsidianNetwork/ObsidianSSH"><img src="https://img.shields.io/badge/website-obsidianssh.app-3CBBB1" alt="Website"></a>
 </p>
 
 <p align="center">

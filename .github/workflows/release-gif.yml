@@ -18,7 +18,7 @@ name: Release GIF plugin
 # crates/obsidianssh-gif/target.
 #
 # The app reads `plugins/gif.json` from a fixed URL (this repo on
-# raw.githubusercontent.com, the download mirror as the second leg),
+# raw.githubusercontent.com),
 # so the manifest job commits the freshly built file into that
 # directory. The release asset stays, and the app's release-API
 # discovery stays as a last-resort fallback, but neither is the
@@ -248,15 +248,3 @@ jobs:
           git add "plugins/gif.json"
           git commit -m "chore(plugins): publish gif ${{ steps.tag.outputs.version }} to the catalog"
           git push
-
-  # Sync the published assets + API snapshots to the download mirror
-  # (dl.oryxis.app / dl-cn.oryxis.app), the Auto fallback for networks
-  # where GitHub is blocked (mainland China). Layout contract lives in
-  # publish-mirror.yml and net_mirror.rs.
-  mirror:
-    name: Publish to download mirror
-    needs: [manifest]
-    uses: ./.github/workflows/publish-mirror.yml
-    with:
-      tag: ${{ github.ref_name }}
-    secrets: inherit

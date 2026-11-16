@@ -12,9 +12,9 @@ fn main() {
         let mut res = winresource::WindowsResource::new();
         res.set_manifest_file("../../resources/manifest.xml");
         res.set_icon("../../resources/logo.ico");
-        res.set("FileDescription", "Obsidian SSH SSH Client");
+        res.set("FileDescription", "Obsidian SSH Client");
         res.set("ProductName", "Obsidian SSH");
-        res.set("CompanyName", "Obsidian SSH");
+        res.set("CompanyName", "ObsidianNetwork");
         res.set("LegalCopyright", "Copyright (C) Obsidian SSH authors");
         res.set("OriginalFilename", "obsidianssh.exe");
         res.set("InternalName", "obsidianssh");

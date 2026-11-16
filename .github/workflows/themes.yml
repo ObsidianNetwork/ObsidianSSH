@@ -97,7 +97,7 @@ jobs:
           printf '%s\n' "${{ secrets.SITE_DEPLOY_KEY }}" > "$key"
           echo "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl" > "$hosts"
           export GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o UserKnownHostsFile=$hosts"
-          git clone --depth 1 git@github.com:wilsonglasser/oryxis-site.git "$RUNNER_TEMP/site"
+          git clone --depth 1 git@github.com:ObsidianNetwork/obsidianssh-site.git "$RUNNER_TEMP/site"
           if cmp -s themes/index.json "$RUNNER_TEMP/site/theme-index.json"; then
             echo "site snapshot already current"
             exit 0

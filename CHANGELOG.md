@@ -1,6 +1,9 @@
 # Changelog
 
-All notable changes to Oryxis are documented here. Format follows
+Obsidian SSH is a fork of Oryxis; the entries below up to 0.23.0 are the
+upstream Oryxis history, kept as released.
+
+All notable changes are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project uses [SemVer](https://semver.org/spec/v2.0.0.html).
 

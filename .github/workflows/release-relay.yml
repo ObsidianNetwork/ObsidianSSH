@@ -2,14 +2,14 @@ name: Release relay
 
 # Triggered by tags of the form `relay-v0.1.0`. Builds the
 # `obsidianssh-relay` Docker image for amd64 + arm64 and publishes to
-# `ghcr.io/wilsonglasser/oryxis-relay:<version>` plus `:latest`, then
+# `ghcr.io/obsidiannetwork/obsidianssh-relay:<version>` plus `:latest`, then
 # the standalone binaries.
 #
 # Users self-host with:
 #   docker run -d \
 #     -p 8080:8080 \
 #     -e OBSIDIANSSH_RELAY_TOKEN=<long-random-string> \
-#     ghcr.io/wilsonglasser/oryxis-relay:latest
+#     ghcr.io/obsidiannetwork/obsidianssh-relay:latest
 #
 # The two linux-musl binaries are additionally Ed25519-signed with the
 # production plugin key and described by a `relay.json` manifest, the
@@ -333,16 +333,3 @@ jobs:
           git add "plugins/relay.json"
           git commit -m "chore(plugins): publish relay ${{ steps.tag.outputs.version }} to the catalog"
           git push
-
-  # Sync the published assets + API snapshots to the download mirror
-  # (dl.oryxis.app / dl-cn.oryxis.app), the Auto fallback for networks
-  # where GitHub is blocked (mainland China). Layout contract lives in
-  # publish-mirror.yml and net_mirror.rs. After the relay.json job, so
-  # the mirror's catalog copy finds the manifest among the assets.
-  mirror:
-    name: Publish to download mirror
-    needs: [relay-manifest]
-    uses: ./.github/workflows/publish-mirror.yml
-    with:
-      tag: ${{ github.ref_name }}
-    secrets: inherit

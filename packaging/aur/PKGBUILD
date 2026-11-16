@@ -1,4 +1,4 @@
-# Maintainer: Wilson Glasser <wilsonglasser@gmail.com>
+# Maintainer: ObsidianNetwork
 # pkgver/pkgrel/sha256sums are stamped by CI at release time
 # (.github/workflows/release.yml, `aur` job) and pushed to the AUR.
 pkgname=obsidianssh-bin

@@ -720,8 +720,8 @@ jobs:
         with:
           pkgname: obsidianssh-bin
           pkgbuild: packaging/aur/PKGBUILD
-          commit_username: Wilson Glasser
-          commit_email: wilsonglasser@gmail.com
+          commit_username: ObsidianNetwork
+          commit_email: 41898282+github-actions[bot]@users.noreply.github.com
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
           commit_message: Update to ${{ github.ref_name }}
 
@@ -745,18 +745,3 @@ jobs:
           # there needs a URL here, or the next version cannot carry it.
           installers-regex: 'obsidianssh-(user-)?setup-(x86_64|aarch64)\.exe$'
           token: ${{ secrets.WINGET_TOKEN }}
-
-  # Sync the published assets + API snapshots to the download mirror
-  # (dl.oryxis.app / dl-cn.oryxis.app), the Auto fallback for networks
-  # where GitHub is blocked (mainland China). Layout contract lives in
-  # publish-mirror.yml and net_mirror.rs.
-  # `bundle` is in the list on purpose: the mirror snapshots whatever
-  # the release carries when it runs, and the blocked-network user the
-  # mirror exists for is exactly who needs the offline bundle.
-  mirror:
-    name: Publish to download mirror
-    needs: [release, bundle]
-    uses: ./.github/workflows/publish-mirror.yml
-    with:
-      tag: ${{ github.ref_name }}
-    secrets: inherit

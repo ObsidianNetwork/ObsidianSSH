@@ -1,5 +1,8 @@
-Obsidian SSH SSH client
-Copyright (C) 2026 Wilson Glasser <wilsonglasser@gmail.com>
+Obsidian SSH client
+Copyright (C) 2026 ObsidianNetwork
+
+Obsidian SSH is a fork of Oryxis (https://github.com/wilsonglasser/oryxis).
+Original work Copyright (C) 2026 Wilson Glasser <wilsonglasser@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as

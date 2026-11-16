@@ -16,7 +16,6 @@
   <a href="https://github.com/ObsidianNetwork/ObsidianSSH/releases/latest"><img src="https://img.shields.io/github/v/release/ObsidianNetwork/ObsidianSSH?color=green" alt="Release"></a>
   <img src="https://img.shields.io/badge/platforms-linux%20%7C%20macos%20%7C%20windows-blue" alt="Platforms">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue" alt="License"></a>
-  <a href="https://github.com/ObsidianNetwork/ObsidianSSH"><img src="https://img.shields.io/badge/website-obsidianssh.app-3CBBB1" alt="Website"></a>
 </p>
 
 <p align="center">
@@ -70,11 +69,9 @@ Linux 与 macOS 上，在二进制文件、`.AppImage` 文件或 `ObsidianSSH.ap
 
 ### 中国大陆网络说明
 
-在无法顺畅访问 GitHub 的网络环境下，Obsidian SSH 内置了下载镜像支持：
+在无法顺畅访问 GitHub 的网络环境下，Obsidian SSH 的所有下载均来自 GitHub，并支持自定义镜像 / 代理：
 
-- **自动模式（默认）**：中日韩字体、插件和应用更新会先尝试 GitHub，
-  无法访问时自动回退到项目镜像 `dl-cn.oryxis.app`（腾讯 EdgeOne
-  加速，与三大运营商直连）。无需任何配置。
+- **默认**：中日韩字体、插件和应用更新均直接从 GitHub 下载。
 - **自定义镜像**：在 设置 > 高级 > 下载镜像 中选择"自定义镜像"，
   可以填入任何 ghproxy 前缀代理，例如 `https://gh-proxy.com` 或
   `https://ghfast.top`，并用"测试"按钮验证连通性。
