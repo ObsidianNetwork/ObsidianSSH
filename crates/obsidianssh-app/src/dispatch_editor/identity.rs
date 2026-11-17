@@ -22,7 +22,7 @@ impl ObsidianSsh {
     pub(super) fn handle_editor_identity(&mut self, message: EditorMessage) -> Task<Message> {
         match message {
             EditorMessage::EditorLabelChanged(v) => { self.vaults.cur_mut().editor_form.label = v; self.vaults.cur_mut().editor_form.username_focused = false; }
-            EditorMessage::EditorTagsChanged(v) => { self.vaults.cur_mut().editor_form.tags_text = v; }
+            EditorMessage::EditorTagsEdited(message) => self.vaults.cur_mut().editor_form.tags.update(message),
             EditorMessage::EditorHostnameChanged(v) => { self.vaults.cur_mut().editor_form.hostname = v; self.vaults.cur_mut().editor_form.username_focused = false; }
             EditorMessage::EditorPortChanged(v) => { self.vaults.cur_mut().editor_form.port = v; self.vaults.cur_mut().editor_form.username_focused = false; }
             EditorMessage::EditorUsernameChanged(v) => {

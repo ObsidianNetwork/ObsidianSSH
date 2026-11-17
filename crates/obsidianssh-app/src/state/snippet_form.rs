@@ -22,10 +22,7 @@ pub(crate) struct SnippetForm {
     /// existing snippet groups as you type, still accepts a new name.
     /// Rebuilt whenever the editor opens.
     pub(crate) group_combo: iced::widget::combo_box::State<String>,
-    /// Snippet editor: comma-separated tags as typed; parsed
-    /// (trim/dedup/drop-empty) on save. Chips are display-only, so
-    /// the field stays fully keyboard-editable.
-    pub(crate) tags_input: String,
+    pub(crate) tags: super::TagInput,
     pub(crate) editing_id: Option<Uuid>,
     /// Snippet editor: the custom run hotkey being edited (parsed form
     /// of `Snippet.hotkey`).
@@ -47,7 +44,7 @@ impl Default for SnippetForm {
             steps: vec![StepForm::new(StepKind::Command)],
             group: String::new(),
             group_combo: iced::widget::combo_box::State::new(Vec::new()),
-            tags_input: String::new(),
+            tags: super::TagInput::default(),
             editing_id: None,
             hotkey: None,
             hotkey_capturing: false,

@@ -728,7 +728,7 @@ impl ObsidianSsh {
             }
             None => Vec::new(),
         };
-        conn.tags = crate::util::parse_tags(&self.vaults.cur().editor_form.tags_text);
+        conn.tags = self.vaults.cur().editor_form.tags.values();
         conn.privacy_mode = self.vaults.cur().editor_form.privacy_mode;
         conn.sidebar_auto_open = self.vaults.cur().editor_form.sidebar_auto_open;
         // Blank means "land in the login directory", the default; storing
@@ -988,7 +988,7 @@ impl ObsidianSsh {
             target_password_rescue: Default::default(),
             login_script_draft: None,
             auto_title: conn.auto_title,
-            tags_text: conn.tags.join(", "),
+            tags: conn.tags.clone().into(),
             icon_style: conn.icon_style.clone(),
             encoding: conn.encoding.clone(),
             ambiguous_width: conn.ambiguous_width,
@@ -1032,7 +1032,7 @@ impl ObsidianSsh {
             ) => self.handle_editor_lifecycle(m),
             m @ (
                 EditorMessage::EditorLabelChanged(..)
-                | EditorMessage::EditorTagsChanged(..)
+                | EditorMessage::EditorTagsEdited(..)
                 | EditorMessage::EditorHostnameChanged(..)
                 | EditorMessage::EditorPortChanged(..)
                 | EditorMessage::EditorUsernameChanged(..)

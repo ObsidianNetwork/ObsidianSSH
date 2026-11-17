@@ -80,20 +80,27 @@ impl ObsidianSsh {
         tags
     }
 
-    /// Send `cmd` to the active terminal: bracketed-paste wrapped, the
-    /// submit newline OUTSIDE the bracket when `run`. Ring-preserving
-    /// (may be fired by the sidebar ring's own Enter).
-    fn inject_snippet_text(&mut self, cmd: &str, run: bool) {
-        let Some(tab_idx) = self.snippet_injection_tab() else {
-            return;
-        };
-        self.inject_snippet_text_into(tab_idx, cmd, run);
+    /// Tag suggestions for the macro editor: every tag already on a macro
+    /// or a host (first spelling wins, sorted) that the form's field does
+    /// not hold yet, so one click reuses a tag instead of retyping it.
+    pub(crate) fn snippet_tag_suggestions(&self) -> Vec<String> {
+        let current = self.vaults.cur().snippet_form.tags.values();
+        let mut tags = self.distinct_snippet_tags();
+        for tg in self.distinct_host_tags() {
+            if !tags.iter().any(|x| x.eq_ignore_ascii_case(&tg)) {
+                tags.push(tg);
+            }
+        }
+        tags.retain(|tg| !current.iter().any(|c| c.eq_ignore_ascii_case(tg)));
+        tags.sort_by_key(|t| t.to_lowercase());
+        tags
     }
 
-    /// The half of [`Self::inject_snippet_text`] that takes an explicit
-    /// tab, for the parked path: a snippet held in the variables modal
-    /// belongs to the tab it was fired at, not to whatever is active by
-    /// the time the user confirms.
+    /// Send `cmd` to the terminal of `tab_idx`: bracketed-paste wrapped,
+    /// the submit newline OUTSIDE the bracket when `run`. Ring-preserving
+    /// (may be fired by the sidebar ring's own Enter). The tab is the one
+    /// the macro was fired at, not whatever is active by the time a
+    /// variables prompt or a run confirmation is answered.
     pub(crate) fn inject_snippet_text_into(&mut self, tab_idx: usize, cmd: &str, run: bool) {
         let Some(tab) = self.tabs.get(tab_idx) else {
             return;
@@ -142,12 +149,43 @@ impl ObsidianSsh {
         Task::none()
     }
 
-    fn snippet_send_or_prompt(&mut self, idx: usize, run: bool) -> Task<Message> {
+    /// The run confirmation a click on macro `idx` should show, or `None`
+    /// to run it straight away: the setting is off, there is no terminal
+    /// to run it on, or the run path has its own answer first (an install
+    /// script always shows its full body; a macro whose actions do not
+    /// expand reports why).
+    fn macro_run_confirmation(&self, idx: usize, tab: Option<usize>) -> Option<crate::state::PendingMacroRun> {
+        if !self.vaults.cur().prefs.confirm_macro_run {
+            return None;
+        }
+        let snip = self.vaults.cur().snippets.get(idx)?;
+        if snip.install {
+            return None;
+        }
+        let tab = self.tabs.get(tab?)?;
+        let body = if snip.has_steps() {
+            let steps = crate::snippet_run::flatten(&self.vaults.cur().snippets, snip).ok()?;
+            self.describe_snippet_steps(&steps)
+        } else {
+            snip.command.clone()
+        };
+        let pane = tab.active();
+        Some(crate::state::PendingMacroRun {
+            snippet_id: snip.id,
+            target_tab: tab._id,
+            label: snip.label.clone(),
+            host: self.privacy_display_label(&pane.label, &pane.label, &self.privacy_terms()),
+            body,
+            dont_ask: false,
+        })
+    }
+
+    fn snippet_send_or_prompt(&mut self, idx: usize, run: bool, tab: Option<usize>) -> Task<Message> {
         let Some(snip) = self.vaults.cur().snippets.get(idx) else {
             return Task::none();
         };
         if snip.has_steps() {
-            return self.snippet_run_or_prompt(idx, run);
+            return self.snippet_run_or_prompt(idx, run, tab);
         }
         let cmd = snip.command.clone();
         // Install scripts (issue #147) never send on the click alone:
@@ -158,20 +196,17 @@ impl ObsidianSsh {
         let install = snip.install.then_some(snip.id);
         let vars = crate::util::snippet_placeholders(&cmd);
         if vars.is_empty() {
-            match install {
-                Some(snippet_id) => {
-                    if let Some(tab_idx) = self.snippet_injection_tab() {
-                        self.park_install_confirm(tab_idx, snippet_id, &cmd, run);
-                    }
+            if let Some(tab_idx) = tab {
+                match install {
+                    Some(snippet_id) => self.park_install_confirm(tab_idx, snippet_id, &cmd, run),
+                    None => self.inject_snippet_text_into(tab_idx, &cmd, run),
                 }
-                None => self.inject_snippet_text(&cmd, run),
             }
             return Task::none();
         }
         // Pin the target now, while it still means the tab the user was
         // looking at when they fired the snippet (see `target_tab`).
-        let Some(target_tab) = self
-            .snippet_injection_tab()
+        let Some(target_tab) = tab
             .and_then(|i| self.tabs.get(i))
             .map(|t| t._id)
         else {
@@ -191,7 +226,7 @@ impl ObsidianSsh {
     /// [`Self::snippet_send_or_prompt`] for a snippet with actions: it
     /// runs (a paste of several actions has no meaning), expanded first,
     /// its variables asked once for every command.
-    fn snippet_run_or_prompt(&mut self, idx: usize, run: bool) -> Task<Message> {
+    fn snippet_run_or_prompt(&mut self, idx: usize, run: bool, tab: Option<usize>) -> Task<Message> {
         let Some(snip) = self.vaults.cur().snippets.get(idx) else {
             return Task::none();
         };
@@ -208,7 +243,7 @@ impl ObsidianSsh {
             Ok(steps) => steps,
             Err(e) => return self.show_toast(crate::dispatch_snippet_run::plan_error_text(&label, &e)),
         };
-        let Some(tab_idx) = self.snippet_injection_tab() else {
+        let Some(tab_idx) = tab else {
             return Task::none();
         };
         let vars = crate::snippet_run::plan_placeholders(&steps);
@@ -309,7 +344,7 @@ impl ObsidianSsh {
                     crate::state::StepKind::Command,
                 )];
                 self.vaults.cur_mut().snippet_form.group.clear();
-                self.vaults.cur_mut().snippet_form.tags_input.clear();
+                self.vaults.cur_mut().snippet_form.tags = Default::default();
                 self.vaults.cur_mut().snippet_form.hotkey = None;
                 self.vaults.cur_mut().snippet_form.hotkey_capturing = false;
                 self.vaults.cur_mut().snippet_form.install = false;
@@ -324,7 +359,7 @@ impl ObsidianSsh {
             }
             SnippetMessage::SnippetLabelChanged(v) => self.vaults.cur_mut().snippet_form.label = v,
             SnippetMessage::SnippetGroupChanged(v) => self.vaults.cur_mut().snippet_form.group = v,
-            SnippetMessage::SnippetTagsChanged(v) => self.vaults.cur_mut().snippet_form.tags_input = v,
+            SnippetMessage::SnippetTagsEdited(message) => self.vaults.cur_mut().snippet_form.tags.update(message),
             SnippetMessage::ToggleSnippetInstall => {
                 self.vaults.cur_mut().snippet_form.install = !self.vaults.cur_mut().snippet_form.install;
             }
@@ -339,12 +374,12 @@ impl ObsidianSsh {
             }
             SnippetMessage::SnippetBarRun(id) => {
                 if let Some(idx) = self.vaults.cur().snippets.iter().position(|s| s.id == id) {
-                    return self.snippet_send_or_prompt(idx, true);
+                    return self.snippet_send_or_prompt(idx, true, self.snippet_injection_tab());
                 }
             }
             SnippetMessage::SnippetBarPaste(id) => {
                 if let Some(idx) = self.vaults.cur().snippets.iter().position(|s| s.id == id) {
-                    return self.snippet_send_or_prompt(idx, false);
+                    return self.snippet_send_or_prompt(idx, false, self.snippet_injection_tab());
                 }
             }
             m @ (SnippetMessage::SnippetStepCommandAction(..)
@@ -365,6 +400,17 @@ impl ObsidianSsh {
             | SnippetMessage::SnippetStepSaveModePicked(..)
             | SnippetMessage::SnippetStepSaveContentPicked(..)) => {
                 self.handle_snippet_step_edit(m);
+            }
+            SnippetMessage::ToggleSidebarSnippetTag(tag) => {
+                self.sidebar_snippet_tag = match self.sidebar_snippet_tag.take() {
+                    Some(cur) if cur.eq_ignore_ascii_case(&tag) => None,
+                    _ => Some(tag),
+                };
+            }
+            SnippetMessage::ToggleConfirmMacroRun => {
+                let on = !self.vaults.cur().prefs.confirm_macro_run;
+                self.vaults.cur_mut().prefs.confirm_macro_run = on;
+                self.persist_setting("confirm_macro_run", if on { "true" } else { "false" });
             }
             SnippetMessage::ToggleSnippetTagFilter => {
                 self.vaults.cur_mut().prefs.snippet_tag_filter = !self.vaults.cur_mut().prefs.snippet_tag_filter;
@@ -473,7 +519,7 @@ impl ObsidianSsh {
                         .map(crate::state::StepForm::from_step)
                         .collect();
                     ov.snippet_form.group = snip.group.clone().unwrap_or_default();
-                    ov.snippet_form.tags_input = snip.tags.join(", ");
+                    ov.snippet_form.tags = snip.tags.clone().into();
                     ov.snippet_form.hotkey = snip
                         .hotkey
                         .as_deref()
@@ -506,7 +552,7 @@ impl ObsidianSsh {
                     let g = self.vaults.cur().snippet_form.group.trim();
                     (!g.is_empty()).then(|| g.to_string())
                 };
-                snip.tags = crate::util::parse_tags(&self.vaults.cur().snippet_form.tags_input);
+                snip.tags = self.vaults.cur().snippet_form.tags.values();
                 snip.hotkey = self.vaults.cur().snippet_form.hotkey.map(|b| b.serialize());
                 snip.install = self.vaults.cur().snippet_form.install;
                 snip.show_in_bar = self.vaults.cur().snippet_form.show_in_bar;
@@ -546,7 +592,38 @@ impl ObsidianSsh {
                 }
             }
             SnippetMessage::RunSnippet(idx) => {
-                return self.snippet_send_or_prompt(idx, true);
+                return self.snippet_send_or_prompt(idx, true, self.snippet_injection_tab());
+            }
+            SnippetMessage::ClickRunSnippet(idx) => {
+                let tab = self.snippet_injection_tab();
+                if let Some(pending) = self.macro_run_confirmation(idx, tab) {
+                    self.pending_macro_run = Some(pending);
+                    return Task::none();
+                }
+                return self.snippet_send_or_prompt(idx, true, tab);
+            }
+            SnippetMessage::ToggleMacroRunDontAsk => {
+                if let Some(p) = self.pending_macro_run.as_mut() {
+                    p.dont_ask = !p.dont_ask;
+                }
+            }
+            SnippetMessage::CancelMacroRun => self.pending_macro_run = None,
+            SnippetMessage::ConfirmMacroRun => {
+                let Some(pending) = self.pending_macro_run.take() else {
+                    return Task::none();
+                };
+                if pending.dont_ask {
+                    self.vaults.cur_mut().prefs.confirm_macro_run = false;
+                    self.persist_setting("confirm_macro_run", "false");
+                }
+                // Gone means gone: a macro deleted (a sync apply) or a tab
+                // closed while the dialog was up runs nowhere, never on
+                // whatever slid into its place.
+                let idx = self.vaults.cur().snippets.iter().position(|s| s.id == pending.snippet_id);
+                let tab = self.tab_index_by_id(pending.target_tab);
+                if let (Some(idx), Some(tab)) = (idx, tab) {
+                    return self.snippet_send_or_prompt(idx, true, Some(tab));
+                }
             }
             SnippetMessage::ApplySudoPassword => {
                 // Decrypt the focused pane's host password and type it +
@@ -587,7 +664,7 @@ impl ObsidianSsh {
                 // Same injection path as RunSnippet, but without the
                 // trailing newline so the user reviews and presses
                 // Enter themselves.
-                return self.snippet_send_or_prompt(idx, false);
+                return self.snippet_send_or_prompt(idx, false, self.snippet_injection_tab());
             }
             SnippetMessage::SnippetVarChanged(i, v) => {
                 if let Some(pending) = self.pending_snippet_vars.as_mut()

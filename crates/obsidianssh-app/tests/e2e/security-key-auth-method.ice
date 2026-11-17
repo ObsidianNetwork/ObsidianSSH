@@ -12,7 +12,7 @@ settle 250
 expect "Create host"
 click "Type IP or Hostname"
 type "sk.example.com"
-click "Continue"
+click "Add host"
 settle 250
 expect "New Host"
 click "Authentication"

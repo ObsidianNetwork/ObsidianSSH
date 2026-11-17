@@ -666,6 +666,9 @@ impl ObsidianSsh {
             if let Ok(Some(v)) = vault.get_setting("snippet_tag_filter") {
                 ov.prefs.snippet_tag_filter = v == "true";
             }
+            if let Ok(Some(v)) = vault.get_setting("confirm_macro_run") {
+                ov.prefs.confirm_macro_run = v == "true";
+            }
             if let Ok(Some(v)) = vault.get_setting("command_history_file_dir") {
                 self.device_prefs.command_history_file_dir =
                     (!v.trim().is_empty()).then(|| v.trim().to_string());

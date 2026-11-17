@@ -176,21 +176,15 @@ impl ObsidianSsh {
     }
 
     pub(super) fn hp_tags_field(&self) -> Element<'_, Message> {
-        // Tags: comma-separated free text, parsed on save. Feeds the
-        // snippet sidebar's filter-by-host-tags toggle.
-        let tags_field: Element<'_, Message> = self.panel_nav_slot(
+        self.panel_nav_slot(
             crate::keynav::RowAction::input(iced::widget::Id::new("editor-tags")),
             10.0,
-            text_input(t("tags_placeholder"), &self.vaults.cur().editor_form.tags_text)
-                .id(iced::widget::Id::new("editor-tags"))
-                .on_input(|v| Message::Editor(EditorMessage::EditorTagsChanged(v)))
-                .on_submit_maybe(self.hp_submit())
-                .padding(10)
-                .style(crate::widgets::rounded_input_style)
-                .align_x(dir_align_x())
-                .boxed(),
-        );
-        tags_field
+            crate::widgets::tag_input(
+                &self.vaults.cur().editor_form.tags,
+                "editor-tags",
+                |edit| Message::Editor(EditorMessage::EditorTagsEdited(edit)),
+            ),
+        )
     }
 
     pub(super) fn hp_hostname_row(&self, is_serial: bool) -> Element<'_, Message> {

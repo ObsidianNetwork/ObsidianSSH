@@ -577,7 +577,7 @@ impl ObsidianSsh {
                 // height + indent line up with the rest of the grid.
                 .padding(Padding { top: 8.0, right: 2.0, bottom: 8.0, left: 2.0 }),
             )
-            .on_press(Message::Snippet(SnippetMessage::RunSnippet(idx)))
+            .on_press(Message::Snippet(SnippetMessage::ClickRunSnippet(idx)))
             .width(Length::Fill)
             .style(move |_, status| {
                 let (bg, bc, bw) = match status {
@@ -756,13 +756,13 @@ self.keynav_ring_content(kb_selected, card_el)
             self.panel_nav_slot(
                 crate::keynav::RowAction::input(iced::widget::Id::new("panel-snippet-tags")),
                 10.0,
-                text_input(t("tags_placeholder"), &self.vaults.cur().snippet_form.tags_input)
-                    .id(iced::widget::Id::new("panel-snippet-tags"))
-                    .on_input(|v| Message::Snippet(SnippetMessage::SnippetTagsChanged(v)))
-                    .padding(10)
-                    .style(crate::widgets::rounded_input_style).align_x(dir_align_x())
-                    .boxed(),
+                crate::widgets::tag_input(
+                    &self.vaults.cur().snippet_form.tags,
+                    "panel-snippet-tags",
+                    |edit| Message::Snippet(SnippetMessage::SnippetTagsEdited(edit)),
+                ),
             ),
+            self.snippet_tag_suggestion_chips(),
             Space::new().height(14),
             text(t("snippet_hotkey")).size(12).color(ObsidianSshColors::t().text_secondary),
             Space::new().height(4),

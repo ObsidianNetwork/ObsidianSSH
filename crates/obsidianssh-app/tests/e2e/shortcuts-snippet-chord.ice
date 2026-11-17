@@ -11,9 +11,9 @@ expect "Welcome to Obsidian SSH"
 click "Skip"
 click "Get started"
 settle 250
-click "Snippets"
+click "Macros"
 settle
-click "SNIPPET"
+click "MACRO"
 settle
 # Name and command fields by position: a text_input's value is not
 # text-selectable.

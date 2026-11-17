@@ -285,10 +285,7 @@ pub(crate) struct ConnectionForm {
     pub password: SecretInput,
     pub auth_method: AuthMethod,
     pub group_name: String,
-    /// Comma-separated tags as typed; parsed (trim/dedup/drop-empty)
-    /// into `Connection.tags` on save. Feeds the snippet sidebar's
-    /// filter-by-host-tags toggle.
-    pub tags_text: String,
+    pub tags: super::TagInput,
     pub selected_key: Option<String>,
     /// The host's stored agent-key pin (`Connection::agent_key`), so the
     /// key picker keeps offering it while no agent serves it.
@@ -1229,7 +1226,7 @@ impl Default for ConnectionForm {
             password: SecretInput::default(),
             auth_method: AuthMethod::Auto,
             group_name: String::new(),
-            tags_text: String::new(),
+            tags: super::TagInput::default(),
             selected_key: None,
             agent_key: None,
             jump_chain: Vec::new(),

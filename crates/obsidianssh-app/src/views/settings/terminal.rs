@@ -692,6 +692,21 @@ impl ObsidianSsh {
                     .size(11)
                     .color(ObsidianSshColors::t().text_muted).boxed(),
             );
+        // The macro run confirmation: a click on a macro asks first. Its
+        // dialog's "Don't ask again" turns this off; this turns it back on.
+        toggles_col = toggles_col
+            .push(Space::new().height(10).boxed())
+            .push(self.nav_toggle_row(
+                crate::i18n::t("confirm_macro_run_label"),
+                self.vaults.cur().prefs.confirm_macro_run,
+                Message::Snippet(crate::app::SnippetMessage::ToggleConfirmMacroRun),
+            ))
+            .push(Space::new().height(4).boxed())
+            .push(
+                text(crate::i18n::t("confirm_macro_run_desc"))
+                    .size(11)
+                    .color(ObsidianSshColors::t().text_muted).boxed(),
+            );
         // The whole Behavior group shares one card: selection /
         // clipboard toggles, then the word-delimiter and scrollback
         // sub-blocks (each keeps its 13 px sub-title). Constructed

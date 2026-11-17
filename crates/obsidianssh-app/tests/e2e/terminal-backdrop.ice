@@ -55,7 +55,7 @@ absent "Fade image"
 # entry (a click on an off-screen target then fails).
 type ctrl+shift+1
 settle
-click "Continue"
+click "Add host"
 settle
 # Two-tier host editor: the backdrop overrides live in the collapsed
 # Terminal section; open it first.

@@ -18,7 +18,7 @@ const VAULT_KEYS: &[&str] = &[
     "ai_reasoning", "ai_save_history", "ai_system_prompt", "app_theme", 
     "auto_reconnect", "bold_is_bright", "card_accent_glass",
     "careful_paste", "command_history",
-    "command_history_file", "confirm_close_session_tab", "connection_history", "copy_on_select",
+    "command_history_file", "confirm_close_session_tab", "confirm_macro_run", "connection_history", "copy_on_select",
     "default_agent_forwarding", "default_auth_method", "default_encoding", "default_env_vars",
     "default_group_id", "default_host_icon", "default_identity_id", "default_keepalive",
     "default_key_id", "default_mcp_enabled", "default_port", "default_proxy_identity_id",

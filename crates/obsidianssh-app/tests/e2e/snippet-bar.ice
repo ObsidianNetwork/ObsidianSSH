@@ -12,9 +12,9 @@ click "Skip"
 settle 250
 click "Get started"
 settle 250
-click "Snippets"
+click "Macros"
 settle
-click "SNIPPET"
+click "MACRO"
 settle
 # Name and command fields by position: a text_input's value is not
 # text-selectable.
@@ -33,11 +33,11 @@ expect "bash (default)"
 absent "deploy-bar"
 click "Personal"
 settle 300
-click "Snippets"
+click "Macros"
 settle 300
 click right "deploy-bar"
 settle 300
-click "Add to snippet bar"
+click "Add to macro bar"
 settle 300
 click "bash (default)"
 settle 400
@@ -47,12 +47,12 @@ settle 400
 # The menu now offers the other way.
 click "Personal"
 settle 300
-click "Snippets"
+click "Macros"
 settle 300
 click right "deploy-bar"
 settle 300
-absent "Add to snippet bar"
-click "Remove from snippet bar"
+absent "Add to macro bar"
+click "Remove from macro bar"
 settle 300
 click "bash (default)"
 settle 400

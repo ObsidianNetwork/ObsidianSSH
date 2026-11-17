@@ -17,7 +17,7 @@ click "Get started"
 settle 250
 click "Type IP or Hostname"
 type "web01"
-click "Continue"
+click "Add host"
 settle 250
 click "My Server"
 type "web01"

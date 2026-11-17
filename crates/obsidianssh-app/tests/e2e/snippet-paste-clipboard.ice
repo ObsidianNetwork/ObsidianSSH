@@ -21,9 +21,9 @@ click "Skip"
 settle 250
 click "Get started"
 settle 250
-click "Snippets"
+click "Macros"
 settle
-click "SNIPPET"
+click "MACRO"
 settle
 # Name field and the first action's kind picker by position: a
 # text_input's value is not text-selectable.
@@ -61,7 +61,7 @@ settle 250
 click "Save"
 settle 300
 expect "3 actions"
-click "SNIPPET"
+click "MACRO"
 settle
 click (990.00, 145.00)
 type "waits"
@@ -75,7 +75,7 @@ type "never-appears-in-output"
 click "Save"
 settle 300
 expect "waits"
-click "SNIPPET"
+click "MACRO"
 settle
 click (990.00, 145.00)
 type "paste late"
@@ -91,11 +91,11 @@ click "Add action"
 settle 250
 click (957.00, 698.00)
 settle 250
-click "Run another snippet"
+click "Run another macro"
 settle 250
 scroll (0, -400)
 settle 250
-click "Pick a snippet"
+click "Pick a macro"
 settle 250
 # The picker's first option, "paste it".
 click (990.00, 568.00)
@@ -138,7 +138,7 @@ expect "Running paste late (1/4)"
 click (200, 400)
 wait 4500
 expect "Run the clipboard?"
-expect "The snippet \"paste late\" pastes this into bash (default) and presses Enter."
+expect "The macro \"paste late\" pastes this into bash (default) and presses Enter."
 expect "echo in-pane-b"
 click "Paste and run"
 wait 1500

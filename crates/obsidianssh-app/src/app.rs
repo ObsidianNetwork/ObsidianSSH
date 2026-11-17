@@ -922,6 +922,10 @@ pub struct ObsidianSsh {
     /// Snippet run/paste waiting on its `{placeholders}` (modal open
     /// while `Some`).
     pub(crate) pending_snippet_vars: Option<crate::state::PendingSnippetVars>,
+    /// A clicked macro waiting in the run confirmation.
+    pub(crate) pending_macro_run: Option<crate::state::PendingMacroRun>,
+    /// Terminal sidebar Macros tab: the tag chip narrowing the list.
+    pub(crate) sidebar_snippet_tag: Option<String>,
     /// Snippets running their actions, one per pane at most
     /// (`dispatch_snippet_run.rs`).
     pub(crate) snippet_runs: Vec<crate::snippet_run::SnippetRun>,

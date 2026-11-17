@@ -97,6 +97,10 @@ pub(crate) struct AppPrefs {
     /// Snippets sidebar: only show snippets sharing at least one tag
     /// with the focused host's tags. Persisted as `snippet_tag_filter`.
     pub(crate) snippet_tag_filter: bool,
+    /// A click on a macro card or row asks before it runs (the Run
+    /// button, its shortcut, the keyboard and the macro bar never ask).
+    /// Persisted as `confirm_macro_run`. Default on.
+    pub(crate) confirm_macro_run: bool,
     pub(crate) bold_is_bright: bool,
     /// The caret's shape while the program has not set one. Persisted as
     /// `terminal_cursor_shape`; default block.
@@ -597,6 +601,7 @@ impl Default for AppPrefs {
             command_history: true,
             command_history_file: false,
             snippet_tag_filter: false,
+            confirm_macro_run: true,
             bold_is_bright: true,
             terminal_cursor_shape: crate::util::CursorShapeMode::default(),
             terminal_cursor_blink: false,

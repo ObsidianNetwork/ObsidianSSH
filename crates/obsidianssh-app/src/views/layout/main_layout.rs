@@ -455,6 +455,20 @@ impl ObsidianSsh {
             );
         }
 
+        // "Run this macro?" for a click on a macro card or row. A click
+        // outside runs nothing.
+        if let Some(ref pending) = self.pending_macro_run {
+            return wrap_with_resize(
+                crate::widgets::modal_overlay(
+                    base,
+                    self.build_macro_run_dialog(pending),
+                    Some(Message::Snippet(SnippetMessage::CancelMacroRun)),
+                    0.0,
+                ),
+                resize_overlay,
+            );
+        }
+
         // `obsidianssh-mcp` asking to hand a host's stored password to sudo:
         // the agent prompt's class, with a deadline of its own. A click
         // outside refuses, as Deny does.

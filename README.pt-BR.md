@@ -19,7 +19,7 @@
 </p>
 
 <p align="center">
-  <img src="resources/screen_1.gif" width="720" alt="Obsidian SSH em ação: conectando, executando snippets, navegando por SFTP">
+  <img src="resources/screen_1.gif" width="720" alt="Obsidian SSH em ação: conectando, executando macros, navegando por SFTP">
 </p>
 
 > Este documento é uma tradução do README em inglês posterior à v0.23.0
@@ -128,11 +128,11 @@ mesmo efeito.
   por host sugerido enquanto você digita, um cursor no formato que você
   escolher e um ajuste por host da largura ambígua do leste asiático
   para as TUIs CJK alinharem.
-- **Snippets que rodam uma sequência**: um snippet pode digitar
+- **Macros que rodam uma sequência**: uma macro pode digitar
   comandos, esperar um comando terminar ou uma linha aparecer na saída,
-  copiar ou salvar o que ele imprimiu e chamar outros snippets, tudo no
-  terminal em que você o iniciou, com as variáveis perguntadas uma vez.
-  Os que você mais usa podem virar botões numa barra de snippets abaixo
+  copiar ou salvar o que ele imprimiu e chamar outras macros, tudo no
+  terminal em que você a iniciou, com as variáveis perguntadas uma vez.
+  As que você mais usa podem virar botões numa barra de macros abaixo
   do terminal.
 - **Quantas janelas quiser**: um processo, qualquer número de janelas,
   cada uma com suas abas, sua tela de hosts e sua busca. Arraste uma aba
@@ -202,7 +202,7 @@ exportação e as ferramentas que levam um arquivo o resto do caminho.
    (Ctrl+K) para conectar sem salvar. Vem de outro cliente SSH? A
    importação traz as sessões salvas dele em um passo.
 3. **Conecte**: clique no card do host. Painéis divididos, barra de
-   arquivos, SFTP e snippets ficam a uma tecla de distância.
+   arquivos, SFTP e macros ficam a uma tecla de distância.
 4. **Extras opcionais**: chat de IA (Configurações > IA), servidor MCP
    (Configurações > Segurança), sincronização P2P entre seus
    dispositivos (Configurações > Sincronização).
@@ -233,11 +233,11 @@ estável é a **v0.23.0**; o histórico completo está no
 Entregues desde a 0.15.0: painéis divididos e o console SFTP, o modo
 offline com seu bundle, Alibaba Cloud e Tencent Cloud, o painel de
 ferramentas de rede, o deploy do relay em um clique, chaves de
-segurança nativas, várias janelas num só processo, snippets que rodam
+segurança nativas, várias janelas num só processo, macros que rodam
 uma sequência de ações, predefinições de atalhos de outros terminais,
 a reconstrução de um cofre danificado, vários cofres abertos ao mesmo
 tempo, o Ctrl+Tab na ordem da própria barra de abas, o histórico de
-comandos sugerido enquanto você digita, a barra de snippets, o formato
+comandos sugerido enquanto você digita, a barra de macros, o formato
 do cursor e o `sudo` pelo plugin MCP com aprovação na tela, o modo portátil
 com sua pasta `data`, o CSV de hosts que mantém o cofre e os links
 simbólicos no SFTP. Em andamento: o kit de operações com IA.

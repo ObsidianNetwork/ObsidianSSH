@@ -10,8 +10,8 @@ pub enum SnippetMessage {
     SnippetLabelChanged(String),
     /// Snippet editor: free-form group name field.
     SnippetGroupChanged(String),
-    /// Snippet editor: comma-separated tags field.
-    SnippetTagsChanged(String),
+    /// Edit the macro's tag bubbles and unfinished tag.
+    SnippetTagsEdited(crate::state::TagInputMessage),
     /// Snippet editor: flip the install-script category (issue #147).
     ToggleSnippetInstall,
     /// Snippet editor: flip "show in the snippet bar" (issue #266).
@@ -94,6 +94,20 @@ pub enum SnippetMessage {
     RequestDeleteSnippet(usize),
     DeleteSnippet(usize),
     RunSnippet(usize),
+    /// A click on a macro card or row: runs it, through the run
+    /// confirmation while `confirm_macro_run` is on.
+    ClickRunSnippet(usize),
+    /// Run confirmation: Run (applies "Don't ask again" when ticked).
+    ConfirmMacroRun,
+    /// Run confirmation: Cancel, Esc or a click outside.
+    CancelMacroRun,
+    /// Run confirmation: tick / untick "Don't ask again".
+    ToggleMacroRunDontAsk,
+    /// Settings: flip "confirm before running a macro".
+    ToggleConfirmMacroRun,
+    /// Terminal sidebar Macros tab: narrow the list to one tag, or
+    /// clear it when the chip already selected is clicked again.
+    ToggleSidebarSnippetTag(String),
     /// Inject a snippet's command into the active terminal WITHOUT a
     /// trailing newline (the user presses Enter), unlike `RunSnippet`.
     PasteSnippet(usize),

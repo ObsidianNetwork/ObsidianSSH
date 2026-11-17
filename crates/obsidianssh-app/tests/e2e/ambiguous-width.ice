@@ -18,7 +18,7 @@ mode: Zen
 click "Skip"
 click "Get started"
 expect "Create host"
-click "Continue"
+click "Add host"
 settle 400
 expect "New Host"
 # The card is collapsed on a fresh form: the row must not be reachable

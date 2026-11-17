@@ -95,6 +95,152 @@ impl ObsidianSsh {
         dialog.boxed()
     }
 
+    /// Content for the macro run confirmation: which macro, where it
+    /// runs, what it sends, and a "Don't ask again" that turns the
+    /// question off (Settings > Terminal turns it back on).
+    pub(crate) fn build_macro_run_dialog<'a>(
+        &'a self,
+        pending: &'a crate::state::PendingMacroRun,
+    ) -> Element<'a, Message> {
+        let c = ObsidianSshColors::t();
+        self.modal_nav_reset();
+        // First lines only, each clipped, so a long script cannot push
+        // the buttons off screen.
+        const PREVIEW_LINES: usize = 8;
+        let mut preview: Vec<String> = pending
+            .body
+            .lines()
+            .take(PREVIEW_LINES)
+            .map(|l| crate::util::elide_chars(l, 72))
+            .collect();
+        if pending.body.lines().count() > PREVIEW_LINES {
+            preview.push("\u{2026}".to_string());
+        }
+        let preview = container(
+            text(preview.join("\n"))
+                .size(11)
+                .font(iced::Font::MONOSPACE)
+                .color(c.text_primary),
+        )
+        .padding(10)
+        .width(Length::Fill)
+        .style(move |_| container::Style {
+            background: Some(Background::Color(c.bg_primary)),
+            border: Border { radius: Radius::from(8.0), color: c.border, width: 1.0 },
+            ..Default::default()
+        });
+        let dont_ask_msg = Message::Snippet(SnippetMessage::ToggleMacroRunDontAsk);
+        let dont_ask = self.modal_nav_slot(
+            crate::keynav::RowAction::activate(dont_ask_msg.clone()),
+            4.0,
+            false,
+            button(
+                dir_row(vec![
+                    if pending.dont_ask {
+                        iced_fonts::lucide::square_check().size(14).color(c.accent).boxed()
+                    } else {
+                        iced_fonts::lucide::square().size(14).color(c.text_muted).boxed()
+                    },
+                    Space::new().width(8).boxed(),
+                    text(crate::i18n::t("macro_run_confirm_dont_ask"))
+                        .size(12)
+                        .color(c.text_secondary)
+                        .boxed(),
+                ])
+                .align_y(iced::Alignment::Center),
+            )
+            .on_press(dont_ask_msg)
+            .padding(Padding { top: 4.0, right: 8.0, bottom: 4.0, left: 4.0 })
+            .style(|_, status| button::Style {
+                background: Some(Background::Color(match status {
+                    iced::widget::button::Status::Hovered | iced::widget::button::Status::Pressed => {
+                        ObsidianSshColors::t().bg_hover
+                    }
+                    _ => Color::TRANSPARENT,
+                })),
+                border: Border { radius: Radius::from(4.0), ..Default::default() },
+                ..Default::default()
+            })
+            .boxed(),
+        );
+        let mut body = column![
+            dir_row(vec![
+                iced_fonts::lucide::play().size(16).color(c.accent).boxed(),
+                Space::new().width(8).boxed(),
+                container(
+                    text(crate::i18n::t("macro_run_confirm_title"))
+                        .size(16)
+                        .color(c.text_primary),
+                )
+                .width(Length::Fill)
+                .align_x(dir_align_x())
+                .boxed(),
+            ])
+            .align_y(iced::Alignment::Center),
+            Space::new().height(8),
+            text(
+                crate::i18n::t("macro_run_confirm_body")
+                    .replace("{name}", &pending.label)
+                    .replace("{host}", &pending.host),
+            )
+            .size(13)
+            .color(c.text_secondary),
+            Space::new().height(12),
+            preview,
+            Space::new().height(12),
+            dont_ask,
+        ]
+        .width(Length::Fill)
+        .align_x(dir_align_x());
+        if pending.dont_ask {
+            body = body.push(Space::new().height(4).boxed()).push(
+                text(crate::i18n::t("macro_run_confirm_dont_ask_hint"))
+                    .size(11)
+                    .color(c.text_muted)
+                    .boxed(),
+            );
+        }
+        let dialog = container(
+            column![
+                body,
+                Space::new().height(16),
+                dir_row(vec![
+                    self.modal_nav_slot_default(
+                        crate::keynav::RowAction::activate(Message::Snippet(SnippetMessage::ConfirmMacroRun)),
+                        6.0,
+                        true,
+                        styled_button(
+                            crate::i18n::t("snippet_run"),
+                            Message::Snippet(SnippetMessage::ConfirmMacroRun),
+                            c.accent,
+                        ),
+                    ),
+                    Space::new().width(8).boxed(),
+                    self.modal_nav_slot(
+                        crate::keynav::RowAction::activate(Message::Snippet(SnippetMessage::CancelMacroRun)),
+                        6.0,
+                        false,
+                        styled_button(
+                            crate::i18n::t("cancel"),
+                            Message::Snippet(SnippetMessage::CancelMacroRun),
+                            c.text_muted,
+                        ),
+                    ),
+                ]),
+            ]
+            .width(Length::Fill)
+            .align_x(dir_align_x())
+            .padding(24),
+        )
+        .width(Length::Fixed(460.0))
+        .style(move |_| container::Style {
+            background: Some(Background::Color(c.bg_surface)),
+            border: Border { radius: Radius::from(12.0), color: c.border, width: 1.0 },
+            ..Default::default()
+        });
+        dialog.boxed()
+    }
+
     /// Content for the careful-paste confirmation (line-count, preview,
     /// trailing-newline + paste-guard warnings, Confirm + Cancel).
     pub(crate) fn build_paste_dialog<'a>(&'a self, pending: &'a str) -> Element<'a, Message> {

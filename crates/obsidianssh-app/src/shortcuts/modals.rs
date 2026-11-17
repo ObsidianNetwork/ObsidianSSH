@@ -28,6 +28,7 @@ impl ObsidianSsh {
             Modal::TabRename => self.tab_rename.is_some(),
             Modal::CarefulPaste => self.pending_paste.is_some(),
             Modal::SnippetVars => self.pending_snippet_vars.is_some(),
+            Modal::MacroRunConfirm => self.pending_macro_run.is_some(),
             Modal::KbiPrompt => self.pending_kbi_prompt.is_some(),
             // Mirrors KbiPrompt: the flag alone is the source of truth. The
             // inline connect-progress host-key path (which renders inside
@@ -114,6 +115,7 @@ impl ObsidianSsh {
             Modal::TabRename => self.tab_rename = None,
             Modal::CarefulPaste => self.pending_paste = None,
             Modal::SnippetVars => self.pending_snippet_vars = None,
+            Modal::MacroRunConfirm => self.pending_macro_run = None,
             // Full mirror of SshKbiCancel: the engine must receive the
             // cancel (`None`) or the in-flight auth stays parked forever.
             Modal::KbiPrompt => {

@@ -473,6 +473,9 @@ impl ObsidianSsh {
             // owning vault section, so land there first (ShowKeyPanel
             // already navigates itself).
             NewHost => {
+                // Also the ☰ menu's "New Host" row: the menu goes away
+                // with the editor opening, like its other entries.
+                self.vaults.cur_mut().panels.burger_menu = false;
                 self.active_view = View::Dashboard;
                 self.active_tab = None;
                 self.update(Message::Editor(EditorMessage::ShowNewConnection))

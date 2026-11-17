@@ -93,8 +93,8 @@ pub enum EditorMessage {
     /// `DeleteConnection`.
     EditConnection(uuid::Uuid),
     EditorLabelChanged(String),
-    /// Host editor: comma-separated tags field.
-    EditorTagsChanged(String),
+    /// Edit the host's tag bubbles and unfinished tag.
+    EditorTagsEdited(crate::state::TagInputMessage),
     EditorHostnameChanged(String),
     /// Host editor: the wire-protocol picker (SSH / Telnet). Switching
     /// swaps the reduced form and, when the port still holds the old

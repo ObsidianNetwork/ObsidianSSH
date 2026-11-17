@@ -106,6 +106,7 @@ impl ObsidianSsh {
                     Modal::FolderDelete
                     | Modal::CarefulPaste
                     | Modal::SnippetVars
+                    | Modal::MacroRunConfirm
                     | Modal::ErrorDialog
                     | Modal::ClearHistoryConfirm
                     | Modal::SshImport

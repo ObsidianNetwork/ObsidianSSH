@@ -41,6 +41,11 @@ pub(crate) enum Modal {
     /// Snippet-variables prompt (`{name}` placeholders parked in
     /// `pending_snippet_vars`, filled before the send).
     SnippetVars,
+    /// "Run this macro?" for a click on a macro card or row
+    /// (`pending_macro_run`), while `confirm_macro_run` is on. Esc and a
+    /// click outside run nothing; Run is the default row, since the
+    /// user just asked for it.
+    MacroRunConfirm,
     /// Keyboard-interactive (2FA / OTP) prompt. Blocks input but owns its
     /// own dismissal, so it is intentionally absent from `ESC_ORDER`.
     KbiPrompt,
@@ -172,6 +177,7 @@ impl Modal {
         Modal::TabRename,
         Modal::CarefulPaste,
         Modal::SnippetVars,
+        Modal::MacroRunConfirm,
         Modal::KbiPrompt,
         Modal::HostKey,
         Modal::ProxyCommand,
@@ -224,6 +230,8 @@ impl Modal {
         Modal::TabRename,
         Modal::CarefulPaste,
         Modal::SnippetVars,
+        // Esc = run nothing.
+        Modal::MacroRunConfirm,
         // Esc = create nothing.
         // A security prompt: Esc rejects the host key (safe default).
         Modal::HostKey,
@@ -302,6 +310,7 @@ impl Modal {
             | Modal::TabRename
             | Modal::CarefulPaste
             | Modal::SnippetVars
+            | Modal::MacroRunConfirm
             | Modal::KbiPrompt
             | Modal::HostKey
             | Modal::ProxyCommand
@@ -358,6 +367,7 @@ mod tests {
                 | Modal::TabRename
                 | Modal::CarefulPaste
                 | Modal::SnippetVars
+                | Modal::MacroRunConfirm
                 | Modal::KbiPrompt
                 | Modal::HostKey
                 | Modal::ProxyCommand
@@ -391,7 +401,7 @@ mod tests {
                 | Modal::SyncHostPicker => {}
             }
         }
-        assert_eq!(Modal::ALL.len(), 44, "add the new variant to Modal::ALL");
+        assert_eq!(Modal::ALL.len(), 43, "add the new variant to Modal::ALL");
         // Every Esc-closeable modal must also be a known modal.
         for m in Modal::ESC_ORDER {
             assert!(Modal::ALL.contains(m));

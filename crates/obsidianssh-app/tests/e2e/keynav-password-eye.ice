@@ -11,9 +11,9 @@ expect "Welcome to Obsidian SSH"
 click "Skip"
 click "Get started"
 expect "Create host"
-# First run has no toolbar: Continue on the empty first-run screen is
+# First run has no toolbar: Add host on the empty first-run screen is
 # the "+ Host" path and opens the same editor.
-click "Continue"
+click "Add host"
 expect "New Host"
 type "10.9.9.9"
 # Two-tier editor: the password row is part of the always-visible

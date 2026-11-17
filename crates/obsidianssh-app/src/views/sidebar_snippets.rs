@@ -252,7 +252,11 @@ impl ObsidianSsh {
                         // the filter has nothing to compare, show all.
                         None => true,
                     };
-                needle_ok && tags_ok
+                let chip_ok = self
+                    .sidebar_snippet_tag
+                    .as_ref()
+                    .is_none_or(|chip| snip.tags.iter().any(|tg| tg.eq_ignore_ascii_case(chip)));
+                needle_ok && tags_ok && chip_ok
             })
             .collect();
 
@@ -407,6 +411,7 @@ impl ObsidianSsh {
             let row = snippet_row(
                 idx,
                 &snip.label,
+                &snip.tags,
                 self.snippet_card_preview(snip),
                 crate::views::snippet_steps::actions_badge(snip),
                 self.cur_nav().hover.snippet_card == Some(idx),
@@ -435,6 +440,7 @@ impl ObsidianSsh {
         let base = column![
             header,
             sudo_row,
+            self.sidebar_snippet_tag_chips(),
             scrollable(list)
                 .id(crate::keynav::sidebar_scroll_id(crate::state::TerminalSidebarTab::Snippets))
                 .height(Length::Fill)
@@ -510,6 +516,66 @@ impl ObsidianSsh {
         stack.boxed()
     }
 
+    /// One-click tag filter for the Macros tab: "All" plus a chip per
+    /// macro tag, wrapping onto more lines as needed. Nothing when no
+    /// macro is tagged (a dangling selection is cleared by "All").
+    fn sidebar_snippet_tag_chips(&self) -> Element<'_, Message> {
+        let tags = self.distinct_snippet_tags();
+        if tags.is_empty() && self.sidebar_snippet_tag.is_none() {
+            return Space::new().boxed();
+        }
+        let selected = self.sidebar_snippet_tag.as_deref();
+        let mut chips: Vec<Element<'_, Message>> = Vec::with_capacity(tags.len() + 1);
+        chips.push(tag_chip(
+            t("snippet_tag_all").to_string(),
+            selected.is_none(),
+            match selected {
+                // Clicking the selected chip again clears it.
+                Some(cur) => Message::Snippet(SnippetMessage::ToggleSidebarSnippetTag(cur.to_string())),
+                None => Message::NoOp,
+            },
+        ));
+        for tg in tags {
+            let on = selected.is_some_and(|s| s.eq_ignore_ascii_case(&tg));
+            chips.push(tag_chip(
+                format!("#{tg}"),
+                on,
+                Message::Snippet(SnippetMessage::ToggleSidebarSnippetTag(tg)),
+            ));
+        }
+        container(iced::widget::Row::with_children(chips).spacing(4).wrap().vertical_spacing(4))
+            .padding(Padding { top: 0.0, right: 12.0, bottom: 8.0, left: 12.0 })
+            .width(Length::Fill)
+            .boxed()
+    }
+
+    /// Under a macro editor's tags field: the tags already used on other
+    /// macros and on hosts, one click each to add. Nothing when there is
+    /// none left to suggest.
+    pub(crate) fn snippet_tag_suggestion_chips(&self) -> Element<'_, Message> {
+        let suggestions = self.snippet_tag_suggestions();
+        if suggestions.is_empty() {
+            return Space::new().boxed();
+        }
+        let c = ObsidianSshColors::t();
+        let chips: Vec<Element<'_, Message>> = suggestions
+            .into_iter()
+            .map(|tg| tag_chip(
+                format!("+ {tg}"),
+                false,
+                Message::Snippet(SnippetMessage::SnippetTagsEdited(crate::state::TagInputMessage::Add(tg))),
+            ))
+            .collect();
+        column![
+            Space::new().height(6),
+            text(t("snippet_tag_suggestions")).size(11).color(c.text_muted),
+            Space::new().height(4),
+            iced::widget::Row::with_children(chips).spacing(4).wrap().vertical_spacing(4),
+        ]
+        .width(Length::Fill)
+        .boxed()
+    }
+
     /// Compact New / Edit snippet form rendered inline in the Snippets
     /// tab (reuses the same `snippet_*` state + messages as the workspace
     /// editor). A back arrow cancels; Save persists and returns to the
@@ -556,13 +622,11 @@ impl ObsidianSsh {
         .menu_style(crate::widgets::combo_menu_style)
         .width(Length::Fill)
         .boxed();
-        let tags_input: Element<'_, Message> =
-            iced::widget::text_input(t("tags_placeholder"), &self.vaults.cur().snippet_form.tags_input)
-                .on_input(|v| Message::Snippet(SnippetMessage::SnippetTagsChanged(v)))
-                .padding(8)
-                .size(13)
-                .style(crate::widgets::rounded_input_style)
-                .boxed();
+        let tags_input = crate::widgets::tag_input(
+            &self.vaults.cur().snippet_form.tags,
+            "sidebar-snippet-tags",
+            |edit| Message::Snippet(SnippetMessage::SnippetTagsEdited(edit)),
+        );
 
         let error: Element<'_, Message> = if let Some(err) = &self.vaults.cur().snippet_form.error {
             text(err.clone()).size(11).color(c.error).boxed()
@@ -597,6 +661,7 @@ impl ObsidianSsh {
             text(t("tags")).size(12).color(c.text_secondary),
             Space::new().height(4),
             tags_input,
+            self.snippet_tag_suggestion_chips(),
             Space::new().height(12),
             text(t("snippet_hotkey")).size(12).color(c.text_secondary),
             Space::new().height(4),
@@ -663,6 +728,34 @@ fn sort_glyph<'a>(sort: crate::state::ListSort) -> iced::widget::Text<'a> {
     }
 }
 
+/// A small pill for a tag: accent-filled when `on`. Shared by the Macros
+/// tab's filter and the macro editor's tag suggestions.
+pub(crate) fn tag_chip<'a>(label: String, on: bool, msg: Message) -> Element<'a, Message> {
+    let c = ObsidianSshColors::t();
+    button(text(label).size(11).color(if on { c.button_text } else { c.text_secondary }))
+        .on_press(msg)
+        .padding(Padding { top: 3.0, right: 8.0, bottom: 3.0, left: 8.0 })
+        .style(move |_, status| {
+            let c = ObsidianSshColors::t();
+            let bg = match (on, status) {
+                (true, BtnStatus::Hovered | BtnStatus::Pressed) => c.button_bg_hover,
+                (true, _) => c.button_bg,
+                (false, BtnStatus::Hovered | BtnStatus::Pressed) => c.bg_hover,
+                (false, _) => c.bg_surface,
+            };
+            button::Style {
+                background: Some(Background::Color(bg)),
+                border: Border {
+                    radius: Radius::from(10.0),
+                    color: if on { Color::TRANSPARENT } else { c.border },
+                    width: 1.0,
+                },
+                ..Default::default()
+            }
+        })
+        .boxed()
+}
+
 /// Centered muted text for an empty / not-yet-built sidebar tab.
 fn sidebar_placeholder<'a>(label: &'a str) -> Element<'a, Message> {
     container(text(label).size(12).color(ObsidianSshColors::t().text_muted))
@@ -697,13 +790,16 @@ fn action_btn<'a>(
     .boxed()
 }
 
-/// One row in the Snippets tab. Label + a single ellipsized line of the
-/// command read inline; the Edit / Paste / Run actions float over the
-/// trailing edge and only appear on hover (see the card-icon convention
-/// in CLAUDE.md). `hovered` is `self.cur_nav().hover.snippet_card == Some(idx)`.
+/// One row in the Macros tab. Label + a single ellipsized line of the
+/// command read inline, then its tags; a click anywhere on the row runs
+/// it (through the run confirmation while that is on). The Edit / Paste /
+/// Run actions float over the trailing edge and only appear on hover (see
+/// the card-icon convention in CLAUDE.md); their Run never asks.
+/// `hovered` is `self.cur_nav().hover.snippet_card == Some(idx)`.
 fn snippet_row<'a>(
     idx: usize,
     label: &'a str,
+    tags: &'a [String],
     // The first command, or what the first action does.
     command: String,
     // "N actions" for a snippet with several; such a snippet runs and is
@@ -737,6 +833,16 @@ fn snippet_row<'a>(
     if let Some(badge) = actions {
         info = info.push(text(badge).size(10).color(c.accent).boxed());
     }
+    if !tags.is_empty() {
+        let hashtags = tags.iter().map(|tg| format!("#{tg}")).collect::<Vec<_>>().join(" ");
+        info = info.push(
+            text(hashtags)
+                .size(10)
+                .color(Color { a: 0.8, ..c.accent })
+                .wrapping(iced::widget::text::Wrapping::None)
+                .boxed(),
+        );
+    }
     // The category marker doubles as the per-host memory: "installed
     // here" is a hint, not a lock, so the row stays runnable.
     if let Some(ran) = install {
@@ -752,14 +858,27 @@ fn snippet_row<'a>(
         }).boxed());
     }
 
-    let card = container(info)
-        .padding(Padding { top: 8.0, right: 10.0, bottom: 8.0, left: 10.0 })
-        .width(Length::Fill)
-        .style(|_| container::Style {
-            background: Some(Background::Color(ObsidianSshColors::t().bg_surface)),
-            border: Border { radius: Radius::from(8.0), ..Default::default() },
+    let card = button(
+        container(info)
+            .padding(Padding { top: 8.0, right: 10.0, bottom: 8.0, left: 10.0 })
+            .width(Length::Fill),
+    )
+    .on_press(Message::Snippet(SnippetMessage::ClickRunSnippet(idx)))
+    .padding(0)
+    .width(Length::Fill)
+    .style(|_, status| {
+        let c = ObsidianSshColors::t();
+        let (bg, border) = match status {
+            BtnStatus::Hovered => (c.bg_hover, Color { a: 0.6, ..c.accent }),
+            BtnStatus::Pressed => (c.bg_selected, c.accent),
+            _ => (c.bg_surface, Color::TRANSPARENT),
+        };
+        button::Style {
+            background: Some(Background::Color(bg)),
+            border: Border { radius: Radius::from(8.0), color: border, width: 1.0 },
             ..Default::default()
-        });
+        }
+    });
 
     let row_el: Element<'a, Message> = if hovered {
         let mut buttons =

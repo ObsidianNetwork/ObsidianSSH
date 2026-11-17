@@ -16,7 +16,7 @@ settle 250
 expect "Create host"
 click "Type IP or Hostname"
 type "x11test.example.com"
-click "Continue"
+click "Add host"
 settle 250
 expect "New Host"
 # Two-tier editor: both forwarding rows live in the collapsed

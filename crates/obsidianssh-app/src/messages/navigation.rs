@@ -13,7 +13,13 @@ pub enum NavigationMessage {
     /// render time, because the folder is only known then.
     GoHome,
     QuickHostInput(String),
+    /// Enter in the first-run host field: an explicit target (user@,
+    /// a port, an IP literal) connects, anything else opens the editor.
     QuickHostContinue,
+    /// First-run "Add host": always the editor, the field pre-filled.
+    QuickHostAdd,
+    /// First-run "Connect": dial the typed target without saving it.
+    QuickHostConnect,
     OpenGroup(Uuid),
     HostSearchChanged(String),
     /// Continuation of a side-panel Tab press: `focused` is the widget

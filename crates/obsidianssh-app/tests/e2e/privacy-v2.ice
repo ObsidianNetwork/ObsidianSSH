@@ -16,7 +16,7 @@ expect "Create host"
 # and whose username joins the privacy terms (block 4).
 click "Type IP or Hostname"
 type "webprod01.acme-corp.com"
-click "Continue"
+click "Add host"
 settle 500
 type "webprod01.acme-corp.com (10.0.4.7)"
 click "Username"

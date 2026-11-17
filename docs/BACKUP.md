@@ -27,7 +27,7 @@ your system already runs on a timer, which the last section covers.
 
 Settings > Security & Privacy > Export / Import.
 
-You pick what goes in (hosts, keys, identities, snippets, settings),
+You pick what goes in (hosts, keys, identities, macros, settings),
 you set a password, and you get a single encrypted file. That password
 is separate from your vault's, and the file is useless without it: we
 cannot recover it for you.

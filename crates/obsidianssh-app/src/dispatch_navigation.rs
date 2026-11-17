@@ -591,7 +591,9 @@ impl ObsidianSsh {
                     });
                 }
             }
-            NavigationMessage::QuickHostContinue => {
+            m @ (NavigationMessage::QuickHostContinue
+            | NavigationMessage::QuickHostAdd
+            | NavigationMessage::QuickHostConnect) => {
                 // The field this arrives from carries `on_submit`, and the
                 // fork's `text_input` runs an on_submit binding on ANY
                 // Enter, focused or not (`from_key_press` gates on focus,
@@ -612,10 +614,17 @@ impl ObsidianSsh {
                 // used to be the first-run quick-connect entry point
                 // (issue #97 regression), and this restores it. A bare
                 // name falls through to the editor below, keeping the
-                // add-your-first-host onboarding intent.
+                // add-your-first-host onboarding intent. The two buttons
+                // under the field say which one they want: Add host always
+                // stops at the editor, Connect never does when it can dial.
                 let input = self.cur_nav().quick_host_input.trim().to_string();
-                if obsidianssh_core::ssh_target::SshTarget::parse(&input)
-                    .is_some_and(|t| t.is_explicit())
+                let connect = match m {
+                    NavigationMessage::QuickHostAdd => false,
+                    NavigationMessage::QuickHostConnect => true,
+                    _ => obsidianssh_core::ssh_target::SshTarget::parse(&input)
+                        .is_some_and(|t| t.is_explicit()),
+                };
+                if connect
                     && let Some(conn) = self.quick_connect_target(&input)
                 {
                     // The target now lives in its tab; unlike the

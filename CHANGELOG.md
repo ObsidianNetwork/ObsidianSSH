@@ -7,6 +7,20 @@ All notable changes are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project uses [SemVer](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- Snippets are now called macros everywhere in the app and the docs. Stored macros, sync and exports are unchanged.
+- A click on a macro card (Macros view) or row (terminal sidebar) runs it. A confirmation shows what it sends first; tick "Don't ask again" there or switch off Settings > Terminal > "Confirm before running a macro".
+- The first-run Hosts screen has separate "Add host" and "Connect" buttons instead of one "Continue" that sometimes connected.
+- The quick-connect tab menu says "Save as host" instead of "Save host to vault".
+- Macro and host tag fields use removable bubbles: Enter or Add creates a tag, and saving keeps unfinished tag text.
+
+### Added
+- "New Host" in the ☰ menu, to set a host up before connecting to it.
+- Tag chips above the terminal sidebar's macro list filter it with one click, and the list shows each macro's tags.
+- The macro editor suggests the tags already used on macros and hosts under its Tags field.
+
 ## [0.23.0] - 2026-10-29
 
 A portable copy keeps its whole configuration in a `data` folder beside the program, and the Windows zip does it by default. A host CSV now maintains the vault (update, remove, place in folders), the SFTP browser follows and makes symbolic links, and transfers stop covering the terminal.

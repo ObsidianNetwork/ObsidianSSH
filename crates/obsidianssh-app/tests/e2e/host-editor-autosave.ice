@@ -25,7 +25,7 @@ mode: Zen
 click "Skip"
 click "Get started"
 expect "Create host"
-click "Continue"
+click "Add host"
 expect "New Host"
 expect "Start from"
 expect "Basic SSH"

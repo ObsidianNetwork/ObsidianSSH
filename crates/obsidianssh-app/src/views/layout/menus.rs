@@ -647,6 +647,7 @@ impl ObsidianSsh {
         let hk_settings = self.hotkey_label_for_action(crate::hotkeys::HotkeyAction::OpenSettings);
         let hk_local_shell = self.hotkey_label_for_action(crate::hotkeys::HotkeyAction::OpenLocalShell);
         let hk_new_window = self.hotkey_label_for_action(crate::hotkeys::HotkeyAction::NewWindow);
+        let hk_new_host = self.hotkey_label_for_action(crate::hotkeys::HotkeyAction::NewHost);
         // The VAULT section header carries the strip-slot hint (Ctrl+1
         // opens the vault area, which the strip always renders as its
         // first tab); each entry shows its own Ctrl+Shift+digit jump.
@@ -799,6 +800,13 @@ impl ObsidianSsh {
                 Space::new().boxed()
             },
             sep,
+            // Set a host up before ever connecting to it: the same editor
+            // as the Hosts toolbar's "+ Host" and its shortcut.
+            item(
+                "new_host",
+                Message::Tabs(TabsMessage::RunHotkeyAction(crate::hotkeys::HotkeyAction::NewHost)),
+                hk_new_host,
+            ),
             item("local_shell", Message::Settings(SettingsMessage::OpenLocalShell), hk_local_shell),
             item("new_window", Message::Tabs(TabsMessage::SpawnNewWindow), hk_new_window),
             item("check_for_updates_now", Message::Update(UpdateMessage::CheckForUpdateManual), None),

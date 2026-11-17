@@ -431,6 +431,8 @@ impl ObsidianSsh {
                 session_player: None,
                 gif_export: crate::state::GifExportState::default(),
                 pending_snippet_vars: None,
+                pending_macro_run: None,
+                sidebar_snippet_tag: None,
                 snippet_runs: Vec::new(),
                 snippet_run_seq: 0,
                 startup_runs_due: Vec::new(),

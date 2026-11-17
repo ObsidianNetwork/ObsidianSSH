@@ -27,14 +27,14 @@ click "Get started"
 expect "Create host"
 
 # Three hosts to have a batch out of. The first goes through the
-# first-run empty state - Continue submits its empty field, which
+# first-run empty state - Add host submits its empty field, which
 # opens the editor (the same path hosts-move-to-group.ice uses); the
 # other two through the toolbar's "+ HOST". Their addresses are
 # TEST-NET-1 (RFC 5737), which routes nowhere, because the batch
 # connect below really dials them. The editor's label field is
 # reached by position for the toggle's reason: a text_input value is
 # invisible to a selector, so there is nothing else to click.
-click "Continue"
+click "Add host"
 expect "New Host"
 click "IP or Hostname"
 type "192.0.2.1"

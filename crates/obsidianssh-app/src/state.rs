@@ -36,6 +36,7 @@ mod dash_select;
 mod hover;
 mod panels;
 mod snippet_form;
+mod tag_input;
 mod keys_ui;
 mod sftp_chrome;
 mod device_prefs;
@@ -65,6 +66,7 @@ pub(crate) use dash_select::{CardDrag, DashSelection, SelectionScope};
 pub(crate) use hover::HoverState;
 pub(crate) use panels::PanelsOpen;
 pub(crate) use snippet_form::{SnippetForm, StepForm, StepKind};
+pub(crate) use tag_input::{TagInput, TagInputMessage};
 pub(crate) use keys_ui::KeysUi;
 pub(crate) use sftp_chrome::SftpChrome;
 pub(crate) use device_prefs::DevicePrefs;
@@ -143,6 +145,23 @@ pub(crate) struct PendingSnippetVars {
     /// variables still in), started as a run on confirm. `command`,
     /// `run` and `install` are then unused.
     pub steps: Option<(String, Vec<obsidianssh_core::models::SnippetStep>)>,
+}
+
+/// A macro clicked while "confirm before running a macro" is on, waiting
+/// in the run confirmation. Like [`PendingSnippetVars`], the target tab is
+/// captured at the click: the dialog blocks the user's input, not the
+/// app's messages, so the active tab can change underneath it.
+#[derive(Debug, Clone)]
+pub(crate) struct PendingMacroRun {
+    pub snippet_id: uuid::Uuid,
+    pub target_tab: uuid::Uuid,
+    pub label: String,
+    /// Where it runs, as the dialog names it (Privacy Mode applied).
+    pub host: String,
+    /// What it sends: the command, or every action one per line.
+    pub body: String,
+    /// The dialog's "Don't ask again", applied on Run.
+    pub dont_ask: bool,
 }
 
 /// One persisted entry in the curated local-terminal list. Machine-local

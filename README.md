@@ -21,7 +21,7 @@
 </p>
 
 <p align="center">
-  <img src="resources/screen_1.gif" width="720" alt="Obsidian SSH in action: connecting, running snippets, browsing SFTP">
+  <img src="resources/screen_1.gif" width="720" alt="Obsidian SSH in action: connecting, running macros, browsing SFTP">
 </p>
 
 ## What is Obsidian SSH?
@@ -140,11 +140,12 @@ matching installer. Windows binaries are Authenticode-signed (see
   MesloLGS and more), smart tabs that flag long-running commands,
   per-host command history offered as you type, a caret of your shape,
   and a per-host East Asian ambiguous-width setting so CJK TUIs line up.
-- **Snippets that run a sequence.** One snippet can type commands, wait
+- **Macros that run a sequence.** One macro can type commands, wait
   for a command to finish or for a line in its output, copy or save what
-  it printed, and call other snippets, all on the terminal you started it
-  on, with variables asked once. The ones you use most can sit as buttons
-  in a snippet bar under the terminal.
+  it printed, and call other macros, all on the terminal you started it
+  on, with variables asked once. Click one to fire it (with an optional
+  "run this?" check), and keep the ones you use most as buttons in a
+  macro bar under the terminal.
 - **As many windows as you like.** One process, any number of windows,
   each with its own tabs, hosts screen and search. Drag a tab past the
   edge to tear it off, drop it on another window's tab bar to dock it,
@@ -245,11 +246,12 @@ Click any thumbnail for the full-size image.
 
 1. **First launch:** a short tour, then **Get started** (or import your
    hosts from another client straight away).
-2. **Add hosts:** click `+ HOST`, or just type `user@host` (Ctrl+K) to
-   connect without saving. Coming from another SSH client? Import
+2. **Add hosts:** on a fresh install type an address and click
+   `Add host` (or use `New Host` in the ☰ menu, Ctrl+N); later, `+ HOST`.
+   `Connect` (or `user@host` in Ctrl+K) connects without saving. Coming from another SSH client? Import
    brings its saved sessions over in one step.
 3. **Connect:** click a host card. Split panes, the Files sidebar, SFTP
-   and snippets are one keystroke away.
+   and macros are one keystroke away.
 4. **Optional extras:** AI chat (Settings > AI), MCP server
    (Settings > Security, [setup guide](docs/FEATURES.md#mcp-server)),
    P2P sync between your devices (Settings > Sync,

@@ -23,7 +23,7 @@ settle
 # A saved SSH host, which is what the entry is gated on.
 click "Type IP or Hostname"
 type "example.com"
-click "Continue"
+click "Add host"
 settle
 click "My Server"
 type "ssh-host"

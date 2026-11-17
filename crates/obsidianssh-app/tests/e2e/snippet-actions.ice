@@ -14,9 +14,9 @@ click "Skip"
 settle 250
 click "Get started"
 settle 250
-click "Snippets"
+click "Macros"
 settle
-click "SNIPPET"
+click "MACRO"
 settle
 # Name field and the first action's editor by position: a text_input's
 # value is not text-selectable.

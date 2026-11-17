@@ -186,7 +186,10 @@ coming next, see the [Roadmap](../README.md#roadmap).
 - **Edit mid-connect.** "Edit host" is available in every connection state,
   editing the temporary host without writing to the vault.
 - Quick connections behave like real tabs (splits, SFTP, port forwards);
-  typed credentials are swept on vault lock.
+  typed credentials are swept on vault lock. The tab menu's "Save as host"
+  turns one into a saved host.
+- **Set hosts up before connecting.** The first-run screen's `Add host`
+  and the ☰ menu's `New Host` open the host editor without dialling.
 - **From your shell.** `obsidianssh user@host[:port]` connects, landing a tab
   in the window you already have open when one is running.
 - **From a link.** Obsidian SSH registers as the `ssh://` handler, and a
@@ -223,7 +226,7 @@ coming next, see the [Roadmap](../README.md#roadmap).
   reaches the host's open sessions at once.
 - **Split panes.** Split a tab into a tmux/iTerm-style grid; each pane is
   its own session (saved host or local shell), with keyboard / paste /
-  snippets / AI targeting the focused pane. Drag a pane by its header to
+  macros / AI targeting the focused pane. Drag a pane by its header to
   rearrange the grid, drop it on another tab's chip to move it there, or
   break it out into a tab of its own (pane menu, tab menu, header button
   or Ctrl+Alt+P); the session travels with it, scrollback and recording
@@ -674,7 +677,7 @@ If your vault has no password, omit the `env` field.
 - **Encrypted SSH key import.** Passphrase-protected keys are decrypted on
   import; the vault encrypts them at rest.
 - **Group settings inheritance.** A group carries defaults (login user,
-  identity, proxy identity, terminal theme, startup snippet,
+  identity, proxy identity, terminal theme, startup macro,
   environment variables, and the port new hosts start with) and every
   host inside inherits what it does not set itself, resolved up through
   nested subgroups. Per parameter, not all-or-nothing: a group that only
@@ -727,17 +730,29 @@ If your vault has no password, omit the `env` field.
 See [SECURITY.md](../SECURITY.md) for the full security model and the
 vulnerability disclosure policy.
 
-## Snippets
+## Macros
 
-- **Snippets with variables.** `{name}` and `{name:default}` placeholders
+(Called snippets before; the stored data is unchanged.)
+
+- **Click to run.** A click on a macro card (Macros view) or row (terminal
+  sidebar) runs it on the focused terminal. By default a small dialog asks
+  first and shows what it sends; tick "Don't ask again" there, or switch
+  off Settings > Terminal > "Confirm before running a macro". The hover Run
+  button, the keyboard, a macro's shortcut and the macro bar never ask.
+- **Macros with variables.** `{name}` and `{name:default}` placeholders
   prompt in a small dialog before the send; shell text like `${VAR}` and
   `{print $1}` is deliberately left alone.
 - **Groups, tags and shortcuts.** Grouped folder cards in the vault
-  (nestable to any depth, see below), a tag filter on hosts and snippets,
-  a sidebar toggle that surfaces only snippets tagged like the focused
-  host, and a recordable key combo that runs a snippet straight into the
-  focused terminal.
-- **Run or paste.** Every snippet can run (with Enter) or paste (without)
+  (nestable to any depth, see below), a tag filter on hosts and macros,
+  one-click tag chips above the sidebar list, tag suggestions (from other
+  macros and hosts) under the editor's Tags field, a sidebar toggle that
+  surfaces only macros tagged like the focused host, and a recordable key
+  combo that runs a macro straight into the focused terminal.
+- **Tag bubbles.** In macro and host editors, type a tag and press Enter
+  or click Add to make a removable bubble. Click its cross to remove it.
+  Pasted comma-separated lists still work, duplicates are ignored, and
+  saving includes any unfinished tag.
+- **Run or paste.** Every macro can run (with Enter) or paste (without)
   into the focused pane, from the vault or the terminal sidebar.
 
 ## Themes & internationalization
@@ -774,10 +789,10 @@ vulnerability disclosure policy.
   action when it shows up. Your rules beat the automatic URL / IP / path
   detection, and the first matching rule wins, so the list is ordered.
   The action can be a desktop notification, a sound, or typing one of
-  your snippets into that session, with a per-rule cooldown so a log
+  your macros into that session, with a per-rule cooldown so a log
   full of the same word is one notification and not a hundred. Sending a
-  snippet asks first, once per rule per session, showing the line that
-  matched and the snippet's text: the trigger is decided by output the
+  macro asks first, once per rule per session, showing the line that
+  matched and the macro's text: the trigger is decided by output the
   HOST printed, and that must not be a way for a server to choose what
   runs on it. Actions do not fire inside full-screen applications
   (tmux, vim, htop), which repaint the screen instead of printing lines;

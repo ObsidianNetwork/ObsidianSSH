@@ -22,10 +22,10 @@ click "Skip"
 click "Get started"
 expect "Create host"
 
-# A rule needs a host to travel through, so make one first. Continue
+# A rule needs a host to travel through, so make one first. Add host
 # opens the panel with the hostname field already focused; the label is
 # separate and also required.
-click "Continue"
+click "Add host"
 settle 400
 find "Label"
 type "db.example.com"
