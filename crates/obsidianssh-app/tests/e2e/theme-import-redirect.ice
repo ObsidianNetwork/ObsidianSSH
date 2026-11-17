@@ -22,7 +22,7 @@ click "Interface"
 settle
 scroll (0, -1400) (700, 400)
 settle
-click "Obsidian SSH Dark"
+click "Obsidian Network"
 settle
 click "Import"
 settle

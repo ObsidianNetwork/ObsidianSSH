@@ -217,6 +217,7 @@ fn scoped() -> Option<ThemeSelection> {
 /// Available app themes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AppTheme {
+    ObsidianNetwork,
     ObsidianSshDark,
     ObsidianSshLight,
     Termius,
@@ -234,7 +235,12 @@ pub enum AppTheme {
 }
 
 impl AppTheme {
+    /// The theme a vault with no saved `app_theme` draws in. It has to
+    /// stay first in `ALL`: `ACTIVE_THEME` starts at index 0.
+    pub const DEFAULT: AppTheme = Self::ObsidianNetwork;
+
     pub const ALL: &[AppTheme] = &[
+        Self::ObsidianNetwork,
         Self::ObsidianSshDark,
         Self::ObsidianSshLight,
         Self::Termius,
@@ -253,6 +259,7 @@ impl AppTheme {
 
     pub fn name(&self) -> &'static str {
         match self {
+            Self::ObsidianNetwork => "Obsidian Network",
             Self::ObsidianSshDark => "Obsidian SSH Dark",
             Self::ObsidianSshLight => "Obsidian SSH Light",
             Self::Termius => "Termius",
@@ -280,6 +287,7 @@ impl AppTheme {
     /// This theme's `&'static` color table.
     pub fn colors_ref(&self) -> &'static ThemeColors {
         match self {
+            Self::ObsidianNetwork => &OBSIDIAN_NETWORK,
             Self::ObsidianSshDark => &OBSIDIANSSH_DARK,
             Self::ObsidianSshLight => &OBSIDIANSSH_LIGHT,
             Self::Termius => &TERMIUS,
@@ -305,7 +313,7 @@ impl AppTheme {
 
     fn global() -> AppTheme {
         let idx = ACTIVE_THEME.load(Ordering::Relaxed);
-        Self::ALL.get(idx).copied().unwrap_or(AppTheme::ObsidianSshDark)
+        Self::ALL.get(idx).copied().unwrap_or(Self::DEFAULT)
     }
 
     /// Inverse of `name()`, used when re-hydrating the persisted
@@ -317,7 +325,7 @@ impl AppTheme {
             .iter()
             .copied()
             .find(|t| t.name() == name)
-            .unwrap_or(AppTheme::ObsidianSshDark)
+            .unwrap_or(Self::DEFAULT)
     }
 }
 
@@ -476,6 +484,39 @@ pub fn theme_colors_from_hex(h: &[String; 21]) -> ThemeColors {
         button_text: hex_to_color(&h[20], d.button_text),
     }
 }
+
+/// Obsidian Network, the palette of the Obsidian Network design system:
+/// near-black surfaces, one purple family, teal / yellow / red for
+/// state. Every value is one of that system's colour tokens, except the
+/// one slot it has no token for (noted inline).
+pub const OBSIDIAN_NETWORK: ThemeColors = ThemeColors {
+    bg_primary: Color::from_rgb8(12, 14, 20),        // #0C0E14 --bg-dark
+    bg_sidebar: Color::from_rgb8(6, 8, 11),          // #06080B --bg-darker
+    bg_surface: Color::from_rgb8(26, 29, 38),        // #1A1D26 --bg-card
+    bg_hover: Color::from_rgb8(35, 38, 49),          // #232631 --bg-hover
+    // No token: --obsidian-purple at 15% over --bg-card, the alpha the
+    // system gives its tinted fills.
+    bg_selected: Color::from_rgb8(35, 40, 69),       // #232845
+    text_primary: Color::from_rgb8(255, 255, 255),   // #FFFFFF --text-primary
+    text_secondary: Color::from_rgb8(185, 187, 190), // #B9BBBE --text-secondary
+    text_muted: Color::from_rgb8(114, 118, 125),     // #72767D --text-muted
+    accent: Color::from_rgb8(88, 101, 242),          // #5865F2 --obsidian-purple
+    accent_hover: Color::from_rgb8(114, 137, 218),   // #7289DA --light-purple
+    success: Color::from_rgb8(0, 212, 170),          // #00D4AA --success-green
+    warning: Color::from_rgb8(254, 231, 92),         // #FEE75C --warning-yellow
+    error: Color::from_rgb8(237, 66, 69),            // #ED4245 --error-red
+    terminal_bg: Color::from_rgb8(6, 8, 11),         // --bg-darker
+    terminal_fg: Color::from_rgb8(185, 187, 190),    // --text-secondary
+    terminal_cursor: Color::from_rgb8(88, 101, 242), // --obsidian-purple
+    border: Color::from_rgb8(42, 45, 56),            // #2A2D38 --border-color
+    border_focus: Color::from_rgb8(88, 101, 242),    // --obsidian-purple
+    // The filled button darkens to --deep-purple on hover rather than
+    // lightening to --light-purple: its white label reads at about
+    // 6.4:1 on the former and 3.3:1 on the latter.
+    button_bg: Color::from_rgb8(88, 101, 242),       // --obsidian-purple
+    button_bg_hover: Color::from_rgb8(71, 82, 196),  // #4752C4 --deep-purple
+    button_text: Color::WHITE,
+};
 
 pub const OBSIDIANSSH_DARK: ThemeColors = ThemeColors {
     bg_primary: Color::from_rgb(0.086, 0.102, 0.098),

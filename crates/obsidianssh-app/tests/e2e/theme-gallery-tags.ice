@@ -13,7 +13,7 @@ click (1215, 64)
 settle
 click "Terminal Settings"
 settle
-click "Follow app theme (Obsidian SSH Dark)"
+click "Follow app theme (Obsidian Network)"
 settle
 expect "Dracula"
 expect "Solarized Light"

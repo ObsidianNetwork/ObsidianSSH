@@ -994,7 +994,7 @@ impl ObsidianSsh {
                     .iter()
                     .find(|t| t.name() == name)
                     .map(|t| *t.colors_ref())
-                    .unwrap_or(*crate::theme::AppTheme::ObsidianSshDark.colors_ref())
+                    .unwrap_or(*crate::theme::AppTheme::DEFAULT.colors_ref())
             });
         self.settings_nav_slot_labeled(
             crate::i18n::t("interface_group_theme"),

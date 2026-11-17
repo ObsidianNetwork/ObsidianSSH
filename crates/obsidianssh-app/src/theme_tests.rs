@@ -24,6 +24,14 @@ fn contrast_suite_covers_every_builtin() {
 }
 
 #[test]
+fn the_default_theme_is_the_first_builtin() {
+    // The active-theme index starts at 0 and every lookup that misses
+    // falls back to it, so a default listed anywhere else would boot a
+    // fresh vault in a different theme than the one its settings name.
+    assert_eq!(AppTheme::ALL[0], AppTheme::DEFAULT);
+}
+
+#[test]
 fn contrast_ratio_known_pairs() {
     // Spot-check the formula against pairs with well-known ratios.
     // Black-on-white must be exactly 21.0; white-on-white 1.0.

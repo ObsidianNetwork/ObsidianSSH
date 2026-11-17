@@ -4,6 +4,7 @@ use alacritty_terminal::vte::ansi::{self, NamedColor};
 /// Terminal color theme name.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TerminalTheme {
+    ObsidianNetwork,
     ObsidianSshDark,
     ObsidianSshLight,
     Termius,
@@ -59,6 +60,7 @@ impl TerminalTheme {
         Self::Monokai,
         Self::NightOwl,
         Self::Nord,
+        Self::ObsidianNetwork,
         Self::ObsidianSshDark,
         Self::OneDark,
         Self::RosePine,
@@ -81,6 +83,7 @@ impl TerminalTheme {
 
     pub fn name(&self) -> &'static str {
         match self {
+            Self::ObsidianNetwork => "Obsidian Network",
             Self::ObsidianSshDark => "Obsidian SSH Dark",
             Self::ObsidianSshLight => "Obsidian SSH Light",
             Self::Termius => "Termius",
@@ -122,6 +125,7 @@ impl TerminalTheme {
 
     pub fn palette(&self) -> TerminalPalette {
         match self {
+            Self::ObsidianNetwork => TerminalPalette::obsidian_network(),
             Self::ObsidianSshDark => TerminalPalette::obsidianssh_dark(),
             Self::ObsidianSshLight => TerminalPalette::obsidianssh_light(),
             Self::Termius => TerminalPalette::termius(),
@@ -324,11 +328,45 @@ impl TerminalPalette {
 
 impl Default for TerminalPalette {
     fn default() -> Self {
-        Self::obsidianssh_dark()
+        Self::obsidian_network()
     }
 }
 
 impl TerminalPalette {
+    /// Obsidian Network, the companion of the app theme of the same name.
+    /// The Obsidian Network design system has no terminal palette, so the
+    /// base colours are its tokens, and a bright accent with no token of
+    /// its own is its base lifted a quarter of the way to white. Cyan is
+    /// the one invented
+    /// hue: the system's only green is a teal, which leaves nothing to
+    /// tell slot 6 from slot 2, so cyan sits between that teal and the
+    /// brand purple.
+    pub fn obsidian_network() -> Self {
+        Self {
+            foreground: Color::from_rgb8(185, 187, 190),  // #B9BBBE --text-secondary
+            background: Color::from_rgb8(6, 8, 11),       // #06080B --bg-darker
+            cursor: Color::from_rgb8(88, 101, 242),       // #5865F2 --obsidian-purple
+            ansi: [
+                Color::from_rgb8(26, 29, 38),     // 0 Black, #1A1D26 --bg-card
+                Color::from_rgb8(237, 66, 69),    // 1 Red, #ED4245 --error-red
+                Color::from_rgb8(0, 212, 170),    // 2 Green, #00D4AA --success-green
+                Color::from_rgb8(254, 231, 92),   // 3 Yellow, #FEE75C --warning-yellow
+                Color::from_rgb8(88, 101, 242),   // 4 Blue, #5865F2 --obsidian-purple
+                Color::from_rgb8(139, 95, 191),   // 5 Magenta, #8B5FBF --electric-purple
+                Color::from_rgb8(76, 201, 240),   // 6 Cyan, #4CC9F0
+                Color::from_rgb8(185, 187, 190),  // 7 White, #B9BBBE --text-secondary
+                Color::from_rgb8(114, 118, 125),  // 8 Bright Black, #72767D --text-muted
+                Color::from_rgb8(242, 113, 116),  // 9 Bright Red, #F27174
+                Color::from_rgb8(64, 223, 191),   // 10 Bright Green, #40DFBF
+                Color::from_rgb8(254, 237, 133),  // 11 Bright Yellow, #FEED85
+                Color::from_rgb8(114, 137, 218),  // 12 Bright Blue, #7289DA --light-purple
+                Color::from_rgb8(168, 135, 207),  // 13 Bright Magenta, #A887CF
+                Color::from_rgb8(121, 215, 244),  // 14 Bright Cyan, #79D7F4
+                Color::from_rgb8(255, 255, 255),  // 15 Bright White, #FFFFFF --text-primary
+            ],
+        }
+    }
+
     /// Obsidian SSH Dark, like Termius Dark: white text, teal cursor/accent, vivid ANSI colors
     pub fn obsidianssh_dark() -> Self {
         Self {

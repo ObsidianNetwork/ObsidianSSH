@@ -325,6 +325,7 @@ pub(crate) fn custom_theme_palette(
 /// of the same name.
 fn app_theme_to_terminal(theme: AppTheme) -> obsidianssh_terminal::TerminalTheme {
     match theme {
+        AppTheme::ObsidianNetwork => obsidianssh_terminal::TerminalTheme::ObsidianNetwork,
         AppTheme::ObsidianSshDark => obsidianssh_terminal::TerminalTheme::ObsidianSshDark,
         AppTheme::ObsidianSshLight => obsidianssh_terminal::TerminalTheme::ObsidianSshLight,
         AppTheme::Termius => obsidianssh_terminal::TerminalTheme::Termius,
@@ -662,10 +663,11 @@ impl ObsidianSsh {
                     if was_active {
                         // The active theme is gone; fall back to the default.
                         crate::theme::AppTheme::set_active(
-                            crate::theme::AppTheme::ObsidianSshDark,
+                            crate::theme::AppTheme::DEFAULT,
                         );
-                        self.vaults.cur_mut().active_app_theme_name = "Obsidian SSH Dark".to_string();
-                        self.persist_setting("app_theme", "Obsidian SSH Dark");
+                        self.vaults.cur_mut().active_app_theme_name =
+                            crate::theme::AppTheme::DEFAULT.name().to_string();
+                        self.persist_setting("app_theme", crate::theme::AppTheme::DEFAULT.name());
                         self.vaults.cur_mut().terminal_palette = self.resolve_global_terminal_palette();
                         self.repaint_all_terminal_palettes();
                     }

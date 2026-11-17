@@ -572,7 +572,7 @@ impl OpenVault {
             sftp_enabled: true,
             remote_desktop_enabled: false,
             install_runs: std::collections::HashMap::new(),
-            active_app_theme_name: "Obsidian SSH Dark".to_string(),
+            active_app_theme_name: crate::theme::AppTheme::DEFAULT.name().to_string(),
             highlight_rules_cache: std::cell::RefCell::new(std::collections::HashMap::new()),
             panel_width: crate::app::PANEL_WIDTH,
         }
