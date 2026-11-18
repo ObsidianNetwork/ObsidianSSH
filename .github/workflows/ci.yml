@@ -1,10 +1,27 @@
 name: CI
 
+# Docs and screenshots cannot change what compiles or what the tests see.
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'resources/screen_*.png'
+      - 'resources/screen_*.gif'
   pull_request:
     branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'resources/screen_*.png'
+      - 'resources/screen_*.gif'
+
+# A newer push to a pull request supersedes the run still testing the
+# older commit. A push to main is grouped by its own commit instead, so
+# nothing there is cancelled or dropped from the queue and every commit
+# that lands keeps its own result.
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: true
 
 # Build + test only: nothing here writes back to the repo, so the token
 # gets the read scope the checkout needs and nothing else.
@@ -87,8 +104,14 @@ jobs:
   #
   # No network by design (see the note in font-pack.ice), and every test
   # runs on a freshly wiped sandbox HOME, never the runner's own.
+  #
+  # Pull requests only: each shard builds the app from scratch, so the
+  # suite costs three full builds, and a merged pull request has already
+  # passed it. A commit pushed straight to main gets the compile, test
+  # and clippy gate above but not this suite.
   e2e:
     name: Headless E2E (${{ matrix.shard }}/3)
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
