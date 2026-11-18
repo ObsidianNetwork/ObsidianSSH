@@ -285,6 +285,16 @@ pub(crate) fn live_endpoints(candidates: Vec<std::path::PathBuf>) -> Vec<String>
 /// drives it, and unlike auth there is nothing to salvage by waiting.
 const CENSUS_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(2);
 
+/// One endpoint's LIST outcome, before it is shaped for the census or
+/// the UI roster.
+pub(crate) enum Listing {
+    Identities(Vec<russh::keys::agent::AgentIdentity>),
+    Unanswered,
+    /// A Bitwarden endpoint a background read left alone (see
+    /// [`list_endpoints`]).
+    NotAsked,
+}
+
 /// Fold one endpoint's LIST answer into census lines.
 ///
 /// A key ARRIVING in an agent that was already running (KeePassXC
@@ -292,12 +302,9 @@ const CENSUS_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(2);
 /// the endpoint set, which is why the census goes down to fingerprints.
 /// The three states are deliberately distinct: holding keys, reachable
 /// but empty (a locked KeePassXC keeps its pipe open), and unreachable.
-pub(crate) fn census_lines(
-    endpoint: &str,
-    identities: Option<Vec<russh::keys::agent::AgentIdentity>>,
-) -> Vec<String> {
-    match identities {
-        Some(ids) if !ids.is_empty() => ids
+pub(crate) fn census_lines(endpoint: &str, listing: Listing) -> Vec<String> {
+    match listing {
+        Listing::Identities(ids) if !ids.is_empty() => ids
             .iter()
             .map(|id| {
                 format!(
@@ -306,22 +313,29 @@ pub(crate) fn census_lines(
                 )
             })
             .collect(),
-        Some(_) => vec![format!("{endpoint} <empty>")],
+        Listing::Identities(_) => vec![format!("{endpoint} <empty>")],
+        // Present but left alone: the socket appearing still registers.
+        Listing::NotAsked => vec![format!("{endpoint} <not-asked>")],
         // Unreachable or timed out contributes nothing, so the endpoint
         // answering later reads as a change.
-        None => Vec::new(),
+        Listing::Unanswered => Vec::new(),
     }
 }
 
-/// Dial every live agent endpoint and LIST its keys: `None` for an
-/// endpoint that did not answer in time. LIST is the only request made.
-/// It is unauthenticated in every agent implementation and never
-/// triggers a confirm prompt (only signing does), so polling it cannot
-/// nag the user.
+/// Dial every live agent endpoint and LIST its keys. LIST is the only
+/// request made and never asks to approve a key (only signing does),
+/// but a LOCKED Bitwarden vault answers it by popping up its unlock
+/// prompt. So with `list_bitwarden` false the Bitwarden endpoint is
+/// reported as [`Listing::NotAsked`] without being dialed, which keeps
+/// background polling from demanding an unlocked vault.
 #[cfg(unix)]
-async fn list_endpoints() -> Vec<(String, Option<Vec<russh::keys::agent::AgentIdentity>>)> {
+async fn list_endpoints(list_bitwarden: bool) -> Vec<(String, Listing)> {
     let mut out = Vec::new();
     for path in unix_agent_endpoints(std::env::var("SSH_AUTH_SOCK").ok()) {
+        if !list_bitwarden && is_bitwarden_endpoint(&path) {
+            out.push((path, Listing::NotAsked));
+            continue;
+        }
         let ids = tokio::time::timeout(CENSUS_TIMEOUT, async {
             let mut agent = russh::keys::agent::client::AgentClient::connect_uds(&path)
                 .await
@@ -331,15 +345,22 @@ async fn list_endpoints() -> Vec<(String, Option<Vec<russh::keys::agent::AgentId
         .await
         .ok()
         .flatten();
-        out.push((path, ids));
+        out.push((path, ids.map_or(Listing::Unanswered, Listing::Identities)));
     }
     out
 }
 
+/// Bitwarden on Windows serves the shared OpenSSH pipe, which
+/// [`is_bitwarden_endpoint`] cannot tell apart, so there it is still
+/// listed by a background read.
 #[cfg(windows)]
-async fn list_endpoints() -> Vec<(String, Option<Vec<russh::keys::agent::AgentIdentity>>)> {
+async fn list_endpoints(list_bitwarden: bool) -> Vec<(String, Listing)> {
     let mut out = Vec::new();
     for pipe in agent_endpoints_present() {
+        if !list_bitwarden && is_bitwarden_endpoint(&pipe) {
+            out.push((pipe, Listing::NotAsked));
+            continue;
+        }
         let ids = tokio::time::timeout(CENSUS_TIMEOUT, async {
             let mut agent = russh::keys::agent::client::AgentClient::connect_named_pipe(&pipe)
                 .await
@@ -349,47 +370,45 @@ async fn list_endpoints() -> Vec<(String, Option<Vec<russh::keys::agent::AgentId
         .await
         .ok()
         .flatten();
-        out.push((pipe, ids));
+        out.push((pipe, ids.map_or(Listing::Unanswered, Listing::Identities)));
     }
     out
 }
 
 #[cfg(not(any(unix, windows)))]
-async fn list_endpoints() -> Vec<(String, Option<Vec<russh::keys::agent::AgentIdentity>>)> {
+async fn list_endpoints(_list_bitwarden: bool) -> Vec<(String, Listing)> {
     Vec::new()
 }
 
 /// What every reachable agent is holding right now, as sorted
 /// `<endpoint> <fingerprint>` lines. Meaningless in isolation: callers
 /// compare two readings, and a difference means the key situation moved
-/// (an agent appeared, went away, or its roster changed).
+/// (an agent appeared, went away, or its roster changed). A background
+/// heartbeat, so Bitwarden is left unasked.
 pub(crate) async fn agent_key_census() -> Vec<String> {
-    let mut out: Vec<String> = list_endpoints()
+    let mut out: Vec<String> = list_endpoints(false)
         .await
         .into_iter()
-        .flat_map(|(endpoint, ids)| census_lines(&endpoint, ids))
+        .flat_map(|(endpoint, listing)| census_lines(&endpoint, listing))
         .collect();
     out.sort();
     out
 }
 
 /// Every live agent endpoint with the keys it serves, for the UI.
-pub(crate) async fn agent_roster() -> Vec<super::AgentEndpoint> {
-    list_endpoints()
+pub(crate) async fn agent_roster(list_bitwarden: bool) -> Vec<super::AgentEndpoint> {
+    list_endpoints(list_bitwarden)
         .await
         .into_iter()
-        .map(|(endpoint, ids)| roster_entry(endpoint, ids))
+        .map(|(endpoint, listing)| roster_entry(endpoint, listing))
         .collect()
 }
 
 /// One endpoint's LIST answer as the UI reports it. A certificate
 /// identity is listed by its underlying key, which is what a host pins.
-pub(crate) fn roster_entry(
-    endpoint: String,
-    identities: Option<Vec<russh::keys::agent::AgentIdentity>>,
-) -> super::AgentEndpoint {
-    let keys = identities.map(|ids| {
-        ids.iter()
+pub(crate) fn roster_entry(endpoint: String, listing: Listing) -> super::AgentEndpoint {
+    let keys = match listing {
+        Listing::Identities(ids) => super::AgentKeys::Listed(ids.iter()
             .filter_map(|id| {
                 let mut key = id.public_key().into_owned();
                 key.set_comment(id.comment());
@@ -399,8 +418,10 @@ pub(crate) fn roster_entry(
                     fingerprint: key.fingerprint(russh::keys::HashAlg::Sha256).to_string(),
                 })
             })
-            .collect()
-    });
+            .collect()),
+        Listing::Unanswered => super::AgentKeys::Unanswered,
+        Listing::NotAsked => super::AgentKeys::NotAsked,
+    };
     super::AgentEndpoint { bitwarden: is_bitwarden_endpoint(&endpoint), endpoint, keys }
 }
 

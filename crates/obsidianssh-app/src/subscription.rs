@@ -339,9 +339,10 @@ impl ObsidianSsh {
         }
 
         // The ssh-agent roster behind the status bar's agent segment and
-        // the editor's key picker. LIST never prompts, so polling cannot
-        // nag; slow, because an agent appearing or a vault unlocking is
-        // rare and the picker refreshes itself when it opens.
+        // the editor's key picker. It never dials Bitwarden (a locked vault
+        // would ask to be unlocked, see `crate::ssh_agents`), so polling
+        // cannot nag; slow, because an agent appearing is rare and the
+        // picker refreshes itself when it opens.
         subs.push(iced::time::every(std::time::Duration::from_secs(30)).map(|_| Message::RefreshAgentRoster));
 
         // 30-second poll for silent auto-reconnect of disconnected SSH

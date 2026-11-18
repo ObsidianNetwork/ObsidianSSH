@@ -1241,7 +1241,8 @@ pub struct ObsidianSsh {
     pub(crate) mcp_sudo: crate::state::McpSudoState,
     // ── Every live ssh-agent endpoint (the Bitwarden desktop agent among
     // them) with the keys it serves, see `crate::ssh_agents`. Read at
-    // boot, on a slow timer and when the editor's key picker opens.
+    // boot and on a slow timer without asking Bitwarden, and with it when
+    // the editor's Agent key picker opens.
     pub(crate) ssh_agents: Vec<obsidianssh_ssh::AgentEndpoint>,
 }
 

@@ -79,9 +79,32 @@ pub struct AgentEndpoint {
     pub endpoint: String,
     /// The Bitwarden desktop agent (judged by its socket name).
     pub bitwarden: bool,
-    /// `None` when the endpoint did not answer in time; `Some(empty)`
-    /// when it answered holding nothing.
-    pub keys: Option<Vec<AgentKey>>,
+    /// What the endpoint said when asked to LIST its keys.
+    pub keys: AgentKeys,
+}
+
+/// One endpoint's answer to LIST (see [`AgentEndpoint`]).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AgentKeys {
+    /// It answered with these keys; empty when it holds nothing.
+    Listed(Vec<AgentKey>),
+    /// It did not answer in time.
+    Unanswered,
+    /// Deliberately not asked: a Bitwarden endpoint during a background
+    /// read. A LIST against a locked Bitwarden vault makes the desktop
+    /// app pop up and ask to be unlocked, so only a read the user asked
+    /// for (or a connect that signs in through it) dials Bitwarden.
+    NotAsked,
+}
+
+impl AgentKeys {
+    /// The keys, when the endpoint answered.
+    pub fn listed(&self) -> Option<&[AgentKey]> {
+        match self {
+            AgentKeys::Listed(keys) => Some(keys),
+            AgentKeys::Unanswered | AgentKeys::NotAsked => None,
+        }
+    }
 }
 
 /// One key an ssh-agent serves.
@@ -98,9 +121,12 @@ pub struct AgentKey {
 
 /// Every live ssh-agent endpoint (`SSH_AUTH_SOCK`, the Bitwarden desktop
 /// agent, Windows agent pipes) with the keys it serves. One bounded dial
-/// and LIST per endpoint; LIST never prompts, so this is safe to poll.
-pub async fn agent_roster() -> Vec<AgentEndpoint> {
-    agent::agent_roster().await
+/// and LIST per endpoint. With `list_bitwarden` false the Bitwarden
+/// endpoint is reported but not dialed ([`AgentKeys::NotAsked`]), which
+/// is what a background poll must use: LIST on a locked Bitwarden vault
+/// asks the user to unlock it.
+pub async fn agent_roster(list_bitwarden: bool) -> Vec<AgentEndpoint> {
+    agent::agent_roster(list_bitwarden).await
 }
 
 /// The key material offered during publickey auth: the private key PEM
@@ -801,10 +827,16 @@ mod tests {
         // agent (locked KeePassXC holding its pipe open) has to differ
         // from an unreachable one, or the keys landing in it later
         // would not register as a change.
-        assert!(agent::census_lines("/tmp/agent.sock", None).is_empty());
+        assert!(agent::census_lines("/tmp/agent.sock", agent::Listing::Unanswered).is_empty());
         assert_eq!(
-            agent::census_lines("/tmp/agent.sock", Some(Vec::new())),
+            agent::census_lines("/tmp/agent.sock", agent::Listing::Identities(Vec::new())),
             vec!["/tmp/agent.sock <empty>".to_string()],
+        );
+        // A Bitwarden socket left unasked still counts as present, so it
+        // appearing or going away registers.
+        assert_eq!(
+            agent::census_lines("/tmp/bw.sock", agent::Listing::NotAsked),
+            vec!["/tmp/bw.sock <not-asked>".to_string()],
         );
     }
 
