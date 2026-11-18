@@ -505,8 +505,6 @@ mod tests {
             "ssh_progress_proxy",
             "ssh_progress_command_proxy",
             "ssh_progress_forwards",
-            "ssh_progress_instance_connect",
-            "ssh_progress_instance_connect_failed",
             "ssh_progress_pane_connecting",
             "ssh_progress_error",
             "ssh_progress_method_auto",
