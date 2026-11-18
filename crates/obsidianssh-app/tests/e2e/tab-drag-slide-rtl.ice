@@ -63,15 +63,17 @@ settle 500
 click "alpha"
 settle 500
 order "gamma" "beta" "alpha"
-move (720, 22)
+# The narrower Home tab moves RTL chips right by 74 px. Measured before
+# dragging: beta's label starts at x 785, gamma's at x 674.
+move (794, 22)
 settle 200
-press (720, 20)
-move (712, 22)
+press (794, 20)
+move (786, 22)
 find "gamma"
-move (590, 20)
+move (664, 20)
 settle 200
 screenshot rtl-1-beta-dragged-left
-release (590, 20)
+release (664, 20)
 settle 400
 order "beta" "gamma" "alpha"
 expect "● beta"

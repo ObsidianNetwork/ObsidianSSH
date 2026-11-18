@@ -37,7 +37,8 @@ absent "Rename Tab"
 absent "2. bash (default)"
 
 # Rename. Settings comes back as the second tab and stays there.
-click "Personal"
+# Return through the icon-only Home tab; the vault chip was removed.
+click (56, 20)
 settle 300
 click (1176, 64)
 settle 500
