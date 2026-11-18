@@ -57,7 +57,7 @@ type enter
 settle 300
 order "alpha" "beta" "gamma"
 expect "● gamma"
-# alpha (~151..265) right, past gamma's middle (gamma ~368..606).
+# alpha (~77..191) right, past gamma's middle (gamma ~294..532).
 press (116, 20)
 move (126, 22)
 find "beta"
@@ -69,7 +69,7 @@ release (426, 20)
 settle 400
 order "beta" "gamma" "alpha"
 expect "● alpha"
-# gamma (now ~262..366) left onto beta's left half (beta ~151..259).
+# gamma (now ~188..292) left onto beta's left half (beta ~77..185).
 press (226, 20)
 move (216, 22)
 find "beta"
@@ -104,7 +104,9 @@ type ctrl+shift+l
 settle 300
 type ctrl+shift+l
 settle 500
-click right (686, 20)
+# Overflow is anchored to the trailing chrome, so removing the leading
+# vault chip does not shift these targets. Measure from the screenshot.
+click right (760, 20)
 settle 250
 click "Rename Tab"
 settle 250
@@ -112,7 +114,7 @@ type ctrl+a
 type "epsilon"
 type enter
 settle 300
-click right (516, 20)
+click right (590, 20)
 settle 250
 click "Rename Tab"
 settle 250
@@ -123,13 +125,13 @@ settle 300
 order "gamma" "delta" "epsilon"
 screenshot slide-3-overflow-scrolled
 # epsilon (~645..885) onto delta's left half (delta ~545..640).
-press (686, 20)
-move (676, 22)
+press (760, 20)
+move (750, 22)
 find "delta"
-move (506, 20)
+move (580, 20)
 settle 200
 screenshot slide-4-scrolled-drag
-release (506, 20)
+release (580, 20)
 settle 400
 order "gamma" "epsilon" "delta"
 expect "● epsilon"

@@ -44,10 +44,10 @@ screenshot tab-bar-drag-handle
 # The handle: right of the docked `+`, left of the `⋯` (1115 minus the
 # chrome, the side-panel toggle, the `⋯` and the 40 px handle itself
 # puts it at x 841..881).
-move (787.00, 18.00)
+move (861.00, 18.00)
 settle 250
 absent "New Tab"
-click right (787.00, 18.00)
+click right (861.00, 18.00)
 settle 250
 expect "New Tab"
 absent "Close Tab"
