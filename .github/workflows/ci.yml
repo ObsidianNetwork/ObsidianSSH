@@ -1,26 +1,23 @@
 name: CI
 
-# Docs and screenshots cannot change what compiles or what the tests see.
+# On demand only: the same checks run locally before a push, so a build
+# here is something asked for, never a side effect of pushing. Two ways to
+# ask:
+#   - add the `run-ci` label to a pull request; every later push to it
+#     re-runs until the label is removed
+#   - Actions tab > CI > Run workflow, on any branch
+# Without the label a pull request still gets a CI run, but both jobs skip
+# without starting a runner.
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - '**/*.md'
-      - 'resources/screen_*.png'
-      - 'resources/screen_*.gif'
   pull_request:
     branches: [main]
-    paths-ignore:
-      - '**/*.md'
-      - 'resources/screen_*.png'
-      - 'resources/screen_*.gif'
+    types: [opened, synchronize, reopened, labeled]
+  workflow_dispatch:
 
-# A newer push to a pull request supersedes the run still testing the
-# older commit. A push to main is grouped by its own commit instead, so
-# nothing there is cancelled or dropped from the queue and every commit
-# that lands keeps its own result.
+# A newer push to the same pull request supersedes the run still testing
+# the older commit.
 concurrency:
-  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 # Build + test only: nothing here writes back to the repo, so the token
@@ -36,6 +33,12 @@ env:
 jobs:
   check:
     name: Check & Test
+    # Adding any other label to a pull request that already carries
+    # `run-ci` must not start a second run.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.action == 'labeled' && github.event.label.name == 'run-ci') ||
+      (github.event.action != 'labeled' && contains(github.event.pull_request.labels.*.name, 'run-ci'))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -105,13 +108,12 @@ jobs:
   # No network by design (see the note in font-pack.ice), and every test
   # runs on a freshly wiped sandbox HOME, never the runner's own.
   #
-  # Pull requests only: each shard builds the app from scratch, so the
-  # suite costs three full builds, and a merged pull request has already
-  # passed it. A commit pushed straight to main gets the compile, test
-  # and clippy gate above but not this suite.
+  # Runs only after the compile gate passes: each shard builds the app
+  # from scratch, so a change that does not compile would otherwise cost
+  # three more full builds to say so. Skipped whenever `check` is.
   e2e:
     name: Headless E2E (${{ matrix.shard }}/3)
-    if: github.event_name == 'pull_request'
+    needs: check
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
