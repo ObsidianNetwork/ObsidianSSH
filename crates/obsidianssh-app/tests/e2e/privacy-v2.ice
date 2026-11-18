@@ -26,13 +26,13 @@ settle 500
 
 # Enable Privacy Mode; the v2 rows appear under the master toggle:
 # four per-class gates (block 1) and the two mask lists (block 4).
-# The toggle coordinate tracks the Security layout (group headers
-# added 2026-07-18 pushed the Privacy card down).
+# The vault-password and lock cards were removed from Security. In this
+# viewport the Privacy label is at y 110; hit its switch at label_y + 8.
 click (1215, 64)
 expect "Security & Privacy"
 click "Security & Privacy"
 expect "Privacy mode"
-click (1181, 450)
+click (1181, 118)
 settle 800
 expect "Mask public IP addresses"
 expect "Mask private and loopback IPs"
