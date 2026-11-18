@@ -1,0 +1,54 @@
+name: CodeQL
+
+# A pull request is scanned before it lands, and main itself on a weekly
+# schedule, never per push: the merge commit holds code its pull request
+# already had analysed, and the Rust analysis alone runs ~18 minutes.
+#
+# GitHub's "default setup" (Settings > Code security > CodeQL analysis)
+# must stay off: while it is on, GitHub rejects the results of an
+# advanced configuration like this one.
+
+on:
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'resources/screen_*.png'
+      - 'resources/screen_*.gif'
+  schedule:
+    - cron: '23 4 * * 1'
+  workflow_dispatch:
+
+# A newer push to the same pull request makes the older scan moot.
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [actions, javascript-typescript, python, rust]
+    steps:
+      - uses: actions/checkout@v5
+
+      # `none` reads the source without compiling it; Rust would otherwise
+      # need the full GTK toolchain the CI job installs.
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+
+      - uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:${{ matrix.language }}
