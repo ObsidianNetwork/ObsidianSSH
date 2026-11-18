@@ -31,7 +31,8 @@ settle 400
 expect "bash (default)"
 # No snippet is marked: no bar.
 absent "deploy-bar"
-click "Personal"
+# The icon-only Home tab replaces the retired vault chip.
+click (56, 20)
 settle 300
 click "Macros"
 settle 300
@@ -45,7 +46,7 @@ expect "deploy-bar"
 click "deploy-bar"
 settle 400
 # The menu now offers the other way.
-click "Personal"
+click (56, 20)
 settle 300
 click "Macros"
 settle 300
