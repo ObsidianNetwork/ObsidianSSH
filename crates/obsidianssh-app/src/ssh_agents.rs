@@ -7,16 +7,46 @@
 //! and the editor's key picker lists the agent's keys next to the saved
 //! ones under a label built here, so the picker and the stored pin always
 //! agree on the name.
+//!
+//! Bitwarden is only asked for its keys when the user is reaching for
+//! them: a LIST against a locked Bitwarden vault makes the desktop app
+//! ask to be unlocked, and nobody should have to unlock Bitwarden just
+//! to open this app. Background reads ([`refresh`]) leave it unasked;
+//! the editor's Agent key picker uses [`refresh_with_bitwarden`], and a
+//! connect that signs in through the agent asks it as part of auth.
 
 use iced::Task;
-use obsidianssh_ssh::{AgentEndpoint, AgentKey};
+use obsidianssh_ssh::{AgentEndpoint, AgentKey, AgentKeys};
 
 use crate::app::{Message, ObsidianSsh};
 
-/// Read the roster in the background; the answer lands as
-/// `Message::AgentRoster`.
+/// Read the roster in the background without dialing Bitwarden; the
+/// answer lands as `Message::AgentRoster`. For boot and the slow poll.
 pub(crate) fn refresh() -> Task<Message> {
-    Task::perform(obsidianssh_ssh::agent_roster(), Message::AgentRoster)
+    Task::perform(obsidianssh_ssh::agent_roster(false), Message::AgentRoster)
+}
+
+/// Read the roster including Bitwarden's keys, which prompts to unlock
+/// a locked Bitwarden vault. Only for the user picking an agent key.
+pub(crate) fn refresh_with_bitwarden() -> Task<Message> {
+    Task::perform(obsidianssh_ssh::agent_roster(true), Message::AgentRoster)
+}
+
+/// Fold a fresh roster over the previous one: an endpoint a background
+/// read left unasked keeps what an earlier read learned from it, so
+/// Bitwarden's keys stay in the picker and the status bar between the
+/// reads that actually ask it.
+pub(crate) fn carry_over(previous: &[AgentEndpoint], mut fresh: Vec<AgentEndpoint>) -> Vec<AgentEndpoint> {
+    for agent in &mut fresh {
+        if agent.keys == AgentKeys::NotAsked
+            && let Some(prev) = previous
+                .iter()
+                .find(|p| p.endpoint == agent.endpoint && matches!(p.keys, AgentKeys::Listed(_)))
+        {
+            agent.keys = prev.keys.clone();
+        }
+    }
+    fresh
 }
 
 /// The base64 key blob of an OpenSSH public line: what two lines with
@@ -45,7 +75,7 @@ fn label(comment: &str, fingerprint: &str, bitwarden: bool) -> String {
 pub(crate) fn roster_choices(agents: &[AgentEndpoint]) -> Vec<(String, String)> {
     let mut out: Vec<(String, String)> = Vec::new();
     for agent in agents {
-        for AgentKey { comment, public_line, fingerprint } in agent.keys.iter().flatten() {
+        for AgentKey { comment, public_line, fingerprint } in agent.keys.listed().into_iter().flatten() {
             let blob = key_blob(public_line);
             if out.iter().any(|(_, line)| key_blob(line) == blob) {
                 continue;
@@ -62,6 +92,9 @@ pub(crate) enum AgentSummary {
     /// The preferred endpoint (Bitwarden when present) and what it holds:
     /// `Some(n)` keys, or `None` when it did not answer.
     Agent { bitwarden: bool, keys: Option<usize> },
+    /// Bitwarden is there but has not been asked for its keys yet (see
+    /// the module docs), so nothing is known about its vault.
+    BitwardenNotAsked,
 }
 
 /// Summarize the roster for the status bar: Bitwarden speaks for itself
@@ -71,17 +104,18 @@ pub(crate) fn summary(agents: &[AgentEndpoint]) -> AgentSummary {
     let pick = agents
         .iter()
         .find(|a| a.bitwarden)
-        .or_else(|| agents.iter().find(|a| a.keys.as_ref().is_some_and(|k| !k.is_empty())))
+        .or_else(|| agents.iter().find(|a| a.keys.listed().is_some_and(|k| !k.is_empty())))
         .or_else(|| agents.first());
     match pick {
-        Some(a) => AgentSummary::Agent { bitwarden: a.bitwarden, keys: a.keys.as_ref().map(Vec::len) },
+        Some(a) if a.keys == AgentKeys::NotAsked => AgentSummary::BitwardenNotAsked,
+        Some(a) => AgentSummary::Agent { bitwarden: a.bitwarden, keys: a.keys.listed().map(<[_]>::len) },
         None => AgentSummary::None,
     }
 }
 
 impl ObsidianSsh {
     pub(crate) fn agents_have_keys(&self) -> bool {
-        self.ssh_agents.iter().any(|a| a.keys.as_ref().is_some_and(|k| !k.is_empty()))
+        self.ssh_agents.iter().any(|a| a.keys.listed().is_some_and(|k| !k.is_empty()))
     }
 
     /// The agent keys the host editor offers under the Agent method, as
@@ -130,16 +164,21 @@ mod tests {
         }
     }
 
-    fn endpoint(bitwarden: bool, keys: Option<Vec<AgentKey>>) -> AgentEndpoint {
+    fn endpoint(bitwarden: bool, keys: AgentKeys) -> AgentEndpoint {
         AgentEndpoint { endpoint: "/tmp/agent.sock".into(), bitwarden, keys }
+    }
+
+    fn bitwarden_at(path: &str, keys: AgentKeys) -> AgentEndpoint {
+        AgentEndpoint { endpoint: path.into(), bitwarden: true, keys }
     }
 
     #[test]
     fn choices_name_the_source_and_list_each_key_once() {
         let agents = vec![
-            endpoint(true, Some(vec![key("GitHub SSH Key", "AAA"), key("", "BBB")])),
-            endpoint(false, Some(vec![key("dup", "AAA"), key("laptop", "CCC")])),
-            endpoint(false, None),
+            endpoint(true, AgentKeys::Listed(vec![key("GitHub SSH Key", "AAA"), key("", "BBB")])),
+            endpoint(false, AgentKeys::Listed(vec![key("dup", "AAA"), key("laptop", "CCC")])),
+            endpoint(false, AgentKeys::Unanswered),
+            endpoint(true, AgentKeys::NotAsked),
         ];
         let labels: Vec<String> = roster_choices(&agents).into_iter().map(|(l, _)| l).collect();
         assert_eq!(
@@ -152,11 +191,34 @@ mod tests {
     fn summary_prefers_bitwarden_then_an_agent_with_keys() {
         assert_eq!(summary(&[]), AgentSummary::None);
         let empty_bitwarden = vec![
-            endpoint(false, Some(vec![key("k", "AAA")])),
-            endpoint(true, Some(Vec::new())),
+            endpoint(false, AgentKeys::Listed(vec![key("k", "AAA")])),
+            endpoint(true, AgentKeys::Listed(Vec::new())),
         ];
         assert_eq!(summary(&empty_bitwarden), AgentSummary::Agent { bitwarden: true, keys: Some(0) });
-        let plain = vec![endpoint(false, None), endpoint(false, Some(vec![key("k", "AAA")]))];
+        let plain = vec![
+            endpoint(false, AgentKeys::Unanswered),
+            endpoint(false, AgentKeys::Listed(vec![key("k", "AAA")])),
+        ];
         assert_eq!(summary(&plain), AgentSummary::Agent { bitwarden: false, keys: Some(1) });
+        // Unasked Bitwarden is neither empty (a warning) nor unreachable.
+        let unasked = vec![endpoint(false, AgentKeys::Listed(Vec::new())), endpoint(true, AgentKeys::NotAsked)];
+        assert_eq!(summary(&unasked), AgentSummary::BitwardenNotAsked);
+    }
+
+    #[test]
+    fn background_read_keeps_what_bitwarden_said_last() {
+        let listed = AgentKeys::Listed(vec![key("GitHub SSH Key", "AAA")]);
+        let previous = vec![bitwarden_at("/home/u/.bitwarden-ssh-agent.sock", listed.clone())];
+        // Same socket, left unasked: the earlier listing stays.
+        let fresh = vec![bitwarden_at("/home/u/.bitwarden-ssh-agent.sock", AgentKeys::NotAsked)];
+        assert_eq!(carry_over(&previous, fresh)[0].keys, listed);
+        // A different socket inherits nothing, and an answer that WAS
+        // read is never overwritten by an older one.
+        let elsewhere = vec![bitwarden_at("/tmp/bw.sock", AgentKeys::NotAsked)];
+        assert_eq!(carry_over(&previous, elsewhere)[0].keys, AgentKeys::NotAsked);
+        let answered = vec![bitwarden_at("/home/u/.bitwarden-ssh-agent.sock", AgentKeys::Listed(Vec::new()))];
+        assert_eq!(carry_over(&previous, answered)[0].keys, AgentKeys::Listed(Vec::new()));
+        // A socket that went away takes its keys with it.
+        assert!(carry_over(&previous, Vec::new()).is_empty());
     }
 }

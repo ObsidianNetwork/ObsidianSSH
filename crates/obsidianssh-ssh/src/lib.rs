@@ -14,7 +14,7 @@ mod none_auth_tests;
 #[cfg(test)]
 mod partial_auth_tests;
 
-pub use engine::{agent_key_census, agent_roster, AgentEndpoint, AgentKey, AutoClose, ConnectionResolver, ExecResult, ForwardConn, ForwardSession, HostKeyAskSender, HostKeyCheckCallback, HostKeyQuery, HostKeyStatus, KbiAskSender, KbiPromptField, KbiQuery, KeyMaterial, MonitorConn, NegCategory, NegotiationFailure, NetQualitySnapshot, ProxyCommandAskSender, ProxyCommandQuery, ProxyOutputLine, ProxyOutputSource, sanitize_proxy_line, trusted_only_proxy_command_ask, SshEngine, SshError, SshHandle, SshSession, SshTransport, TermFallback};
+pub use engine::{agent_key_census, agent_roster, AgentEndpoint, AgentKey, AgentKeys, AutoClose, ConnectionResolver, ExecResult, ForwardConn, ForwardSession, HostKeyAskSender, HostKeyCheckCallback, HostKeyQuery, HostKeyStatus, KbiAskSender, KbiPromptField, KbiQuery, KeyMaterial, MonitorConn, NegCategory, NegotiationFailure, NetQualitySnapshot, ProxyCommandAskSender, ProxyCommandQuery, ProxyOutputLine, ProxyOutputSource, sanitize_proxy_line, trusted_only_proxy_command_ask, SshEngine, SshError, SshHandle, SshSession, SshTransport, TermFallback};
 pub use sftp::{
     resume_offset, AttrUpdate, FsInfo, RemoteRangedFile, RemoteStat, SftpClient, SftpEntry,
     UploadOptions,

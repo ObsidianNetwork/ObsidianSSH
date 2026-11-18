@@ -112,7 +112,8 @@ impl ObsidianSsh {
         }
 
         // The ssh-agent hosts sign in through (Bitwarden first), so a
-        // locked or missing agent shows before a connect fails on it.
+        // missing or empty agent shows before a connect fails on it.
+        // Bitwarden is named but not asked until its keys are wanted.
         items.push(agent_segment(crate::ssh_agents::summary(&self.ssh_agents)));
         items.push(Space::new().width(12).boxed());
 
@@ -582,6 +583,8 @@ fn agent_segment(summary: crate::ssh_agents::AgentSummary) -> Element<'static, M
     let c = ObsidianSshColors::t();
     let (label, color) = match summary {
         AgentSummary::None => (t("agent_status_none").to_string(), c.text_muted),
+        // Present but not asked yet: just the name, no warning.
+        AgentSummary::BitwardenNotAsked => ("Bitwarden".to_string(), c.text_muted),
         AgentSummary::Agent { bitwarden, keys } => {
             let name = if bitwarden { "Bitwarden".to_string() } else { t("agent_name_generic").to_string() };
             match keys {

@@ -256,6 +256,7 @@ impl ObsidianSsh {
 
             Message::RefreshAgentRoster => return crate::ssh_agents::refresh(),
             Message::AgentRoster(agents) => {
+                let agents = crate::ssh_agents::carry_over(&self.ssh_agents, agents);
                 if self.ssh_agents != agents {
                     self.ssh_agents = agents;
                     // An open key picker lists the agents' keys.
