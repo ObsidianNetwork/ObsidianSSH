@@ -13,6 +13,9 @@ click (1215, 64)
 settle
 click "Terminal Settings"
 settle
+# Macro-run confirmation grew Behavior; reveal the theme card below it.
+scroll pixels (0, -500) (700, 1000)
+settle
 click "Follow app theme (Obsidian Network)"
 settle
 expect "Dracula"
