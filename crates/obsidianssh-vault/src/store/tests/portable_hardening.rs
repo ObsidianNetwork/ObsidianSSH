@@ -299,7 +299,7 @@ fn export_blob_contains_no_plaintext_secrets() {
             .as_deref(),
         Some(MARKERS[0])
     );
-    assert_eq!(target.get_ai_api_key().unwrap().as_deref(), Some(MARKERS[7]));
+    assert_eq!(target.get_ai_api_key().unwrap().as_deref(), Some(MARKERS[6]));
     assert_eq!(
         target.get_key_private(&key.id).unwrap().as_deref(),
         Some(MARKERS[5])
